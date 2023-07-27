@@ -1,6 +1,13 @@
 # /routers/routers.yml
 
 http:
+  routers:
+    dashboard:
+      entrypoints: "api"
+      service: "api@internal"
+      middlewares: auth
+      rule: "Host(`traefik.johncloud.fr`)"
+
   middlewares:
     auth:
       basicauth:
