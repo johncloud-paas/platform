@@ -2,11 +2,11 @@ entryPoints:
   web:
     address: ":80"
     http:
-      redirections:
-        entryPoint:
-          to: websecure
-          scheme: https
-          permanent: true
+      # redirections:
+      #   entryPoint:
+      #     to: websecure
+      #     scheme: https
+      #     permanent: true
 
   websecure:
     address: ":443"
@@ -15,9 +15,9 @@ entryPoints:
         certResolver: letsencrypt
 
 providers:
-  docker: {}
-    # endpoint: "unix:///var/run/docker.sock"
-    # watch: true
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    watch: true
     # exposedByDefault: false
   file:
     filename: "/routers/routers.yml"
