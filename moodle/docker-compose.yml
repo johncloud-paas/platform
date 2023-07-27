@@ -1,0 +1,45 @@
+# Copyright VMware, Inc.
+# SPDX-License-Identifier: APACHE-2.0
+
+version: '2'
+services:
+  moodle:
+    image: docker.io/bitnami/moodle:4.2
+    ports:
+      - '8090:8080'
+    restart: unless-stopped
+    environment:
+      - MOODLE_DATABASE_HOST=moodle_db
+      - MOODLE_DATABASE_PORT_NUMBER=3306
+      - MOODLE_DATABASE_USER=bn_moodle
+      - MOODLE_DATABASE_NAME=bitnami_moodle
+      - MOODLE_DATABASE_PASSWORD=6wSHwi43EFrdpBUNrH49
+    volumes:
+      - './moodle_data:/bitnami/moodle'
+      - './moodledata_data:/bitnami/moodledata'
+    depends_on:
+      - moodle_db
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.moodle.rule=Host(`moodle.johncloud.fr`)"
+      - "traefik.http.routers.moodle.entrypoints=websecure"
+      - "traefik.http.routers.moodle.tls.certresolver=letsencrypt"
+
+  moodle_db:
+    image: mariadb
+    restart: unless-stopped
+    environment:
+      - MARIADB_PASSWORD=6wSHwi43EFrdpBUNrH49
+      - MARIADB_USER=bn_moodle
+      - MARIADB_DATABASE=bitnami_moodle
+      - MARIADB_CHARACTER_SET=utf8mb4
+      - MARIADB_COLLATE=utf8mb4_unicode_ci
+      - MARIADB_RANDOM_ROOT_PASSWORD=XE4DnGgwZsZtdPGcvw3B
+    volumes:
+      - './mariadb_data:/var/lib/mysql'
+
+networks:
+  default:
+    external: true
+    name: traefik-proxy
+    
