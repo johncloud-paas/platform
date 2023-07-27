@@ -6,7 +6,7 @@ http:
       rule: Host(`traefik.johncloud.fr`)
       service: api@internal
       entrypoints: websecure,web
-      middlewares: auth
+      # middlewares: auth
       tls:
         certresolver: letsencrypt
   
