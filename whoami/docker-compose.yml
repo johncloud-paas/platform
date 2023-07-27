@@ -4,6 +4,11 @@ services:
     image: traefik/whoami
     labels:
       - "traefik.http.routers.whoami.rule=Host(`cloud.johncloud.fr`)"
+      - "traefik.http.routers.api.entrypoints=https,http"
+      - "traefik.http.routers.api.middlewares=auth"
+      - "traefik.http.routers.api.tls=true"
+      - "traefik.http.routers.api.tls.certresolver=letsencrypt"
+      - "traefik.http.middlewares.auth.basicauth.users=ydethe:$$apr1$$I7mMEVPl$$isHvciO04iOsTkywtBVrv."
 
 networks:
   default:
