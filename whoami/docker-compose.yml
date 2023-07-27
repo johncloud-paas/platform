@@ -2,10 +2,10 @@ version: "3"
 services:
   whoami:
     image: traefik/whoami
-    restart: always
+    restart: unless-stopped
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.whoami.rule=Host(`cloud.johncloud.fr`)"
+      - "traefik.http.routers.whoami.rule=Host(`whoami.johncloud.fr`)"
       - "traefik.http.routers.whoami.entrypoints=websecure"
       - "traefik.http.routers.whoami.tls.certresolver=letsencrypt"
 

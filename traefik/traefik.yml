@@ -20,7 +20,7 @@ providers:
     # watch: true
     # exposedByDefault: false
   file:
-    filename: "/routers/routers.yml"
+    directory: "/routers" # Adjust the path according your needs.
     watch: true
 
 api:
