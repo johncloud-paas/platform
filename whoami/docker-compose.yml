@@ -2,6 +2,7 @@ version: "3"
 services:
   whoami:
     image: traefik/whoami
+    restart: always
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.whoami.rule=Host(`cloud.johncloud.fr`)"
