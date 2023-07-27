@@ -1,13 +1,13 @@
 # /routers/routers.yml
 
 http:
-  routers:
-    dashboard:
-      entrypoints: websecure
-      service: api@internal
-      middlewares: auth
-      tls:
-        certresolver: letsencrypt
+  # routers:
+  #   dashboard:
+  #     entrypoints: websecure
+  #     service: api@internal
+  #     middlewares: auth
+  #     tls:
+  #       certresolver: letsencrypt
 
   middlewares:
     auth:
