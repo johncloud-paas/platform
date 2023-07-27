@@ -14,6 +14,7 @@ services:
       - ./routers.yml:/routers/routers.yml
     labels:
       - "traefik.enable=true"
+      - "traefik.http.routers.whoami.rule=Host(`traefik.johncloud.fr`)"
 
 networks:
   default:
