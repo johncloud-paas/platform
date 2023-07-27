@@ -1,0 +1,7 @@
+# /routers/routers.yml
+
+http:
+  routers:
+    dashboard:
+      rule: Host(`traefik.johncloud.fr`)
+      service: api@internal

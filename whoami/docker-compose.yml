@@ -1,0 +1,11 @@
+version: "3"
+services:
+  whoami:
+    image: traefik/whoami
+    labels:
+      - "traefik.http.routers.whoami.rule=Host(`cloud.johncloud.fr`)"
+
+networks:
+  default:
+    external:
+      name: traefik-proxy
