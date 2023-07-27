@@ -3,10 +3,12 @@
 http:
   routers:
     dashboard:
-      entrypoints: "api"
-      service: "api@internal"
+      entrypoints: websecure
+      service: api@internal
       middlewares: auth
       rule: "Host(`traefik.johncloud.fr`)"
+      tls:
+        certresolver: letsencrypt
 
   middlewares:
     auth:
