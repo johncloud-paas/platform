@@ -3,7 +3,6 @@
 http:
   routers:
     dashboard:
-      rule: Host(`traefik.johncloud.fr`)
       service: api@internal
       entrypoints: websecure,web
       # middlewares: auth
