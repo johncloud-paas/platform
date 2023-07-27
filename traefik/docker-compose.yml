@@ -15,6 +15,9 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.dashboard.rule=Host(`traefik.johncloud.fr`)"
+      - "traefik.http.routers.dashboard.service=api@internal"
+      - "traefik.http.routers.dashboard.entrypoints=websecure,web"
+      - "traefik.http.routers.dashboard.tls.certresolver=letsencrypt"
 
 networks:
   default:
