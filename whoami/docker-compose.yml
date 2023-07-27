@@ -7,5 +7,5 @@ services:
 
 networks:
   default:
-    external:
-      name: traefik-proxy
+    external: true
+    name: traefik-proxy
