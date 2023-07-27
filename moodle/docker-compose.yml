@@ -35,6 +35,8 @@ services:
       - MARIADB_RANDOM_ROOT_PASSWORD=XE4DnGgwZsZtdPGcvw3B
     volumes:
       - './mariadb_data:/var/lib/mysql'
+    labels:
+      - "traefik.enable=false"
 
 networks:
   default:
