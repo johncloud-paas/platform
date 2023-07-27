@@ -15,9 +15,9 @@ entryPoints:
         certResolver: letsencrypt
 
 providers:
-  docker:
-    endpoint: "unix:///var/run/docker.sock"
-    watch: true
+  docker: {}
+    # endpoint: "unix:///var/run/docker.sock"
+    # watch: true
     # exposedByDefault: false
   file:
     filename: "/routers/routers.yml"
