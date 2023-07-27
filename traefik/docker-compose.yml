@@ -7,7 +7,7 @@ services:
       - "80:80"
       - "443:443"
       - "8080:8080"
-    restart: always
+    restart: unless-stopped
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./traefik.yml:/etc/traefik/traefik.yml
@@ -19,6 +19,28 @@ services:
       - "traefik.http.routers.dashboard.service=api@internal"
       - "traefik.http.routers.dashboard.entrypoints=websecure"
       - "traefik.http.routers.dashboard.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.dashboard.middlewares=forward-auth-verify"
+
+  traefik-forward-auth:
+    image: thomseddon/traefik-forward-auth:latest
+    container_name: traefik-forward-auth
+    environment:
+      - PROVIDERS_GOOGLE_CLIENT_ID=942480273465-5ui6phn5umjmq9ak0tv5k2la38vmdcbs.apps.googleusercontent.com
+      - PROVIDERS_GOOGLE_CLIENT_SECRET=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
+      - SECRET=CHYNT5ks6BtEuHHovSBAkCYKK3h8nz
+      - AUTH_HOST=oauth.johncloud.fr
+      - COOKIE_DOMAIN=johncloud.fr
+      - WHITELIST=ydethe@gmail.com
+      - INSECURE_COOKIE=false
+    labels:    
+      - "traefik.enable=true"
+      - "traefik.http.routers.forward.rule=Host(`oauth.johncloud.fr`)"   
+      - "traefik.http.routers.forward.entrypoints=websecure"
+      - "traefik.http.routers.forward.tls.certresolver=letsencrypt"
+      - "traefik.http.services.forward.loadbalancer.server.port=4181"
+      #Middleware
+      - "traefik.http.middlewares.forward-auth-verify.forwardauth.address=http://traefik-forward-auth:4181"      
+      - "traefik.http.middlewares.forward-auth-verify.forwardauth.authResponseHeaders=X-Forwarded-User"
 
 networks:
   default:
