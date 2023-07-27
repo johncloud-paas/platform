@@ -5,3 +5,12 @@ http:
     dashboard:
       rule: Host(`traefik.johncloud.fr`)
       service: api@internal
+      entrypoints: websecure,web
+      middlewares: auth
+      tls: true
+      tls.certresolver: letsencrypt
+  
+  middlewares:
+    auth:
+      basicauth:
+        users: "ydethe:$$apr1$$I7mMEVPl$$isHvciO04iOsTkywtBVrv."
