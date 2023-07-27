@@ -7,8 +7,8 @@ http:
       service: api@internal
       entrypoints: websecure,web
       middlewares: auth
-      tls: true
-      tls.certresolver: letsencrypt
+      tls:
+        certresolver: letsencrypt
   
   middlewares:
     auth:
