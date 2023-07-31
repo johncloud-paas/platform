@@ -1,13 +1,11 @@
 # See /usr/share/postfix/main.cf.dist for a commented, more complete version
 
-
 # Debian specific:  Specifying a file name will cause the first
 # line of that file to be used as the name.  The Debian default
 # is /etc/mailname.
 #myorigin = /etc/mailname
-myhostname = app.johncloud.fr
-#mydomain = johncloud.fr
-mydestination = johncloud.fr
+myhostname = ${fqdn}
+mydestination = ${basename}
 
 maillog_file = /var/log/postfix.log
 
