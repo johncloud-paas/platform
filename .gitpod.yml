@@ -1,0 +1,7 @@
+image:
+    file: .gitpod.Dockerfile
+    
+tasks:
+    - init: pdm venv create && pdm use .venv/bin/python && pdm install
+
+    
