@@ -4,3 +4,6 @@
 */moodledata_data/*
 */db/*
 */wordpress/*
+*/bitwarden/
+*/data/*
+settings.env
