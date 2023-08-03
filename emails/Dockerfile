@@ -1,7 +1,8 @@
+# docker build -t emails .
 FROM debian:bookworm
 
-ARG FQDN=mail.poney.com
-ENV FQDN=$FQDN
+ARG FQDN mail.poney.com
+ENV FQDN $FQDN
 ENV DEBIAN_FRONTEND noninteractive
 
 WORKDIR /app
