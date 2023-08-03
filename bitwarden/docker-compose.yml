@@ -1,0 +1,38 @@
+version: "3.8"
+
+services:
+  bitwarden:
+    depends_on:
+      - db
+    env_file:
+      - settings.env
+    image: bitwarden/self-host:beta
+    restart: always
+    ports:
+      - "8018:8080"
+    volumes:
+      - ./bitwarden:/etc/bitwarden
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.bitwarden.rule=Host(`bitwarden.johncloud.fr`)"
+      - "traefik.http.routers.bitwarden.entrypoints=websecure"
+      - "traefik.http.routers.bitwarden.tls.certresolver=letsencrypt"
+
+  db:
+    environment:
+      MARIADB_USER: "bitwarden"
+      MARIADB_PASSWORD: "RVgD3rsGV9p563X6n9UCxgUAT"
+      MARIADB_DATABASE: "bitwarden_vault"
+      MARIADB_RANDOM_ROOT_PASSWORD: "true"
+    image: mariadb:10
+    restart: always
+    volumes:
+      - ./data:/var/lib/mysql
+    labels:
+      - "traefik.enable=false"
+
+networks:
+  default:
+    external: true
+    name: traefik-proxy
+    

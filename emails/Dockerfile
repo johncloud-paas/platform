@@ -1,16 +1,18 @@
 FROM debian:bookworm
 
-ARG FQDN
-
-ENV fqdn=$FQDN
-ENV basename='echo "${fqdn}" | rev | cut -d. -f -2 |rev'
+ARG FQDN=mail.poney.com
+ENV FQDN=$FQDN
 ENV DEBIAN_FRONTEND noninteractive
 
-RUN echo "postfix postfix/mailname string ${fqdn}" | debconf-set-selections
+WORKDIR /app
+COPY . /app/
+
+RUN echo "postfix postfix/mailname string $FQDN" | debconf-set-selections
 RUN echo "postfix postfix/main_mailer_type string 'Internet Site'" | debconf-set-selections
-RUN apt update --allow-releaseinfo-change && apt upgrade -y && apt install -yqq --no-install-recommends postfix dovecot-core dovecot-imapd dovecot-lmtpd postfix-policyd-spf-python opendkim opendkim-tools opendmarc
-RUN envsubst <"./conf/postfix/main.cf" >"/etc/postfix/main.cf"
-RUN envsubst <"./conf/postfix/master.cf" >"/etc/postfix/master.cf"
+RUN apt update --allow-releaseinfo-change && apt upgrade -y && apt install -yqq --no-install-recommends gettext-base tzdata postfix dovecot-core dovecot-imapd dovecot-lmtpd postfix-policyd-spf-python opendkim opendkim-tools opendmarc bash && echo "Europe/Paris" > /etc/timezone && dpkg-reconfigure -f noninteractive tzdata
+RUN mkdir /etc/postfix -p && cp /app/conf/postfix/master.cf /etc/postfix/master.cf
+RUN export FQDN=$FQDN && export basename=$(echo $FQDN | rev | cut -d. -f -2 | rev) && envsubst < "/app/conf/postfix/main.cf" > "/etc/postfix/main.cf"
+# RUN echo "postfix postfix/main_mailer_type string 'No configuration'" | debconf-set-selections
 
 EXPOSE 25
 EXPOSE 143
