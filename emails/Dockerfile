@@ -21,4 +21,4 @@ EXPOSE 143
 EXPOSE 993
 
 ENTRYPOINT [ "/usr/local/bin/entrypoint.sh" ]
-CMD []
+CMD ["bash"]
