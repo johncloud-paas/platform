@@ -15,7 +15,7 @@ services:
     depends_on:
       - resolver
     dns:
-      - 192.168.203.254
+      - 172.19.0.0
     labels:
       - "traefik.enable=false"
 
@@ -48,7 +48,7 @@ services:
     depends_on:
       - resolver
     dns:
-      - 192.168.203.254
+      - 172.19.0.0
     labels:
       - "traefik.enable=true"
       - "traefik.port=80"
@@ -70,7 +70,7 @@ services:
     restart: always
     networks:
       default:
-        ipv4_address: 192.168.203.254
+        ipv4_address: 172.19.0.0
     labels:
       - "traefik.enable=false"
 
@@ -89,7 +89,7 @@ services:
       - redis
       - resolver
     dns:
-      - 192.168.203.254
+      - 172.19.0.0
     labels:
       - "traefik.enable=false"
 
@@ -108,7 +108,7 @@ services:
       - front
       - resolver
     dns:
-      - 192.168.203.254
+      - 172.19.0.0
     labels:
       - "traefik.enable=false"
 
@@ -127,7 +127,7 @@ services:
       - front
       - resolver
     dns:
-      - 192.168.203.254
+      - 172.19.0.0
     labels:
       - "traefik.enable=false"
 
@@ -140,7 +140,7 @@ services:
     depends_on:
       - resolver
     dns:
-      - 192.168.203.254
+      - 172.19.0.0
     labels:
       - "traefik.enable=false"
 
@@ -166,7 +166,7 @@ services:
       - antivirus
       - resolver
     dns:
-      - 192.168.203.254
+      - 172.19.0.0
     labels:
       - "traefik.enable=false"
 
@@ -180,7 +180,7 @@ services:
     depends_on:
       - resolver
     dns:
-      - 192.168.203.254
+      - 172.19.0.0
     labels:
       - "traefik.enable=false"
 
@@ -206,7 +206,7 @@ services:
       - imap
       - resolver
     dns:
-      - 192.168.203.254
+      - 172.19.0.0
     labels:
       - "traefik.enable=false"
 
