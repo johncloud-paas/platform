@@ -11,11 +11,11 @@ services:
     image: redis:alpine
     restart: always
     volumes:
-      - "/mailu/redis:/data"
+      - "./mailu/redis:/data"
     depends_on:
       - resolver
-    dns:
-      - 192.168.203.254
+    # dns:
+    #   - 192.168.203.254
     labels:
       - "traefik.enable=false"
 
@@ -29,48 +29,41 @@ services:
       options:
         tag: mailu-front
     ports:
-      # - "188.165.234.144:80:80"
-      # - "188.165.234.144:443:443"
-      - "188.165.234.144:25:25"
-      - "188.165.234.144:465:465"
-      - "188.165.234.144:587:587"
-      - "188.165.234.144:110:110"
-      - "188.165.234.144:995:995"
-      - "188.165.234.144:143:143"
-      - "188.165.234.144:993:993"
+      # - "80:80"
+      # - "443:443"
+      - "25:25"
+      - "465:465"
+      - "587:587"
+      - "110:110"
+      - "995:995"
+      - "143:143"
+      - "993:993"
+    environment:
+      - TRAEFIK_DOMAIN=mail.johncloud.fr
     networks:
       - default
       - webmail
       - radicale
     volumes:
-      - "/mailu/certs:/certs"
-      - "/mailu/overrides/nginx:/overrides:ro"
+      - "./mailu/certs:/certs"
+      - "./mailu/overrides/nginx:/overrides:ro"
     depends_on:
       - resolver
-    dns:
-      - 192.168.203.254
+    # dns:
+    #   - 192.168.203.254
     labels:
       - "traefik.enable=true"
-      - "traefik.port=80"
-      - "traefik.frontend.rule=Host:$TRAEFIK_DOMAIN"
-      - "traefik.http.routers.mailu-secure.tls"
-      # Your main domain
-      - "traefik.http.routers.mailu-secure.tls.domains[0].main=mail.johncloud.fr"
-      # Optional SANs for your main domain
-      # - "traefik.http.routers.mailu-secure.tls.domains[0].sans=mail.mail.johncloud.fr,webmail.mail.johncloud.fr,smtp.mail.johncloud.fr"
-      # Optionally add other domains
-      # - "traefik.http.routers.mailu-secure.tls.domains[1].main=mail.other.example.com"
-      # - "traefik.http.routers.mailu-secure.tls.domains[1].sans=mail2.other.example.com,mail3.other.example.com"
-      # Your ACME certificate resolver
-      - "traefik.http.routers.mailu-secure.tls.certResolver=letsencrypt"
+      - "traefik.http.routers.emails.rule=Host(`mail.johncloud.fr`)"
+      - "traefik.http.routers.emails.entrypoints=websecure"
+      - "traefik.http.routers.emails.tls.certresolver=letsencrypt"
 
   resolver:
     image: ${DOCKER_ORG:-ghcr.io/mailu}/${DOCKER_PREFIX:-}unbound:${MAILU_VERSION:-2.0}
     env_file: mailu.env
     restart: always
-    networks:
-      default:
-        ipv4_address: 192.168.203.254
+    # networks:
+    #   default:
+    #     ipv4_address: 192.168.203.254
     labels:
       - "traefik.enable=false"
 
@@ -83,13 +76,13 @@ services:
       options:
         tag: mailu-admin
     volumes:
-      - "/mailu/data:/data"
-      - "/mailu/dkim:/dkim"
+      - "./mailu/data:/data"
+      - "./mailu/dkim:/dkim"
     depends_on:
       - redis
       - resolver
-    dns:
-      - 192.168.203.254
+    # dns:
+    #   - 192.168.203.254
     labels:
       - "traefik.enable=false"
 
@@ -102,13 +95,13 @@ services:
       options:
         tag: mailu-imap
     volumes:
-      - "/mailu/mail:/mail"
-      - "/mailu/overrides/dovecot:/overrides:ro"
+      - "./mailu/mail:/mail"
+      - "./mailu/overrides/dovecot:/overrides:ro"
     depends_on:
       - front
       - resolver
-    dns:
-      - 192.168.203.254
+    # dns:
+    #   - 192.168.203.254
     labels:
       - "traefik.enable=false"
 
@@ -121,13 +114,13 @@ services:
       options:
         tag: mailu-smtp
     volumes:
-      - "/mailu/mailqueue:/queue"
-      - "/mailu/overrides/postfix:/overrides:ro"
+      - "./mailu/mailqueue:/queue"
+      - "./mailu/overrides/postfix:/overrides:ro"
     depends_on:
       - front
       - resolver
-    dns:
-      - 192.168.203.254
+    # dns:
+    #   - 192.168.203.254
     labels:
       - "traefik.enable=false"
 
@@ -139,8 +132,8 @@ services:
       - noinet
     depends_on:
       - resolver
-    dns:
-      - 192.168.203.254
+    # dns:
+    #   - 192.168.203.254
     labels:
       - "traefik.enable=false"
 
@@ -157,16 +150,16 @@ services:
       - default
       - noinet
     volumes:
-      - "/mailu/filter:/var/lib/rspamd"
-      - "/mailu/overrides/rspamd:/overrides:ro"
+      - "./mailu/filter:/var/lib/rspamd"
+      - "./mailu/overrides/rspamd:/overrides:ro"
     depends_on:
       - front
       - redis
       - oletools
       - antivirus
       - resolver
-    dns:
-      - 192.168.203.254
+    # dns:
+    #   - 192.168.203.254
     labels:
       - "traefik.enable=false"
 
@@ -176,11 +169,11 @@ services:
     restart: always
     env_file: mailu.env
     volumes:
-      - "/mailu/filter:/data"
+      - "./mailu/filter:/data"
     depends_on:
       - resolver
-    dns:
-      - 192.168.203.254
+    # dns:
+    #   - 192.168.203.254
     labels:
       - "traefik.enable=false"
 
@@ -188,7 +181,7 @@ services:
     image: ${DOCKER_ORG:-ghcr.io/mailu}/${DOCKER_PREFIX:-}radicale:${MAILU_VERSION:-2.0}
     restart: always
     volumes:
-      - "/mailu/dav:/data"
+      - "./mailu/dav:/data"
     networks:
       - radicale
     labels:
@@ -199,14 +192,14 @@ services:
     restart: always
     env_file: mailu.env
     volumes:
-      - "/mailu/data/fetchmail:/data"
+      - "./mailu/data/fetchmail:/data"
     depends_on:
       - admin
       - smtp
       - imap
       - resolver
-    dns:
-      - 192.168.203.254
+    # dns:
+    #   - 192.168.203.254
     labels:
       - "traefik.enable=false"
 
@@ -216,8 +209,8 @@ services:
     restart: always
     env_file: mailu.env
     volumes:
-      - "/mailu/webmail:/data"
-      - "/mailu/overrides/roundcube:/overrides:ro"
+      - "./mailu/webmail:/data"
+      - "./mailu/overrides/roundcube:/overrides:ro"
     networks:
       - webmail
     depends_on:
@@ -227,12 +220,13 @@ services:
 
 networks:
   default:
+    driver: bridge
     external: true
     name: traefik-proxy
-    ipam:
-      driver: default
-      config:
-        - subnet: 192.168.203.0/24
+    # ipam:
+    #   driver: default
+    #   config:
+    #     - subnet: 192.168.203.0/24
   radicale:
     driver: bridge
   webmail:
