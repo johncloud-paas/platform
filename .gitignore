@@ -7,3 +7,5 @@
 */bitwarden/
 */data/*
 settings.env
+*/mailu/*
+*/origin/*
