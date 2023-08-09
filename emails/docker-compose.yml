@@ -16,6 +16,27 @@ services:
       - resolver
     dns:
       - 192.168.203.254
+    labels:
+      - "traefik.enable=false"
+
+  certdumper:
+    restart: always
+    image: ldez/traefik-certs-dumper:latest
+    env_file: mailu.env
+    entrypoint: sh -c '
+      apk add jq
+      ; while ! [ -e /traefik/acme.json ]
+      || ! [ `jq ".[] | .Certificates | length" /traefik/acme.json` != 0 ]; do
+      sleep 1
+      ; done
+      && traefik-certs-dumper file --version v2 --watch
+        --source /traefik/acme.json --dest /output
+        --domain-subdir --crt-ext=.pem --key-ext=.pem'
+    volumes:
+      - "../traefik/letsencrypt:/traefik:ro"
+      - "./certs:/output"
+    labels:
+      - "traefik.enable=false"
 
   # Core services
   front:
@@ -28,7 +49,7 @@ services:
         tag: mailu-front
     ports:
       - "188.165.234.144:80:80"
-      - "188.165.234.144:443:443"
+      # - "188.165.234.144:443:443"
       - "188.165.234.144:25:25"
       - "188.165.234.144:465:465"
       - "188.165.234.144:587:587"
@@ -41,12 +62,20 @@ services:
       - webmail
       - radicale
     volumes:
-      - "./mailu/certs:/certs"
+      # - "./mailu/certs:/certs"
       - "./mailu/overrides/nginx:/overrides:ro"
+      - ./certs/mail.johncloud.fr/certificate.pem:/certs/cert.pem
+      - ./certs/mail.johncloud.fr/privatekey.pem:/certs/key.pem
     depends_on:
       - resolver
     dns:
       - 192.168.203.254
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.mail.rule=Host(`mail.johncloud.fr`)"
+      - "traefik.http.routers.mail.entrypoints=websecure"
+      - "traefik.http.routers.mail.tls.certresolver=letsencrypt"
+
 
   resolver:
     image: ${DOCKER_ORG:-ghcr.io/mailu}/${DOCKER_PREFIX:-}unbound:${MAILU_VERSION:-2.0}
@@ -55,6 +84,8 @@ services:
     networks:
       default:
         ipv4_address: 192.168.203.254
+    labels:
+      - "traefik.enable=false"
 
   admin:
     image: ${DOCKER_ORG:-ghcr.io/mailu}/${DOCKER_PREFIX:-}admin:${MAILU_VERSION:-2.0}
@@ -72,6 +103,8 @@ services:
       - resolver
     dns:
       - 192.168.203.254
+    labels:
+      - "traefik.enable=false"
 
   imap:
     image: ${DOCKER_ORG:-ghcr.io/mailu}/${DOCKER_PREFIX:-}dovecot:${MAILU_VERSION:-2.0}
@@ -89,6 +122,8 @@ services:
       - resolver
     dns:
       - 192.168.203.254
+    labels:
+      - "traefik.enable=false"
 
   smtp:
     image: ${DOCKER_ORG:-ghcr.io/mailu}/${DOCKER_PREFIX:-}postfix:${MAILU_VERSION:-2.0}
@@ -106,6 +141,8 @@ services:
       - resolver
     dns:
       - 192.168.203.254
+    labels:
+      - "traefik.enable=false"
 
   oletools:
     image: ${DOCKER_ORG:-ghcr.io/mailu}/${DOCKER_PREFIX:-}oletools:${MAILU_VERSION:-2.0}
@@ -117,6 +154,8 @@ services:
       - resolver
     dns:
       - 192.168.203.254
+    labels:
+      - "traefik.enable=false"
 
   antispam:
     image: ${DOCKER_ORG:-ghcr.io/mailu}/${DOCKER_PREFIX:-}rspamd:${MAILU_VERSION:-2.0}
@@ -141,6 +180,8 @@ services:
       - resolver
     dns:
       - 192.168.203.254
+    labels:
+      - "traefik.enable=false"
 
   # Optional services
   antivirus:
@@ -153,6 +194,8 @@ services:
       - resolver
     dns:
       - 192.168.203.254
+    labels:
+      - "traefik.enable=false"
 
   webdav:
     image: ${DOCKER_ORG:-ghcr.io/mailu}/${DOCKER_PREFIX:-}radicale:${MAILU_VERSION:-2.0}
@@ -161,6 +204,8 @@ services:
       - "./mailu/dav:/data"
     networks:
       - radicale
+    labels:
+      - "traefik.enable=false"
 
   fetchmail:
     image: ${DOCKER_ORG:-ghcr.io/mailu}/${DOCKER_PREFIX:-}fetchmail:${MAILU_VERSION:-2.0}
@@ -175,6 +220,8 @@ services:
       - resolver
     dns:
       - 192.168.203.254
+    labels:
+      - "traefik.enable=false"
 
   # Webmail
   webmail:
@@ -188,14 +235,13 @@ services:
       - webmail
     depends_on:
       - front
+    labels:
+      - "traefik.enable=false"
 
 networks:
   default:
-    driver: bridge
-    ipam:
-      driver: default
-      config:
-        - subnet: 192.168.203.0/24
+    external: true
+    name: traefik-proxy
   radicale:
     driver: bridge
   webmail:
