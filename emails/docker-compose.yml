@@ -45,7 +45,8 @@ services:
     ports:
       # - "127.0.0.1:8321:80"
       # - "188.165.234.144:80:80"
-      - "188.165.234.144:8321:443"
+      # - '8321:80'
+      # - '8321:443'
       - "188.165.234.144:25:25"
       - "188.165.234.144:465:465"
       - "188.165.234.144:587:587"
@@ -67,9 +68,19 @@ services:
       - 192.168.203.254
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.mail.rule=Host(`mail.johncloud.fr`)"
-      - "traefik.http.routers.mail.entrypoints=websecure"
-      - "traefik.http.routers.mail.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.front.rule=Host(`mail.johncloud.fr`)"
+      # - "traefik.docker.network=traefik-proxy"
+      - "traefik.http.services.front.loadbalancer.server.port=80"
+      # TLS-Support
+      - "traefik.http.routers.front.tls.domains[0].main=mail.johncloud.fr"
+      - "traefik.http.routers.front.entrypoints=websecure"
+      - "traefik.http.routers.front.tls=true"
+      - "traefik.http.routers.front.tls.certresolver=letsencrypt"
+      # Admin-Interface
+      - "traefik.http.routers.front_admin.rule=Host(`mail.johncloud.fr`) && PathPrefix(`/admin`)"
+      - "traefik.http.routers.front_admin.entrypoints=websecure"
+      - "traefik.http.routers.front_admin.tls=true"
+      - "traefik.http.routers.front_admin.tls.certresolver=letsencrypt"
 
   resolver:
     image: ${DOCKER_ORG:-ghcr.io/mailu}/${DOCKER_PREFIX:-}unbound:${MAILU_VERSION:-2.0}
