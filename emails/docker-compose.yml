@@ -2,10 +2,8 @@
 # Please read the documentation before attempting any change.
 # Generated for compose flavor
 
-version: '2.2'
-
+version: '3.1'
 services:
-
   # External dependencies
   redis:
     image: redis:alpine
