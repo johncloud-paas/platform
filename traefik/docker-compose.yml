@@ -1,3 +1,5 @@
+# https://blog.filador.fr/je-supervise-mon-traefik-avec-prometheus-et-grafana/
+
 version: "3"
 
 services:
@@ -8,6 +10,8 @@ services:
       - "443:443"
       - "8080:8080"
     restart: unless-stopped
+    environment:
+      - TZ=Europe/Paris
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./traefik.yml:/etc/traefik/traefik.yml
@@ -21,6 +25,65 @@ services:
       - "traefik.http.routers.dashboard.tls.certresolver=letsencrypt"
       - "traefik.http.routers.dashboard.middlewares=forward-auth-verify"
 
+  prometheus:
+    image: prom/prometheus:v2.15.2
+    restart: unless-stopped
+    container_name: prometheus
+    volumes:
+      - ./prometheus/etc/:/etc/prometheus/
+      - ./prometheus:/prometheus
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    command:
+      - "--web.route-prefix=/"
+      - "--web.external-url=https://admin.johncloud.fr/prometheus"
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+    labels:
+      - "traefik.enable=true"
+      # - "traefik.http.routers.prometheus.entrypoints=http"
+      # - "traefik.http.routers.prometheus.rule=Host(`admin.johncloud.fr`) && PathPrefix(`/prometheus`)"
+      - "traefik.http.middlewares.prometheus-stripprefix.stripprefix.prefixes=/prometheus"
+      # - "traefik.http.middlewares.https-redirect.redirectscheme.scheme=https"
+      # - "traefik.http.routers.prometheus.middlewares=https-redirect,prometheus-stripprefix"
+      - "traefik.http.routers.prometheus-secure.entrypoints=websecure"
+      - "traefik.http.routers.prometheus-secure.rule=Host(`admin.johncloud.fr`) && PathPrefix(`/prometheus`)"
+      - "traefik.http.routers.prometheus-secure.middlewares=forward-auth-verify,prometheus-stripprefix"
+      - "traefik.http.routers.prometheus-secure.tls=true"
+      - "traefik.http.routers.prometheus-secure.tls.certresolver=letsencrypt"
+      # - "traefik.http.routers.prometheus-secure.service=prometheus"
+      - "traefik.http.services.prometheus.loadbalancer.server.port=9090"
+
+  grafana:
+    image: grafana/grafana:6.6.1
+    restart: unless-stopped
+    container_name: grafana
+    volumes:
+      - ./grafana:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    env_file:
+      - grafana.env
+    depends_on:
+      - prometheus
+    labels:
+      - "traefik.enable=true"
+      # - "traefik.http.routers.grafana.entrypoints=http"
+      # - "traefik.http.routers.grafana.rule=Host(`admin.johncloud.fr`) && PathPrefix(`/grafana`)"
+      - "traefik.http.middlewares.grafana-stripprefix.stripprefix.prefixes=/grafana"
+      # - "traefik.http.middlewares.https-redirect.redirectscheme.scheme=https"
+      # - "traefik.http.routers.grafana.middlewares=https-redirect,grafana-stripprefix"
+      - "traefik.http.routers.grafana-secure.entrypoints=websecure"
+      - "traefik.http.routers.grafana-secure.rule=Host(`admin.johncloud.fr`) && PathPrefix(`/grafana`)"
+      - "traefik.http.routers.grafana-secure.middlewares=forward-auth-verify,grafana-stripprefix"
+      - "traefik.http.routers.grafana-secure.tls=true"
+      - "traefik.http.routers.grafana-secure.tls.certresolver=letsencrypt"
+      # - "traefik.http.routers.grafana-secure.service=grafana"
+      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+
   traefik-forward-auth:
     image: thomseddon/traefik-forward-auth:latest
     container_name: traefik-forward-auth
@@ -32,7 +95,7 @@ services:
       - COOKIE_DOMAIN=johncloud.fr
       - WHITELIST=ydethe@gmail.com
       - INSECURE_COOKIE=false
-    labels:    
+    labels:
       - "traefik.enable=true"
       - "traefik.http.routers.forward.rule=Host(`oauth.johncloud.fr`)"   
       - "traefik.http.routers.forward.entrypoints=websecure"
@@ -46,4 +109,4 @@ networks:
   default:
     external: true
     name: traefik-proxy
-
+    
