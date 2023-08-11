@@ -1,3 +1,5 @@
+# https://blog.filador.fr/je-supervise-mon-traefik-avec-prometheus-et-grafana/
+
 version: '3'
 
 services:
@@ -5,6 +7,7 @@ services:
     image: prom/prometheus:v2.15.2
     restart: unless-stopped
     container_name: prometheus
+    user: "0:0"
     volumes:
       - ./prometheus/:/etc/prometheus/
       - ./prometheus_data:/prometheus
@@ -19,9 +22,11 @@ services:
       - "--web.console.templates=/usr/share/prometheus/consoles"
     labels:
       - "traefik.enable=true"
+      - "traefik.http.middlewares.prometheus-stripprefix.stripprefix.prefixes=/prometheus"
+      - "traefik.http.routers.prometheus.middlewares=https-redirect,prometheus-stripprefix"
       - "traefik.http.routers.prometheus-secure.entrypoints=websecure"
       - "traefik.http.routers.prometheus-secure.rule=Host(`admin.johncloud.fr`) && PathPrefix(`/prometheus`)"
-      - "traefik.http.routers.prometheus-secure.middlewares=forward-auth-verify"
+      - "traefik.http.routers.prometheus-secure.middlewares=forward-auth-verify,prometheus-stripprefix"
       - "traefik.http.routers.prometheus-secure.tls=true"
       - "traefik.http.routers.prometheus-secure.tls.certresolver=letsencrypt"
       - "traefik.http.routers.prometheus-secure.service=prometheus"
@@ -31,6 +36,7 @@ services:
     image: grafana/grafana:6.6.1
     restart: unless-stopped
     container_name: grafana
+    user: "0:0"
     volumes:
       - ./grafana_data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning
@@ -42,9 +48,11 @@ services:
       - prometheus
     labels:
       - "traefik.enable=true"
+      - "traefik.http.middlewares.grafana-stripprefix.stripprefix.prefixes=/grafana"
+      - "traefik.http.routers.grafana.middlewares=grafana-stripprefix"
       - "traefik.http.routers.grafana-secure.entrypoints=websecure"
       - "traefik.http.routers.grafana-secure.rule=Host(`admin.johncloud.fr`) && PathPrefix(`/grafana`)"
-      - "traefik.http.routers.grafana-secure.middlewares=forward-auth-verify"
+      - "traefik.http.routers.grafana-secure.middlewares=forward-auth-verify,grafana-stripprefix"
       - "traefik.http.routers.grafana-secure.tls=true"
       - "traefik.http.routers.grafana-secure.tls.certresolver=letsencrypt"
       - "traefik.http.routers.grafana-secure.service=grafana"
