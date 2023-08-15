@@ -23,7 +23,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.middlewares.prometheus-stripprefix.stripprefix.prefixes=/prometheus"
-      - "traefik.http.routers.prometheus.middlewares=https-redirect,prometheus-stripprefix"
+      - "traefik.http.routers.prometheus.middlewares=prometheus-stripprefix"
       - "traefik.http.routers.prometheus-secure.entrypoints=websecure"
       - "traefik.http.routers.prometheus-secure.rule=Host(`admin.johncloud.fr`) && PathPrefix(`/prometheus`)"
       - "traefik.http.routers.prometheus-secure.middlewares=forward-auth-verify,prometheus-stripprefix"

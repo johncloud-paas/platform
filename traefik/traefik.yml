@@ -14,8 +14,8 @@ entryPoints:
       tls:
         certResolver: letsencrypt
 
-  metrics:
-    address: ":8080"
+  # metrics:
+  #   address: ":8080"
 
 providers:
   docker: {}
@@ -45,17 +45,17 @@ accessLog:
 # tracing:
 #   serviceName: traefik
 
-metrics:
-  prometheus:
-    # Nom du point d'entrée défini au dessus
-    entryPoint: metrics
-    # On configure la latence des métriques
-    buckets:
-      - 0.1
-      - 0.3
-      - 1.2
-      - 5.0
-    # Ajout des métriques sur les points d'entrée
-    addEntryPointsLabels: true
-    # Ajout des services
-    addServicesLabels: true
+# metrics:
+#   prometheus:
+#     # Nom du point d'entrée défini au dessus
+#     entryPoint: metrics
+#     # On configure la latence des métriques
+#     buckets:
+#       - 0.1
+#       - 0.3
+#       - 1.2
+#       - 5.0
+#     # Ajout des métriques sur les points d'entrée
+#     addEntryPointsLabels: true
+#     # Ajout des services
+#     addServicesLabels: true
