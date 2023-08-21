@@ -13,4 +13,5 @@ settings.env
 */baserow_data/*
 */grafana_data/*
 */prometheus_data/*
-
+nextcloud/.env
+*/traefik/traefik/*
