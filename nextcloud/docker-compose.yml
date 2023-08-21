@@ -4,7 +4,9 @@ services:
   nextcloud:
     container_name: nextcloud-aio-mastercontainer
     image: nextcloud/all-in-one:latest
-    restart: always
+    restart: unless-stopped
+    depends_on:
+      - nginx
     ports:
       - 8089:8080
     environment:
@@ -16,10 +18,10 @@ services:
   nginx:
     container_name: nginx
     image: nginx:1.21.6
-    restart: always
+    restart: unless-stopped
     ports:
-      - 80:80
-      - 443:443
+      - 8239:80
+      # - 443:443
     volumes:
       - ./nginx:/etc/nginx
       - ../emails/certs/cloud.johncloud.fr:/etc/letsencrypt/nextcloud
@@ -31,4 +33,3 @@ networks:
     external: true
     name: traefik-proxy
     
-      
