@@ -11,7 +11,7 @@ services:
       - PGID=1000
       - TZ=Europe/Paris
       # - PASSWORD=password #optional
-      - HASHED_PASSWORD= "$2y$05$D/jBR9UJTtSGCTgplkL/WuOkjapqu5GszCBMRG.nIGjxxODUi6iWG"
+      - HASHED_PASSWORD= '$2y$05$D/jBR9UJTtSGCTgplkL/WuOkjapqu5GszCBMRG.nIGjxxODUi6iWG'
       # - SUDO_PASSWORD=password #optional
       # - SUDO_PASSWORD_HASH= #optional
       # - PROXY_DOMAIN=code-server.my.domain #optional
