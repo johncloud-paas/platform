@@ -13,7 +13,7 @@ services:
       - PGID=1000
       - TZ=Europe/Paris
     volumes:
-      - ./workspace_data:/config
+      - $JOHNCLOUD_ROOT/vscode/workspace_data:/config
     ports:
       - 8741:8443
     restart: unless-stopped

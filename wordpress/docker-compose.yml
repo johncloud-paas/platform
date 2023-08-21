@@ -7,12 +7,12 @@ services:
     ports:
       - 8082:80
     environment:
-      WORDPRESS_DB_HOST: wordpress_db
-      WORDPRESS_DB_USER: exampleuser
-      WORDPRESS_DB_PASSWORD: MhbT6W3BGYk62tz6gX7V
-      WORDPRESS_DB_NAME: exampledb
+      WORDPRESS_DB_HOST: $DB_HOST
+      WORDPRESS_DB_USER: $DB_USER
+      WORDPRESS_DB_PASSWORD: $DB_PASSWORD
+      WORDPRESS_DB_NAME: $DB_NAME
     volumes:
-      - ./wordpress:/var/www/html
+      - $JOHNCLOUD_ROOT/wordpress/data:/var/www/html
     depends_on:
       - wordpress_db
     labels:
@@ -25,12 +25,12 @@ services:
     image: mysql:5.7
     restart: unless-stopped
     environment:
-      MYSQL_DATABASE: exampledb
-      MYSQL_USER: exampleuser
-      MYSQL_PASSWORD: MhbT6W3BGYk62tz6gX7V
-      MYSQL_RANDOM_ROOT_PASSWORD: ZjqRTVqKHU55yGKaDj9n
+      MYSQL_DATABASE: $DB_NAME
+      MYSQL_USER: $DB_USER
+      MYSQL_PASSWORD: $DB_PASSWORD
+      MYSQL_RANDOM_ROOT_PASSWORD: $DB_RANDOM_ROOT_PASSWORD
     volumes:
-      - ./db:/var/lib/mysql
+      - $JOHNCLOUD_ROOT/wordpress/db:/var/lib/mysql
     labels:
       - "traefik.enable=false"
 

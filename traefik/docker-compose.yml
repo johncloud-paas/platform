@@ -13,11 +13,11 @@ services:
     environment:
       - TZ=Europe/Paris
     volumes:
-      - ./traefik:/var/log/traefik/
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./traefik.yml:/etc/traefik/traefik.yml
-      - ./letsencrypt:/letsencrypt
-      - ./routers:/routers
+      - $JOHNCLOUD_ROOT/traefik/log:/var/log/traefik/
+      - $JOHNCLOUD_ROOT/traefik/traefik.yml:/etc/traefik/traefik.yml
+      - $JOHNCLOUD_ROOT/traefik/letsencrypt:/letsencrypt
+      - $JOHNCLOUD_ROOT/traefik/routers:/routers
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.dashboard.rule=Host(`traefik.johncloud.fr`)"
@@ -30,13 +30,13 @@ services:
     image: thomseddon/traefik-forward-auth:latest
     container_name: traefik-forward-auth
     environment:
-      - PROVIDERS_GOOGLE_CLIENT_ID=942480273465-5ui6phn5umjmq9ak0tv5k2la38vmdcbs.apps.googleusercontent.com
-      - PROVIDERS_GOOGLE_CLIENT_SECRET=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
-      - SECRET=CHYNT5ks6BtEuHHovSBAkCYKK3h8nz
-      - AUTH_HOST=oauth.johncloud.fr
-      - COOKIE_DOMAIN=johncloud.fr
-      - WHITELIST=ydethe@gmail.com
-      - INSECURE_COOKIE=false
+      - PROVIDERS_GOOGLE_CLIENT_ID=$PROVIDERS_GOOGLE_CLIENT_ID
+      - PROVIDERS_GOOGLE_CLIENT_SECRET=$PROVIDERS_GOOGLE_CLIENT_SECRET
+      - SECRET=$SECRET
+      - AUTH_HOST=$AUTH_HOST
+      - COOKIE_DOMAIN=$COOKIE_DOMAIN
+      - WHITELIST=$WHITELIST
+      - INSECURE_COOKIE=$INSECURE_COOKIE
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.forward.rule=Host(`oauth.johncloud.fr`)"   

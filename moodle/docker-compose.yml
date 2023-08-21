@@ -7,14 +7,14 @@ services:
       - '8090:8080'
     restart: unless-stopped
     environment:
-      - MOODLE_DATABASE_HOST=moodle_db
-      - MOODLE_DATABASE_PORT_NUMBER=3306
-      - MOODLE_DATABASE_USER=bn_moodle
-      - MOODLE_DATABASE_NAME=bitnami_moodle
-      - MOODLE_DATABASE_PASSWORD=6wSHwi43EFrdpBUNrH49
+      - MOODLE_DATABASE_HOST=$DB_HOST
+      - MOODLE_DATABASE_PORT_NUMBER=$DB_PORT_NUMBER
+      - MOODLE_DATABASE_USER=$DB_USER
+      - MOODLE_DATABASE_NAME=$DB_NAME
+      - MOODLE_DATABASE_PASSWORD=$DB_PASSWORD
     volumes:
-      - './moodle_data:/bitnami/moodle'
-      - './moodledata_data:/bitnami/moodledata'
+      - $JOHNCLOUD_ROOT/moodle/data:/bitnami/moodle
+      - $JOHNCLOUD_ROOT/moodle/moodledata:/bitnami/moodledata
     depends_on:
       - moodle_db
     labels:
@@ -27,14 +27,14 @@ services:
     image: mariadb
     restart: unless-stopped
     environment:
-      - MARIADB_PASSWORD=6wSHwi43EFrdpBUNrH49
-      - MARIADB_USER=bn_moodle
-      - MARIADB_DATABASE=bitnami_moodle
+      - MARIADB_PASSWORD=$DB_PASSWORD
+      - MARIADB_USER=$DB_USER
+      - MARIADB_DATABASE=$DB_NAME
       - MARIADB_CHARACTER_SET=utf8mb4
       - MARIADB_COLLATE=utf8mb4_unicode_ci
-      - MARIADB_RANDOM_ROOT_PASSWORD=XE4DnGgwZsZtdPGcvw3B
+      - MARIADB_RANDOM_ROOT_PASSWORD=$DB_RANDOM_ROOT_PASSWORD
     volumes:
-      - './mariadb_data:/var/lib/mysql'
+      - $JOHNCLOUD_ROOT/moodle/db:/var/lib/mysql
     labels:
       - "traefik.enable=false"
 

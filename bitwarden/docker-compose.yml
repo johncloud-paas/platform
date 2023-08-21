@@ -6,14 +6,12 @@ services:
   bitwarden:
     depends_on:
       - db
-    env_file:
-      - settings.env
     image: bitwarden/self-host:beta
     restart: unless-stopped
     ports:
       - "8018:8080"
     volumes:
-      - ./bitwarden:/etc/bitwarden
+      - $JOHNCLOUD_ROOT/bitwarden:/etc/bitwarden
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.bitwarden.rule=Host(`bitwarden.johncloud.fr`)"
@@ -29,7 +27,7 @@ services:
     image: mariadb:10
     restart: unless-stopped
     volumes:
-      - ./data:/var/lib/mysql
+      - $JOHNCLOUD_ROOT/bitwarden/db:/var/lib/mysql
     labels:
       - "traefik.enable=false"
 

@@ -6,7 +6,7 @@ services:
     image: redis:alpine
     restart: unless-stopped
     volumes:
-      - "./mailu/redis:/data"
+      - $JOHNCLOUD_ROOT/mailu/redis:/data
     depends_on:
       - resolver
     dns:
@@ -17,7 +17,6 @@ services:
   certdumper:
     restart: unless-stopped
     image: ldez/traefik-certs-dumper:latest
-    env_file: mailu.env
     entrypoint: sh -c '
       apk add jq
       ; while ! [ -e /traefik/acme.json ]
@@ -28,8 +27,8 @@ services:
         --source /traefik/acme.json --dest /output
         --domain-subdir --crt-ext=.pem --key-ext=.pem'
     volumes:
-      - "../traefik/letsencrypt:/traefik:ro"
-      - "./certs:/output"
+      - $JOHNCLOUD_ROOT/traefik/letsencrypt:/traefik:ro
+      - $JOHNCLOUD_ROOT/traefik/certs:/output
     labels:
       - "traefik.enable=false"
 
@@ -37,14 +36,11 @@ services:
   front:
     image: ${DOCKER_ORG:-ghcr.io/mailu}/${DOCKER_PREFIX:-}nginx:${MAILU_VERSION:-2.0}
     restart: unless-stopped
-    env_file: mailu.env
     logging:
       driver: journald
       options:
         tag: mailu-front
     ports:
-      # - "188.165.234.144:443:443"
-      # - "188.165.234.144:80:80"
       - "188.165.234.144:25:25"
       - "188.165.234.144:465:465"
       - "188.165.234.144:587:587"
@@ -57,9 +53,9 @@ services:
       - webmail
       - radicale
     volumes:
-      - "./mailu/overrides/nginx:/overrides:ro"
-      - "./certs/mail.johncloud.fr/certificate.pem:/certs/cert.pem"
-      - "./certs/mail.johncloud.fr/privatekey.pem:/certs/key.pem"
+      - $JOHNCLOUD_ROOT/mailu/overrides/nginx:/overrides:ro
+      - $JOHNCLOUD_ROOT/traefik/certs/mail.johncloud.fr/certificate.pem:/certs/cert.pem
+      - $JOHNCLOUD_ROOT/traefik/certs/mail.johncloud.fr/privatekey.pem:/certs/key.pem
     depends_on:
       - resolver
     dns:
@@ -68,7 +64,6 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.front.rule=Host(`mail.johncloud.fr`)"
       - "traefik.http.services.front.loadbalancer.server.port=80"
-      # - "traefik.http.routers.front.tls.domains[0].main=mail.johncloud.fr"
       - "traefik.http.routers.front.entrypoints=websecure"
       - "traefik.http.routers.front.tls=true"
       - "traefik.http.routers.front.tls.certresolver=letsencrypt"
@@ -79,7 +74,6 @@ services:
 
   resolver:
     image: ${DOCKER_ORG:-ghcr.io/mailu}/${DOCKER_PREFIX:-}unbound:${MAILU_VERSION:-2.0}
-    env_file: mailu.env
     restart: unless-stopped
     networks:
       default:
@@ -90,14 +84,13 @@ services:
   admin:
     image: ${DOCKER_ORG:-ghcr.io/mailu}/${DOCKER_PREFIX:-}admin:${MAILU_VERSION:-2.0}
     restart: unless-stopped
-    env_file: mailu.env
     logging:
       driver: journald
       options:
         tag: mailu-admin
     volumes:
-      - "./mailu/data:/data"
-      - "./mailu/dkim:/dkim"
+      - $JOHNCLOUD_ROOT/mailu/data:/data
+      - $JOHNCLOUD_ROOT/mailu/dkim:/dkim
     depends_on:
       - redis
       - resolver
@@ -109,14 +102,13 @@ services:
   imap:
     image: ${DOCKER_ORG:-ghcr.io/mailu}/${DOCKER_PREFIX:-}dovecot:${MAILU_VERSION:-2.0}
     restart: unless-stopped
-    env_file: mailu.env
     logging:
       driver: journald
       options:
         tag: mailu-imap
     volumes:
-      - "./mailu/mail:/mail"
-      - "./mailu/overrides/dovecot:/overrides:ro"
+      - $JOHNCLOUD_ROOT/mailu/mail:/mail
+      - $JOHNCLOUD_ROOT/mailu/overrides/dovecot:/overrides:ro
     depends_on:
       - front
       - resolver
@@ -128,14 +120,13 @@ services:
   smtp:
     image: ${DOCKER_ORG:-ghcr.io/mailu}/${DOCKER_PREFIX:-}postfix:${MAILU_VERSION:-2.0}
     restart: unless-stopped
-    env_file: mailu.env
     logging:
       driver: journald
       options:
         tag: mailu-smtp
     volumes:
-      - "./mailu/mailqueue:/queue"
-      - "./mailu/overrides/postfix:/overrides:ro"
+      - $JOHNCLOUD_ROOT/mailu/mailqueue:/queue
+      - $JOHNCLOUD_ROOT/mailu/overrides/postfix:/overrides:ro
     depends_on:
       - front
       - resolver
@@ -161,7 +152,6 @@ services:
     image: ${DOCKER_ORG:-ghcr.io/mailu}/${DOCKER_PREFIX:-}rspamd:${MAILU_VERSION:-2.0}
     hostname: antispam
     restart: unless-stopped
-    env_file: mailu.env
     logging:
       driver: journald
       options:
@@ -170,8 +160,8 @@ services:
       - default
       - noinet
     volumes:
-      - "./mailu/filter:/var/lib/rspamd"
-      - "./mailu/overrides/rspamd:/overrides:ro"
+      - $JOHNCLOUD_ROOT/mailu/filter:/var/lib/rspamd
+      - $JOHNCLOUD_ROOT/mailu/overrides/rspamd:/overrides:ro
     depends_on:
       - front
       - redis
@@ -187,9 +177,8 @@ services:
   antivirus:
     image: ${DOCKER_ORG:-ghcr.io/mailu}/${DOCKER_PREFIX:-}clamav:${MAILU_VERSION:-2.0}
     restart: unless-stopped
-    env_file: mailu.env
     volumes:
-      - "./mailu/filter:/data"
+      - $JOHNCLOUD_ROOT/mailu/filter:/data
     depends_on:
       - resolver
     dns:
@@ -201,7 +190,7 @@ services:
     image: ${DOCKER_ORG:-ghcr.io/mailu}/${DOCKER_PREFIX:-}radicale:${MAILU_VERSION:-2.0}
     restart: unless-stopped
     volumes:
-      - "./mailu/dav:/data"
+      - $JOHNCLOUD_ROOT/mailu/dav:/data
     networks:
       - radicale
     labels:
@@ -210,9 +199,8 @@ services:
   fetchmail:
     image: ${DOCKER_ORG:-ghcr.io/mailu}/${DOCKER_PREFIX:-}fetchmail:${MAILU_VERSION:-2.0}
     restart: unless-stopped
-    env_file: mailu.env
     volumes:
-      - "./mailu/data/fetchmail:/data"
+      - $JOHNCLOUD_ROOT/mailu/data/fetchmail:/data
     depends_on:
       - admin
       - smtp
@@ -227,10 +215,9 @@ services:
   webmail:
     image: ${DOCKER_ORG:-ghcr.io/mailu}/${DOCKER_PREFIX:-}webmail:${MAILU_VERSION:-2.0}
     restart: unless-stopped
-    env_file: mailu.env
     volumes:
-      - "./mailu/webmail:/data"
-      - "./mailu/overrides/roundcube:/overrides:ro"
+      - $JOHNCLOUD_ROOT/mailu/webmail:/data
+      - $JOHNCLOUD_ROOT/mailu/overrides/roundcube:/overrides:ro
     networks:
       - webmail
     depends_on:
