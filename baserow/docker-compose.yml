@@ -1,0 +1,26 @@
+# This is the recommended way of running Baserow using docker-compose for most users.
+# See https://baserow.io/docs/installation%2Finstall-with-docker for more details.
+version: "3.4"
+
+services:
+  baserow:
+    container_name: baserow
+    image: baserow/baserow:1.13.2
+    environment:
+      BASEROW_PUBLIC_URL: 'https://baserow.johncloud.fr'
+    ports:
+      - "8059:80"
+      # - "443:443"
+    volumes:
+      - ./baserow_data:/baserow/data
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.baserow.rule=Host(`baserow.johncloud.fr`)"
+      - "traefik.http.routers.baserow.entrypoints=websecure"
+      - "traefik.http.routers.baserow.tls.certresolver=letsencrypt"
+
+networks:
+  default:
+    external: true
+    name: traefik-proxy
+
