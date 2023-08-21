@@ -16,6 +16,11 @@ services:
     volumes:
       - ./nextcloud_aio_mastercontainer:/mnt/docker-aio-config
       - /var/run/docker.sock:/var/run/docker.sock:ro
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.cloud.rule=Host(`cloud.johncloud.fr`)"
+      - "traefik.http.routers.cloud.entrypoints=websecure"
+      - "traefik.http.routers.cloud.tls.certresolver=letsencrypt"
 
   nginx:
     container_name: nginx
