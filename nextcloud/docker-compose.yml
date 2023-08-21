@@ -27,7 +27,7 @@ services:
     image: nginx:1.21.6
     restart: unless-stopped
     ports:
-      - 8239:80
+      - 8239:443
       # - 443:443
     volumes:
       - ./nginx:/etc/nginx
