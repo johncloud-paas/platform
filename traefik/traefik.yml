@@ -34,4 +34,22 @@ certificatesResolvers:
       storage: "/letsencrypt/acme.json"
       httpChallenge:
         entryPoint: web
-        
+
+accessLog:
+  filePath: "/var/log/traefik/access.log"
+  format: json
+
+metrics:
+  prometheus:
+    # Nom du point d'entrée défini au dessus
+    # entryPoint: metrics
+    # On configure la latence des métriques
+    buckets:
+      - 0.1
+      - 0.3
+      - 1.2
+      - 5.0
+    # Ajout des métriques sur les points d'entrée
+    # addEntryPointsLabels: true
+    # Ajout des services
+    # addServicesLabels: true
