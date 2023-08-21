@@ -23,15 +23,15 @@ http:
           - "X-Forwarded-Host"
         referrerPolicy: "same-origin"
 
-    https-redirect:
-      redirectscheme:
-        scheme: https
+    # https-redirect:
+    #   redirectscheme:
+    #     scheme: websecure
 
     nextcloud-chain:
       chain:
         middlewares:
           # - ... (e.g. rate limiting middleware)
-          - https-redirect
+          # - https-redirect
           - nextcloud-secure-headers
 
 
