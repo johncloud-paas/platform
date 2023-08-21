@@ -10,3 +10,7 @@ settings.env
 */mailu/*
 */origin/*
 */certs/*
+*/baserow_data/*
+*/grafana_data/*
+*/prometheus_data/*
+
