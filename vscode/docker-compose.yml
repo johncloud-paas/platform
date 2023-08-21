@@ -1,0 +1,34 @@
+# https://hub.docker.com/r/linuxserver/code-server
+
+version: "2.1"
+
+services:
+  code-server:
+    image: lscr.io/linuxserver/code-server:latest
+    container_name: code-server
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Paris
+      # - PASSWORD=password #optional
+      - HASHED_PASSWORD= "$argon2i$v=19$m=4096,t=3,p=1$C89yPyQI7rUJB80oUk4S8g$CLMsBDyD64hCG/5c50DIH+llvcLDx+cPB9uMs15fS9s"
+      # - SUDO_PASSWORD=password #optional
+      # - SUDO_PASSWORD_HASH= #optional
+      # - PROXY_DOMAIN=code-server.my.domain #optional
+      # - DEFAULT_WORKSPACE=/config/workspace #optional
+    volumes:
+      - /path/to/appdata/config:/config
+    ports:
+      - 8741:8443
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.code.rule=Host(`code.johncloud.fr`)"
+      - "traefik.http.routers.code.entrypoints=websecure"
+      - "traefik.http.routers.code.tls.certresolver=letsencrypt"
+
+networks:
+  default:
+    external: true
+    name: traefik-proxy
+    
