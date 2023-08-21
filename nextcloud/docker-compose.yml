@@ -1,6 +1,9 @@
 # https://sparwan.com/articles/post/creer-votre-serveur-cloud-tuto-d-installation-de-nextcloud-via-docker-compose.html
 version: '3.8'
 
+# To scan the content of the folder data
+# sudo docker exec -ti --user www-data nextcloud-app /var/www/html/occ files:scan --all
+
 services:
   nextcloud_db:
     image: mariadb
