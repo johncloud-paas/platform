@@ -11,16 +11,15 @@ services:
       - "8080:8080"
     restart: unless-stopped
     environment:
-      - TZ=Europe/Paris
+      - TZ=$TZ
     volumes:
+      - ./traefik.yml:/etc/traefik/traefik.yml
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - $JOHNCLOUD_ROOT/traefik/log:/var/log/traefik/
-      - $JOHNCLOUD_ROOT/traefik/traefik.yml:/etc/traefik/traefik.yml
       - $JOHNCLOUD_ROOT/traefik/letsencrypt:/letsencrypt
-      - $JOHNCLOUD_ROOT/traefik/routers:/routers
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.dashboard.rule=Host(`traefik.johncloud.fr`)"
+      - "traefik.http.routers.dashboard.rule=Host(`$HOST`)"
       - "traefik.http.routers.dashboard.service=api@internal"
       - "traefik.http.routers.dashboard.entrypoints=websecure"
       - "traefik.http.routers.dashboard.tls.certresolver=letsencrypt"
@@ -39,11 +38,10 @@ services:
       - INSECURE_COOKIE=$INSECURE_COOKIE
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.forward.rule=Host(`oauth.johncloud.fr`)"   
+      - "traefik.http.routers.forward.rule=Host(`$AUTH_HOST`)"   
       - "traefik.http.routers.forward.entrypoints=websecure"
       - "traefik.http.routers.forward.tls.certresolver=letsencrypt"
       - "traefik.http.services.forward.loadbalancer.server.port=4181"
-      #Middleware
       - "traefik.http.middlewares.forward-auth-verify.forwardauth.address=http://traefik-forward-auth:4181"      
       - "traefik.http.middlewares.forward-auth-verify.forwardauth.authResponseHeaders=X-Forwarded-User"
 

@@ -19,12 +19,6 @@ entryPoints:
 
 providers:
   docker: {}
-    # endpoint: "unix:///var/run/docker.sock"
-    # watch: true
-    # exposedByDefault: false
-  file:
-    directory: "/routers" # Adjust the path according your needs.
-    watch: true
 
 api:
   dashboard: true

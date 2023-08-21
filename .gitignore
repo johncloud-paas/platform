@@ -1,17 +1,1 @@
-*/letsencrypt/*
-*/mariadb_data/*
-*/moodle_data/*
-*/moodledata_data/*
-*/db/*
-*/wordpress/*
-*/bitwarden/
-*/data/*
-settings.env
-*/mailu/*
-*/origin/*
-*/certs/*
-*/baserow_data/*
-*/grafana_data/*
-*/prometheus_data/*
 .env
-*/traefik/traefik/*

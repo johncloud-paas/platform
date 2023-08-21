@@ -17,7 +17,7 @@ services:
       - wordpress_db
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.wordpress.rule=Host(`wordpress.johncloud.fr`)"
+      - "traefik.http.routers.wordpress.rule=Host(`$HOST`)"
       - "traefik.http.routers.wordpress.entrypoints=websecure"
       - "traefik.http.routers.wordpress.tls.certresolver=letsencrypt"
 
