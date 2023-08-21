@@ -1,0 +1,34 @@
+version: "3"
+
+services:
+  nextcloud:
+    container_name: nextcloud-aio-mastercontainer
+    image: nextcloud/all-in-one:latest
+    restart: always
+    ports:
+      - 8089:8080
+    environment:
+      - APACHE_PORT=11000
+    volumes:
+      - ./nextcloud_aio_mastercontainer:/mnt/docker-aio-config
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+  nginx:
+    container_name: nginx
+    image: nginx:1.21.6
+    restart: always
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - ./nginx:/etc/nginx
+      - ../emails/certs/cloud.johncloud.fr:/etc/letsencrypt/nextcloud
+    labels:
+      - "traefik.enable=false"
+
+networks:
+  default:
+    external: true
+    name: traefik-proxy
+    
+      
