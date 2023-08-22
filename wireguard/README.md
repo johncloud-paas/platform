@@ -1,1 +1,1 @@
-https://github.com/linuxserver/docker-wireguard
+https://dockovpn.io/docs/quickstart/
