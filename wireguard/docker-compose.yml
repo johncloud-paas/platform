@@ -6,7 +6,6 @@ services:
     container_name: wireguard
     cap_add:
       - NET_ADMIN
-      - SYS_MODULE #optional
     volumes:
       - ./config:/config
       - /lib/modules:/lib/modules #optional
