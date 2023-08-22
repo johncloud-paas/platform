@@ -17,7 +17,7 @@ services:
     restart: unless-stopped
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.wireguard.rule=Host(`$HOST`)"
+      - "traefik.http.routers.wireguard.rule=Host(`$SERVERURL`)"
       - "traefik.http.routers.wireguard.entrypoints=websecure"
       - "traefik.http.routers.wireguard.tls.certresolver=letsencrypt"
 
