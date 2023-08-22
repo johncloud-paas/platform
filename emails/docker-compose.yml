@@ -51,10 +51,6 @@ services:
       - "traefik.http.routers.front.entrypoints=websecure"
       - "traefik.http.routers.front.tls=true"
       - "traefik.http.routers.front.tls.certresolver=letsencrypt"
-      # - "traefik.http.routers.front_admin.rule=Host(`$TRAEFIK_DOMAIN`) && PathPrefix(`/admin`)"
-      # - "traefik.http.routers.front_admin.entrypoints=websecure"
-      # - "traefik.http.routers.front_admin.tls=true"
-      # - "traefik.http.routers.front_admin.tls.certresolver=letsencrypt"
 
   resolver:
     image: ${DOCKER_ORG:-ghcr.io/mailu}/${DOCKER_PREFIX:-}unbound:${MAILU_VERSION:-2.0}
