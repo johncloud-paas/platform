@@ -8,7 +8,7 @@ services:
     image: baserow/baserow:1.13.2
     restart: unless-stopped
     environment:
-      BASEROW_PUBLIC_URL: $BASEROW_PUBLIC_URL
+      BASEROW_PUBLIC_URL: https://$HOST
     ports:
       - "8059:80"
       # - "443:443"
@@ -16,7 +16,7 @@ services:
       - $JOHNCLOUD_ROOT/baserow/data:/baserow/data
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.baserow.rule=Host(`baserow.johncloud.fr`)"
+      - "traefik.http.routers.baserow.rule=Host(`$HOST`)"
       - "traefik.http.routers.baserow.entrypoints=websecure"
       - "traefik.http.routers.baserow.tls.certresolver=letsencrypt"
 

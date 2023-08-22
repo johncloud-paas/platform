@@ -36,7 +36,7 @@ services:
       - nextcloud_db
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.cloud.rule=Host(`cloud.johncloud.fr`)"
+      - "traefik.http.routers.cloud.rule=Host(`$HOST`)"
       - "traefik.http.routers.cloud.entrypoints=websecure"
       - "traefik.http.routers.cloud.tls.certresolver=letsencrypt"
 

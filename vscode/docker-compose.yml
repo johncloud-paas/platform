@@ -19,7 +19,7 @@ services:
     restart: unless-stopped
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.code.rule=Host(`code.johncloud.fr`)"
+      - "traefik.http.routers.code.rule=Host(`$HOST`)"
       - "traefik.http.routers.code.entrypoints=websecure"
       - "traefik.http.routers.code.tls.certresolver=letsencrypt"
 
