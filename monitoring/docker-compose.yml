@@ -8,25 +8,24 @@ services:
     restart: unless-stopped
     container_name: prometheus
     user: "0:0"
+    env_file: .env
     volumes:
-      - $JOHNCLOUD_ROOT/monitoring/prometheus/:/etc/prometheus/
+      - ./prometheus/:/etc/prometheus/
       - $JOHNCLOUD_ROOT/monitoring/prometheus/db:/prometheus
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
     command:
       - "--web.route-prefix=/"
-      - "--web.external-url=https://admin.johncloud.fr/prometheus"
+      - "--web.external-url=https://$PROM_HOST"
       - "--config.file=/etc/prometheus/prometheus.yml"
       - "--storage.tsdb.path=/prometheus"
       - "--web.console.libraries=/usr/share/prometheus/console_libraries"
       - "--web.console.templates=/usr/share/prometheus/consoles"
     labels:
       - "traefik.enable=true"
-      - "traefik.http.middlewares.prometheus-stripprefix.stripprefix.prefixes=/prometheus"
-      - "traefik.http.routers.prometheus.middlewares=prometheus-stripprefix"
       - "traefik.http.routers.prometheus-secure.entrypoints=websecure"
-      - "traefik.http.routers.prometheus-secure.rule=Host(`admin.johncloud.fr`) && PathPrefix(`/prometheus`)"
-      - "traefik.http.routers.prometheus-secure.middlewares=forward-auth-verify,prometheus-stripprefix"
+      - "traefik.http.routers.prometheus-secure.rule=Host(`$PROM_HOST`)"
+      - "traefik.http.routers.prometheus-secure.middlewares=forward-auth-verify"
       - "traefik.http.routers.prometheus-secure.tls=true"
       - "traefik.http.routers.prometheus-secure.tls.certresolver=letsencrypt"
       - "traefik.http.routers.prometheus-secure.service=prometheus"
@@ -37,20 +36,19 @@ services:
     restart: unless-stopped
     container_name: grafana
     user: "0:0"
+    env_file: .env
     volumes:
       - $JOHNCLOUD_ROOT/monitoring/grafana_data:/var/lib/grafana
-      - $JOHNCLOUD_ROOT/monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/provisioning:/etc/grafana/provisioning
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
     depends_on:
       - prometheus
     labels:
       - "traefik.enable=true"
-      - "traefik.http.middlewares.grafana-stripprefix.stripprefix.prefixes=/grafana"
-      - "traefik.http.routers.grafana.middlewares=grafana-stripprefix"
       - "traefik.http.routers.grafana-secure.entrypoints=websecure"
-      - "traefik.http.routers.grafana-secure.rule=Host(`admin.johncloud.fr`) && PathPrefix(`/grafana`)"
-      - "traefik.http.routers.grafana-secure.middlewares=forward-auth-verify,grafana-stripprefix"
+      - "traefik.http.routers.grafana-secure.rule=Host(`$GF_HOST`)"
+      - "traefik.http.routers.grafana-secure.middlewares=forward-auth-verify"
       - "traefik.http.routers.grafana-secure.tls=true"
       - "traefik.http.routers.grafana-secure.tls.certresolver=letsencrypt"
       - "traefik.http.routers.grafana-secure.service=grafana"
