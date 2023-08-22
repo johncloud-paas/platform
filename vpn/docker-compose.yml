@@ -8,7 +8,7 @@ services:
       - NET_ADMIN
     ports:
       - 1194:1194/udp
-      - 80:8080/tcp
+      - 8425:8080/tcp
     # sysctls:
     #   - net.ipv4.conf.all.src_valid_mark=1
     #   - net.ipv4.ip_forward=1
