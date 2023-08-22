@@ -15,25 +15,6 @@ services:
     labels:
       - "traefik.enable=false"
 
-  # certdumper:
-  #   restart: unless-stopped
-  #   image: ldez/traefik-certs-dumper:latest
-  #   env_file: .env
-  #   entrypoint: sh -c '
-  #     apk add jq
-  #     ; while ! [ -e /traefik/acme.json ]
-  #     || ! [ `jq ".[] | .Certificates | length" /traefik/acme.json` != 0 ]; do
-  #     sleep 1
-  #     ; done
-  #     && traefik-certs-dumper file --version v2 --watch
-  #       --source /traefik/acme.json --dest /output
-  #       --domain-subdir --crt-ext=.pem --key-ext=.pem'
-  #   volumes:
-  #     - $JOHNCLOUD_ROOT/traefik/letsencrypt:/traefik:ro
-  #     - $JOHNCLOUD_ROOT/traefik/certs:/output
-  #   labels:
-  #     - "traefik.enable=false"
-
   # Core services
   front:
     image: ${DOCKER_ORG:-ghcr.io/mailu}/${DOCKER_PREFIX:-}nginx:${MAILU_VERSION:-2.0}
@@ -70,10 +51,10 @@ services:
       - "traefik.http.routers.front.entrypoints=websecure"
       - "traefik.http.routers.front.tls=true"
       - "traefik.http.routers.front.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.front_admin.rule=Host(`$TRAEFIK_DOMAIN`) && PathPrefix(`/admin`)"
-      - "traefik.http.routers.front_admin.entrypoints=websecure"
-      - "traefik.http.routers.front_admin.tls=true"
-      - "traefik.http.routers.front_admin.tls.certresolver=letsencrypt"
+      # - "traefik.http.routers.front_admin.rule=Host(`$TRAEFIK_DOMAIN`) && PathPrefix(`/admin`)"
+      # - "traefik.http.routers.front_admin.entrypoints=websecure"
+      # - "traefik.http.routers.front_admin.tls=true"
+      # - "traefik.http.routers.front_admin.tls.certresolver=letsencrypt"
 
   resolver:
     image: ${DOCKER_ORG:-ghcr.io/mailu}/${DOCKER_PREFIX:-}unbound:${MAILU_VERSION:-2.0}
