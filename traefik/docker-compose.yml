@@ -45,6 +45,25 @@ services:
       - "traefik.http.middlewares.forward-auth-verify.forwardauth.address=http://traefik-forward-auth:4181"      
       - "traefik.http.middlewares.forward-auth-verify.forwardauth.authResponseHeaders=X-Forwarded-User"
 
+  certdumper:
+    restart: unless-stopped
+    image: ldez/traefik-certs-dumper:latest
+    env_file: .env
+    entrypoint: sh -c '
+      apk add jq
+      ; while ! [ -e /traefik/acme.json ]
+      || ! [ `jq ".[] | .Certificates | length" /traefik/acme.json` != 0 ]; do
+      sleep 1
+      ; done
+      && traefik-certs-dumper file --version v2 --watch
+        --source /traefik/acme.json --dest /output
+        --domain-subdir --crt-ext=.pem --key-ext=.pem'
+    volumes:
+      - $JOHNCLOUD_ROOT/traefik/letsencrypt:/traefik:ro
+      - $JOHNCLOUD_ROOT/traefik/certs:/output
+    labels:
+      - "traefik.enable=false"
+
 networks:
   default:
     external: true
