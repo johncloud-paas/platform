@@ -6,6 +6,9 @@ services:
     ports:
       - '8090:8080'
     restart: unless-stopped
+    env_file:
+      - .env
+      - ../.env
     environment:
       - MOODLE_DATABASE_HOST=$DB_HOST
       - MOODLE_DATABASE_PORT_NUMBER=$DB_PORT_NUMBER
@@ -26,6 +29,9 @@ services:
   moodle_db:
     image: mariadb
     restart: unless-stopped
+    env_file:
+      - .env
+      - ../.env
     environment:
       - MARIADB_PASSWORD=$DB_PASSWORD
       - MARIADB_USER=$DB_USER
