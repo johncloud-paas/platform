@@ -4,9 +4,6 @@ services:
   wordpress:
     image: wordpress
     restart: unless-stopped
-    env_file:
-      - .env
-      - ../.env
     ports:
       - 8082:80
     environment:
@@ -27,9 +24,6 @@ services:
   wordpress_db:
     image: mysql:5.7
     restart: unless-stopped
-    env_file:
-      - .env
-      - ../.env
     environment:
       MYSQL_DATABASE: $DB_NAME
       MYSQL_USER: $DB_USER

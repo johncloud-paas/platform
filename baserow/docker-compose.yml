@@ -7,9 +7,6 @@ services:
     container_name: baserow
     image: baserow/baserow:1.13.2
     restart: unless-stopped
-    env_file:
-      - .env
-      - ../.env
     environment:
       BASEROW_PUBLIC_URL: https://$HOST
     ports:

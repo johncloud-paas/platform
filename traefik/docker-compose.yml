@@ -10,9 +10,6 @@ services:
       - "443:443"
       - "8080:8080"
     restart: unless-stopped
-    env_file:
-      - .env
-      - ../.env
     environment:
       - TZ=$TZ
     volumes:
@@ -31,9 +28,6 @@ services:
   traefik-forward-auth:
     image: thomseddon/traefik-forward-auth:latest
     container_name: traefik-forward-auth
-    env_file:
-      - .env
-      - ../.env
     environment:
       - PROVIDERS_GOOGLE_CLIENT_ID=$PROVIDERS_GOOGLE_CLIENT_ID
       - PROVIDERS_GOOGLE_CLIENT_SECRET=$PROVIDERS_GOOGLE_CLIENT_SECRET
@@ -54,9 +48,6 @@ services:
   certdumper:
     restart: unless-stopped
     image: ldez/traefik-certs-dumper:latest
-    env_file:
-      - .env
-      - ../.env
     entrypoint: sh -c '
       apk add jq
       ; while ! [ -e /traefik/acme.json ]
