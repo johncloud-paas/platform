@@ -8,6 +8,7 @@ services:
     container_name: code-server
     env_file:
       - .env
+      - ../.env
     environment:
       - PUID=1000
       - PGID=1000
