@@ -18,11 +18,12 @@ services:
     environment:
       # timezone inside container
       - TZ
-
       # necessary Postgres options/variables
       - POSTGRES_USER
       - POSTGRES_PASSWORD
       - POSTGRES_DB
+    labels:
+      - "traefik.enable=false"
 
   mattermost:
     depends_on:
@@ -62,6 +63,11 @@ services:
     ports:
       - ${CALLS_PORT}:8443/udp
       - ${CALLS_PORT}:8443/tcp
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.mattermost.rule=Host(`$DOMAIN`)"
+      - "traefik.http.routers.mattermost.entrypoints=websecure"
+      - "traefik.http.routers.mattermost.tls.certresolver=letsencrypt"
 
 # If you use rolling image tags and feel lucky watchtower can automatically pull new images and
 # instantiate containers from it. https://containrrr.dev/watchtower/
@@ -73,3 +79,9 @@ services:
 #    restart: unless-stopped
 #    volumes:
 #      - /var/run/docker.sock:/var/run/docker.sock
+
+networks:
+  default:
+    external: true
+    name: traefik-proxy
+    
