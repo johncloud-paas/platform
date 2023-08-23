@@ -4,9 +4,6 @@ services:
   dockovpn:
     image: alekslitvinenk/openvpn
     container_name: dockovpn
-    env_file:
-      - .env
-      - ../.env
     cap_add:
       - NET_ADMIN
     ports:

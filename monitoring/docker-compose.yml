@@ -8,9 +8,6 @@ services:
     restart: unless-stopped
     container_name: prometheus
     user: "0:0"
-    env_file:
-      - .env
-      - ../.env
     volumes:
       - ./prometheus/:/etc/prometheus/
       - $JOHNCLOUD_ROOT/monitoring/prometheus/db:/prometheus
@@ -38,9 +35,6 @@ services:
     restart: unless-stopped
     container_name: grafana
     user: "0:0"
-    env_file:
-      - .env
-      - ../.env
     volumes:
       - $JOHNCLOUD_ROOT/monitoring/grafana_data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning

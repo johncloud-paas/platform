@@ -8,9 +8,6 @@ services:
       - db
     image: bitwarden/self-host:beta
     restart: unless-stopped
-    env_file:
-      - .env
-      - ../.env
     ports:
       - "8018:8080"
     volumes:
@@ -28,9 +25,6 @@ services:
       MARIADB_DATABASE: $BW_DB_DATABASE
       MARIADB_RANDOM_ROOT_PASSWORD: "true"
     image: mariadb:10
-    env_file:
-      - .env
-      - ../.env
     restart: unless-stopped
     volumes:
       - $JOHNCLOUD_ROOT/bitwarden/db:/var/lib/mysql
