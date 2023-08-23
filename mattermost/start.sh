@@ -1,8 +1,6 @@
 #! /bin/bash
 
-set -o allexport
-source .env set
-+o allexport
+source .env
 
 mkdir -p ${JOHNCLOUD_ROOT}/mattermost
 sudo chown -R 2000:2000 ${JOHNCLOUD_ROOT}/mattermost
