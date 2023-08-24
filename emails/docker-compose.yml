@@ -1,12 +1,17 @@
 version: '3.1'
 
 services:
+
   # External dependencies
   redis:
     image: redis:alpine
     restart: unless-stopped
     volumes:
-      - $JOHNCLOUD_ROOT/mailu/redis:/data
+      - "$JOHNCLOUD_ROOT/mailu/redis:/data"
+    depends_on:
+      - resolver
+    dns:
+      - 192.168.203.254
     labels:
       - "traefik.enable=false"
 
@@ -18,9 +23,6 @@ services:
       driver: journald
       options:
         tag: mailu-front
-    networks:
-      - default
-      - traefik-public
     ports:
       - "$REAL_IP_FROM:25:25"
       - "$REAL_IP_FROM:465:465"
@@ -29,10 +31,16 @@ services:
       - "$REAL_IP_FROM:995:995"
       - "$REAL_IP_FROM:143:143"
       - "$REAL_IP_FROM:993:993"
+    networks:
+      - default
     volumes:
       - $JOHNCLOUD_ROOT/mailu/overrides/nginx:/overrides:ro
       - $JOHNCLOUD_ROOT/traefik/certs/$TRAEFIK_DOMAIN/certificate.pem:/certs/cert.pem
       - $JOHNCLOUD_ROOT/traefik/certs/$TRAEFIK_DOMAIN/privatekey.pem:/certs/key.pem
+    depends_on:
+      - resolver
+    dns:
+      - 192.168.203.254
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.front.rule=Host(`$TRAEFIK_DOMAIN`)"
@@ -42,6 +50,15 @@ services:
       - "traefik.http.routers.front.service=mailu-websecure-svc"
       - "traefik.http.services.mailu-websecure-svc.loadbalancer.server.port=80"
 
+  resolver:
+    image: ${DOCKER_ORG:-ghcr.io/mailu}/${DOCKER_PREFIX:-}unbound:${MAILU_VERSION:-2.0}
+    restart: unless-stopped
+    networks:
+      default:
+        ipv4_address: 192.168.203.254
+    labels:
+      - "traefik.enable=false"
+
   admin:
     image: ${DOCKER_ORG:-ghcr.io/mailu}/${DOCKER_PREFIX:-}admin:${MAILU_VERSION:-2.0}
     restart: unless-stopped
@@ -50,10 +67,13 @@ services:
       options:
         tag: mailu-admin
     volumes:
-      - $JOHNCLOUD_ROOT/mailu/data:/data
-      - $JOHNCLOUD_ROOT/mailu/dkim:/dkim
+      - "$JOHNCLOUD_ROOT/mailu/data:/data"
+      - "$JOHNCLOUD_ROOT/mailu/dkim:/dkim"
     depends_on:
       - redis
+      - resolver
+    dns:
+      - 192.168.203.254
     labels:
       - "traefik.enable=false"
 
@@ -65,10 +85,13 @@ services:
       options:
         tag: mailu-imap
     volumes:
-      - $JOHNCLOUD_ROOT/mailu/mail:/mail
-      - $JOHNCLOUD_ROOT/mailu/overrides/dovecot:/overrides:ro
+      - "$JOHNCLOUD_ROOT/mailu/mail:/mail"
+      - "$JOHNCLOUD_ROOT/mailu/overrides/dovecot:/overrides:ro"
     depends_on:
       - front
+      - resolver
+    dns:
+      - 192.168.203.254
     labels:
       - "traefik.enable=false"
 
@@ -80,10 +103,13 @@ services:
       options:
         tag: mailu-smtp
     volumes:
-      - $JOHNCLOUD_ROOT/mailu/mailqueue:/queue
-      - $JOHNCLOUD_ROOT/mailu/overrides/postfix:/overrides:ro
+      - "$JOHNCLOUD_ROOT/mailu/mailqueue:/queue"
+      - "$JOHNCLOUD_ROOT/mailu/overrides/postfix:/overrides:ro"
     depends_on:
       - front
+      - resolver
+    dns:
+      - 192.168.203.254
     labels:
       - "traefik.enable=false"
 
@@ -91,6 +117,12 @@ services:
     image: ${DOCKER_ORG:-ghcr.io/mailu}/${DOCKER_PREFIX:-}oletools:${MAILU_VERSION:-2.0}
     hostname: oletools
     restart: unless-stopped
+    networks:
+      - noinet
+    depends_on:
+      - resolver
+    dns:
+      - 192.168.203.254
     labels:
       - "traefik.enable=false"
 
@@ -102,14 +134,20 @@ services:
       driver: journald
       options:
         tag: mailu-antispam
+    networks:
+      - default
+      - noinet
     volumes:
-      - $JOHNCLOUD_ROOT/mailu/filter:/var/lib/rspamd
-      - $JOHNCLOUD_ROOT/mailu/overrides/rspamd:/overrides:ro
+      - "$JOHNCLOUD_ROOT/mailu/filter:/var/lib/rspamd"
+      - "$JOHNCLOUD_ROOT/mailu/overrides/rspamd:/overrides:ro"
     depends_on:
       - front
       - redis
       - oletools
       - antivirus
+      - resolver
+    dns:
+      - 192.168.203.254
     labels:
       - "traefik.enable=false"
 
@@ -118,49 +156,18 @@ services:
     image: ${DOCKER_ORG:-ghcr.io/mailu}/${DOCKER_PREFIX:-}clamav:${MAILU_VERSION:-2.0}
     restart: unless-stopped
     volumes:
-      - $JOHNCLOUD_ROOT/mailu/filter:/data
-    labels:
-      - "traefik.enable=false"
-
-  webdav:
-    image: ${DOCKER_ORG:-ghcr.io/mailu}/${DOCKER_PREFIX:-}radicale:${MAILU_VERSION:-2.0}
-    restart: unless-stopped
-    volumes:
-      - $JOHNCLOUD_ROOT/mailu/dav:/data
-    labels:
-      - "traefik.enable=false"
-
-  fetchmail:
-    image: ${DOCKER_ORG:-ghcr.io/mailu}/${DOCKER_PREFIX:-}fetchmail:${MAILU_VERSION:-2.0}
-    restart: unless-stopped
-    volumes:
-      - $JOHNCLOUD_ROOT/mailu/data/fetchmail:/data
+      - "$JOHNCLOUD_ROOT/mailu/filter:/data"
     depends_on:
-      - admin
-      - smtp
-      - imap
-    labels:
-      - "traefik.enable=false"
-
-  # Webmail
-  webmail:
-    image: ${DOCKER_ORG:-ghcr.io/mailu}/${DOCKER_PREFIX:-}webmail:${MAILU_VERSION:-2.0}
-    restart: unless-stopped
-    volumes:
-      - $JOHNCLOUD_ROOT/mailu/webmail:/data
-      - $JOHNCLOUD_ROOT/mailu/overrides/roundcube:/overrides:ro
-    depends_on:
-      - front
+      - resolver
+    dns:
+      - 192.168.203.254
     labels:
       - "traefik.enable=false"
 
 networks:
-  traefik-public:
+  default:
     external: true
     name: traefik-proxy
-  default:
+  noinet:
     driver: bridge
-    ipam:
-      driver: default
-      config:
-        - subnet: $SUBNET
+    internal: true
