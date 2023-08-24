@@ -1,7 +1,6 @@
 version: '3.1'
 
 services:
-
   # External dependencies
   redis:
     image: redis:alpine
