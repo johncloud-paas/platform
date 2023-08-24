@@ -30,7 +30,6 @@ services:
       - "$REAL_IP_FROM:995:995"
       - "$REAL_IP_FROM:143:143"
       - "$REAL_IP_FROM:993:993"
-      - "$REAL_IP_FROM:8544:80"
     networks:
       - default
       - webmail
@@ -39,26 +38,26 @@ services:
       - $JOHNCLOUD_ROOT/mailu/overrides/nginx:/overrides:ro
       - $JOHNCLOUD_ROOT/traefik/certs/$TRAEFIK_DOMAIN/certificate.pem:/certs/cert.pem
       - $JOHNCLOUD_ROOT/traefik/certs/$TRAEFIK_DOMAIN/privatekey.pem:/certs/key.pem
-    depends_on:
-      - resolver
+    # depends_on:
+    #   - resolver
     dns:
       - 192.168.203.254
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.front.rule=Host(`$TRAEFIK_DOMAIN`)"
-      - "traefik.http.services.front.loadbalancer.server.port=8544"
+      - "traefik.http.services.front.loadbalancer.server.port=80"
       - "traefik.http.routers.front.entrypoints=websecure"
       - "traefik.http.routers.front.tls=true"
       - "traefik.http.routers.front.tls.certresolver=letsencrypt"
 
-  resolver:
-    image: ${DOCKER_ORG:-ghcr.io/mailu}/${DOCKER_PREFIX:-}unbound:${MAILU_VERSION:-2.0}
-    restart: unless-stopped
-    networks:
-      default:
-        ipv4_address: 192.168.203.254
-    labels:
-      - "traefik.enable=false"
+  # resolver:
+  #   image: ${DOCKER_ORG:-ghcr.io/mailu}/${DOCKER_PREFIX:-}unbound:${MAILU_VERSION:-2.0}
+  #   restart: unless-stopped
+  #   networks:
+  #     default:
+  #       ipv4_address: 192.168.203.254
+  #   labels:
+  #     - "traefik.enable=false"
 
   admin:
     image: ${DOCKER_ORG:-ghcr.io/mailu}/${DOCKER_PREFIX:-}admin:${MAILU_VERSION:-2.0}
