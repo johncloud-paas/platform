@@ -7,10 +7,6 @@ services:
     restart: unless-stopped
     volumes:
       - $JOHNCLOUD_ROOT/mailu/redis:/data
-    # depends_on:
-    #   - resolver
-    # dns:
-    #   - 192.168.203.254
     labels:
       - "traefik.enable=false"
 
@@ -22,6 +18,9 @@ services:
       driver: journald
       options:
         tag: mailu-front
+    networks:
+      - default
+      - traefik-public
     ports:
       - "$REAL_IP_FROM:25:25"
       - "$REAL_IP_FROM:465:465"
@@ -30,18 +29,10 @@ services:
       - "$REAL_IP_FROM:995:995"
       - "$REAL_IP_FROM:143:143"
       - "$REAL_IP_FROM:993:993"
-    networks:
-      - default
-      - webmail
-      - radicale
     volumes:
       - $JOHNCLOUD_ROOT/mailu/overrides/nginx:/overrides:ro
       - $JOHNCLOUD_ROOT/traefik/certs/$TRAEFIK_DOMAIN/certificate.pem:/certs/cert.pem
       - $JOHNCLOUD_ROOT/traefik/certs/$TRAEFIK_DOMAIN/privatekey.pem:/certs/key.pem
-    # depends_on:
-    #   - resolver
-    # dns:
-    #   - 192.168.203.254
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.front.rule=Host(`$TRAEFIK_DOMAIN`)"
@@ -49,15 +40,6 @@ services:
       - "traefik.http.routers.front.entrypoints=websecure"
       - "traefik.http.routers.front.tls=true"
       - "traefik.http.routers.front.tls.certresolver=letsencrypt"
-
-  # resolver:
-  #   image: ${DOCKER_ORG:-ghcr.io/mailu}/${DOCKER_PREFIX:-}unbound:${MAILU_VERSION:-2.0}
-  #   restart: unless-stopped
-  #   networks:
-  #     default:
-  #       ipv4_address: 192.168.203.254
-  #   labels:
-  #     - "traefik.enable=false"
 
   admin:
     image: ${DOCKER_ORG:-ghcr.io/mailu}/${DOCKER_PREFIX:-}admin:${MAILU_VERSION:-2.0}
@@ -71,9 +53,6 @@ services:
       - $JOHNCLOUD_ROOT/mailu/dkim:/dkim
     depends_on:
       - redis
-      # - resolver
-    # dns:
-    #   - 192.168.203.254
     labels:
       - "traefik.enable=false"
 
@@ -89,9 +68,6 @@ services:
       - $JOHNCLOUD_ROOT/mailu/overrides/dovecot:/overrides:ro
     depends_on:
       - front
-      # - resolver
-    # dns:
-    #   - 192.168.203.254
     labels:
       - "traefik.enable=false"
 
@@ -107,9 +83,6 @@ services:
       - $JOHNCLOUD_ROOT/mailu/overrides/postfix:/overrides:ro
     depends_on:
       - front
-      # - resolver
-    # dns:
-    #   - 192.168.203.254
     labels:
       - "traefik.enable=false"
 
@@ -117,12 +90,6 @@ services:
     image: ${DOCKER_ORG:-ghcr.io/mailu}/${DOCKER_PREFIX:-}oletools:${MAILU_VERSION:-2.0}
     hostname: oletools
     restart: unless-stopped
-    networks:
-      - noinet
-    # depends_on:
-    #   - resolver
-    # dns:
-    #   - 192.168.203.254
     labels:
       - "traefik.enable=false"
 
@@ -134,9 +101,6 @@ services:
       driver: journald
       options:
         tag: mailu-antispam
-    networks:
-      - default
-      - noinet
     volumes:
       - $JOHNCLOUD_ROOT/mailu/filter:/var/lib/rspamd
       - $JOHNCLOUD_ROOT/mailu/overrides/rspamd:/overrides:ro
@@ -145,9 +109,6 @@ services:
       - redis
       - oletools
       - antivirus
-      # - resolver
-    # dns:
-    #   - 192.168.203.254
     labels:
       - "traefik.enable=false"
 
@@ -157,10 +118,6 @@ services:
     restart: unless-stopped
     volumes:
       - $JOHNCLOUD_ROOT/mailu/filter:/data
-    # depends_on:
-    #   - resolver
-    # dns:
-    #   - 192.168.203.254
     labels:
       - "traefik.enable=false"
 
@@ -169,8 +126,6 @@ services:
     restart: unless-stopped
     volumes:
       - $JOHNCLOUD_ROOT/mailu/dav:/data
-    networks:
-      - radicale
     labels:
       - "traefik.enable=false"
 
@@ -183,9 +138,6 @@ services:
       - admin
       - smtp
       - imap
-      # - resolver
-    # dns:
-    #   - 192.168.203.254
     labels:
       - "traefik.enable=false"
 
@@ -196,21 +148,18 @@ services:
     volumes:
       - $JOHNCLOUD_ROOT/mailu/webmail:/data
       - $JOHNCLOUD_ROOT/mailu/overrides/roundcube:/overrides:ro
-    networks:
-      - webmail
     depends_on:
       - front
     labels:
       - "traefik.enable=false"
 
 networks:
-  default:
+  traefik-public:
     external: true
     name: traefik-proxy
-  radicale:
+  default:
     driver: bridge
-  webmail:
-    driver: bridge
-  noinet:
-    driver: bridge
-    internal: true
+    ipam:
+      driver: default
+      config:
+        - subnet: $SUBNET
