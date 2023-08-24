@@ -9,8 +9,8 @@ services:
       - $JOHNCLOUD_ROOT/mailu/redis:/data
     # depends_on:
     #   - resolver
-    dns:
-      - 192.168.203.254
+    # dns:
+    #   - 192.168.203.254
     labels:
       - "traefik.enable=false"
 
@@ -40,8 +40,8 @@ services:
       - $JOHNCLOUD_ROOT/traefik/certs/$TRAEFIK_DOMAIN/privatekey.pem:/certs/key.pem
     # depends_on:
     #   - resolver
-    dns:
-      - 192.168.203.254
+    # dns:
+    #   - 192.168.203.254
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.front.rule=Host(`$TRAEFIK_DOMAIN`)"
@@ -72,8 +72,8 @@ services:
     depends_on:
       - redis
       # - resolver
-    dns:
-      - 192.168.203.254
+    # dns:
+    #   - 192.168.203.254
     labels:
       - "traefik.enable=false"
 
@@ -90,8 +90,8 @@ services:
     depends_on:
       - front
       # - resolver
-    dns:
-      - 192.168.203.254
+    # dns:
+    #   - 192.168.203.254
     labels:
       - "traefik.enable=false"
 
@@ -108,8 +108,8 @@ services:
     depends_on:
       - front
       # - resolver
-    dns:
-      - 192.168.203.254
+    # dns:
+    #   - 192.168.203.254
     labels:
       - "traefik.enable=false"
 
@@ -121,8 +121,8 @@ services:
       - noinet
     # depends_on:
     #   - resolver
-    dns:
-      - 192.168.203.254
+    # dns:
+    #   - 192.168.203.254
     labels:
       - "traefik.enable=false"
 
@@ -146,8 +146,8 @@ services:
       - oletools
       - antivirus
       # - resolver
-    dns:
-      - 192.168.203.254
+    # dns:
+    #   - 192.168.203.254
     labels:
       - "traefik.enable=false"
 
@@ -159,8 +159,8 @@ services:
       - $JOHNCLOUD_ROOT/mailu/filter:/data
     # depends_on:
     #   - resolver
-    dns:
-      - 192.168.203.254
+    # dns:
+    #   - 192.168.203.254
     labels:
       - "traefik.enable=false"
 
@@ -184,8 +184,8 @@ services:
       - smtp
       - imap
       # - resolver
-    dns:
-      - 192.168.203.254
+    # dns:
+    #   - 192.168.203.254
     labels:
       - "traefik.enable=false"
 
