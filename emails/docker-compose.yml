@@ -7,8 +7,8 @@ services:
     restart: unless-stopped
     volumes:
       - $JOHNCLOUD_ROOT/mailu/redis:/data
-    depends_on:
-      - resolver
+    # depends_on:
+    #   - resolver
     dns:
       - 192.168.203.254
     labels:
@@ -71,7 +71,7 @@ services:
       - $JOHNCLOUD_ROOT/mailu/dkim:/dkim
     depends_on:
       - redis
-      - resolver
+      # - resolver
     dns:
       - 192.168.203.254
     labels:
@@ -89,7 +89,7 @@ services:
       - $JOHNCLOUD_ROOT/mailu/overrides/dovecot:/overrides:ro
     depends_on:
       - front
-      - resolver
+      # - resolver
     dns:
       - 192.168.203.254
     labels:
@@ -107,7 +107,7 @@ services:
       - $JOHNCLOUD_ROOT/mailu/overrides/postfix:/overrides:ro
     depends_on:
       - front
-      - resolver
+      # - resolver
     dns:
       - 192.168.203.254
     labels:
@@ -119,8 +119,8 @@ services:
     restart: unless-stopped
     networks:
       - noinet
-    depends_on:
-      - resolver
+    # depends_on:
+    #   - resolver
     dns:
       - 192.168.203.254
     labels:
@@ -145,7 +145,7 @@ services:
       - redis
       - oletools
       - antivirus
-      - resolver
+      # - resolver
     dns:
       - 192.168.203.254
     labels:
@@ -157,8 +157,8 @@ services:
     restart: unless-stopped
     volumes:
       - $JOHNCLOUD_ROOT/mailu/filter:/data
-    depends_on:
-      - resolver
+    # depends_on:
+    #   - resolver
     dns:
       - 192.168.203.254
     labels:
@@ -183,7 +183,7 @@ services:
       - admin
       - smtp
       - imap
-      - resolver
+      # - resolver
     dns:
       - 192.168.203.254
     labels:
