@@ -1,5 +1,3 @@
-# https://blog.filador.fr/je-supervise-mon-traefik-avec-prometheus-et-grafana/
-
 version: '3'
 
 services:
@@ -7,6 +5,8 @@ services:
     image: prom/prometheus:v2.15.2
     restart: unless-stopped
     container_name: prometheus
+    depends_on:
+      - cadvisor
     user: "0:0"
     volumes:
       - ./prometheus/:/etc/prometheus/
@@ -51,6 +51,29 @@ services:
       - "traefik.http.routers.grafana-secure.tls.certresolver=letsencrypt"
       - "traefik.http.routers.grafana-secure.service=grafana"
       - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor
+    ports:
+    - 8080:8080
+    volumes:
+    - /:/rootfs:ro
+    - /var/run:/var/run:rw
+    - /sys:/sys:ro
+    - /var/lib/docker/:/var/lib/docker:ro
+    depends_on:
+    - redis
+    labels:
+      - "traefik.enable=false"
+
+  redis:
+    image: redis:latest
+    container_name: redis
+    ports:
+    - 6379:6379
+    labels:
+      - "traefik.enable=false"
 
 networks:
   default:
