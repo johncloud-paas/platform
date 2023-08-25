@@ -3,7 +3,7 @@ version: '2.2'
 services:
   # External dependencies
   redis:
-    image: redis:alpine
+    image: redis:7.2.0-alpine
     restart: unless-stopped
     env_file: .env
     volumes:

@@ -3,7 +3,7 @@ version: '3.8'
 
 services:
   nextcloud_db:
-    image: mariadb
+    image: mariadb:lts
     container_name: nextcloud_db
     restart: unless-stopped
     command: --transaction-isolation=READ-COMMITTED --binlog-format=ROW
@@ -18,7 +18,7 @@ services:
       - "traefik.enable=false"
 
   nextcloud_app:
-    image: nextcloud
+    image: nextcloud:27.0.2
     restart: unless-stopped
     ports:
       - $NEXTCLOUD_PORT:80

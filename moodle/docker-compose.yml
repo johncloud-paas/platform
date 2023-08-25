@@ -24,7 +24,7 @@ services:
       - "traefik.http.routers.moodle.tls.certresolver=letsencrypt"
 
   moodle_db:
-    image: mariadb
+    image: mariadb:lts
     restart: unless-stopped
     environment:
       - MARIADB_PASSWORD=$DB_PASSWORD

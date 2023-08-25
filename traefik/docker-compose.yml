@@ -26,7 +26,7 @@ services:
       - "traefik.http.routers.dashboard.middlewares=forward-auth-verify"
 
   traefik-forward-auth:
-    image: thomseddon/traefik-forward-auth:latest
+    image: thomseddon/traefik-forward-auth:2.2.0
     container_name: traefik-forward-auth
     environment:
       - PROVIDERS_GOOGLE_CLIENT_ID=$PROVIDERS_GOOGLE_CLIENT_ID
@@ -47,7 +47,7 @@ services:
 
   certdumper:
     restart: unless-stopped
-    image: ldez/traefik-certs-dumper:latest
+    image: ldez/traefik-certs-dumper:v2.8.1
     entrypoint: sh -c '
       apk add jq
       ; while ! [ -e /traefik/acme.json ]
