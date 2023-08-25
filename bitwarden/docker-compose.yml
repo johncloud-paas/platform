@@ -6,7 +6,7 @@ services:
   bitwarden:
     depends_on:
       - db
-    image: bitwarden/self-host:beta
+    image: bitwarden/self-host:2023.7.0-beta
     restart: unless-stopped
     ports:
       - "8018:8080"
