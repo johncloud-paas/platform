@@ -5,9 +5,10 @@ version: "3.8"
 services:
   bitwarden:
     depends_on:
-      - db
+      - bitwarden_db
     image: bitwarden/self-host:2023.7.1-beta
     restart: unless-stopped
+    container_name: bitwarden
     ports:
       - "8018:8080"
     volumes:
@@ -18,7 +19,7 @@ services:
       - "traefik.http.routers.bitwarden.entrypoints=websecure"
       - "traefik.http.routers.bitwarden.tls.certresolver=letsencrypt"
 
-  db:
+  bitwarden_db:
     environment:
       MARIADB_USER: $BW_DB_USERNAME
       MARIADB_PASSWORD: $BW_DB_PASSWORD
@@ -26,6 +27,7 @@ services:
       MARIADB_RANDOM_ROOT_PASSWORD: "true"
     image: mariadb:10
     restart: unless-stopped
+    container_name: bitwarden_db
     volumes:
       - $JOHNCLOUD_ROOT/bitwarden/db:/var/lib/mysql
     labels:

@@ -3,13 +3,14 @@
 version: "3"
 
 services:
-  reverse-proxy:
+  traefik:
     image: traefik:v2.10.4
     ports:
       - "80:80"
       - "443:443"
       - "8080:8080"
     restart: unless-stopped
+    container_name: traefik
     volumes:
       - ./traefik.yml:/etc/traefik/traefik.yml
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -47,6 +48,7 @@ services:
   certdumper:
     restart: unless-stopped
     image: ldez/traefik-certs-dumper:v2.8.1
+    container_name: certdumper
     entrypoint: sh -c '
       apk add jq
       ; while ! [ -e /traefik/acme.json ]

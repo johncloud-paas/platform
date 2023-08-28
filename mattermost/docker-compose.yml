@@ -3,9 +3,10 @@
 version: "2.4"
 
 services:
-  postgres:
+  mattermost_db:
     image: postgres:${POSTGRES_IMAGE_TAG}
     restart: ${RESTART_POLICY}
+    container_name: mattermost_db
     security_opt:
       - no-new-privileges:true
     pids_limit: 100
@@ -27,9 +28,10 @@ services:
 
   mattermost:
     depends_on:
-      - postgres
+      - mattermost_db
     image: mattermost/${MATTERMOST_IMAGE}:${MATTERMOST_IMAGE_TAG}
     restart: ${RESTART_POLICY}
+    container_name: mattermost
     security_opt:
       - no-new-privileges:true
     pids_limit: 200

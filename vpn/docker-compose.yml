@@ -1,9 +1,9 @@
 version: "2.1"
 
 services:
-  dockovpn:
+  vpn:
     image: alekslitvinenk/openvpn:v1.11.1
-    container_name: dockovpn
+    container_name: vpn
     cap_add:
       - NET_ADMIN
     ports:

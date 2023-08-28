@@ -10,15 +10,11 @@ scrape_configs:
     scrape_interval: 5s
     static_configs:
       - targets:
-        - reverse-proxy:8080
+        - traefik:8080
 
   - job_name: 'cadvisor'
     scrape_interval: 5s
     static_configs:
       - targets:
         - cadvisor:8080
-
-          #  - job_name: 'node'
-          #    static_configs:
-          #      - targets: ['node-exporter:9100']
-
+        
