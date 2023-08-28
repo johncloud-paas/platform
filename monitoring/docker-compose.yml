@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   grafana:
-    image: grafana/grafana:6.6.1
+    image: grafana/grafana:10.1.0
     restart: unless-stopped
     container_name: grafana
     user: "0:0"
@@ -35,61 +35,43 @@ services:
     image: gcr.io/cadvisor/cadvisor:v0.47.2
     container_name: cadvisor
     ports:
-    - 8987:8080
+      - 8987:8080
     volumes:
-    - /:/rootfs:ro
-    - /var/run:/var/run:ro
-    - /sys:/sys:ro
-    - /var/lib/docker/:/var/lib/docker:ro
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
     depends_on:
-    - redis
+      - redis
     labels:
       - "traefik.enable=false"
 
-        #  loki:
-        #    image: grafana/loki:latest
-        #    container_name: loki
-        #    user: "0:0"
-        #    ports:
-        #      - 3100:3100
-        #    volumes:
-        #      - $JOHNCLOUD_ROOT/monitoring/loki:/loki
-        #      - ./loki/config.yml:/etc/loki/loki-config.yaml
-        #    command: -config.file=/etc/loki/loki-config.yaml
-        #    labels:
-        #      - "traefik.enable=false"
-        #
-        #  promtail:
-        #    image:  grafana/promtail:latest
-        #    container_name: promtail
-        #    volumes:
-        #      - ./promtail/config.yml:/etc/promtail/docker-config.yaml
-        #      - /var/lib/docker/containers:/var/lib/docker/containers:ro
-        #      - /var/run/docker.sock:/var/run/docker.sock:ro
-        #    command: -config.file=/etc/promtail/docker-config.yaml
-        #    depends_on:
-        #      - loki
-        #    labels:
-        #      - "traefik.enable=false"
-        #
-        #  node-exporter:
-        #    image: prom/node-exporter:latest
-        #    container_name: node-exporter
-        #    restart: unless-stopped
-        #    volumes:
-        #      - /proc:/host/proc:ro
-        #      - /sys:/host/sys:ro
-        #      - /:/rootfs:ro
-        #    command:
-        #      - '--path.procfs=/host/proc'
-        #      - '--path.rootfs=/rootfs'
-        #      - '--path.sysfs=/host/sys'
-        #      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
-        #    expose:
-        #      - 9100
-        #    labels:
-        #      - "traefik.enable=false"
-
+  loki:
+    image: grafana/loki:latest
+    container_name: loki
+    user: "0:0"
+    ports:
+      - 3100:3100
+    volumes:
+      - $JOHNCLOUD_ROOT/monitoring/loki:/loki
+      - ./loki/config.yml:/etc/loki/loki-config.yaml
+    command: -config.file=/etc/loki/loki-config.yaml
+    labels:
+      - "traefik.enable=false"
+        
+  promtail:
+    image:  grafana/promtail:latest
+    container_name: promtail
+    volumes:
+      - ./promtail/config.yml:/etc/promtail/docker-config.yaml
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command: -config.file=/etc/promtail/docker-config.yaml
+    depends_on:
+      - loki
+    labels:
+      - "traefik.enable=false"
+        
   prometheus:
     image: prom/prometheus:v2.15.2
     restart: unless-stopped
