@@ -1,4 +1,5 @@
 #! /bin/sh
 
-sudo docker compose down
-sudo docker compose up -d --remove-orphans
+sudo docker compose -f docker-compose.yml down
+sudo docker compose -f docker-compose.yml up -d --remove-orphans
+

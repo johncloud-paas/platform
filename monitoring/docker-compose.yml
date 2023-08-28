@@ -1,28 +1,6 @@
-version: '3'
+version: '3.8'
 
 services:
-  prometheus:
-    image: prom/prometheus:v2.15.2
-    restart: unless-stopped
-    container_name: prometheus
-    depends_on:
-      - cadvisor
-    user: "0:0"
-    volumes:
-      - ./prometheus/:/etc/prometheus/
-      - $JOHNCLOUD_ROOT/monitoring/prometheus/db:/prometheus
-      - /etc/timezone:/etc/timezone:ro
-      - /etc/localtime:/etc/localtime:ro
-    command:
-      - "--web.route-prefix=/"
-      - "--web.external-url=https://$PROM_HOST"
-      - "--config.file=/etc/prometheus/prometheus.yml"
-      - "--storage.tsdb.path=/prometheus"
-      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
-      - "--web.console.templates=/usr/share/prometheus/consoles"
-    labels:
-      - "traefik.enable=false"
-
   grafana:
     image: grafana/grafana:6.6.1
     restart: unless-stopped
@@ -45,6 +23,14 @@ services:
       - "traefik.http.routers.grafana-secure.service=grafana"
       - "traefik.http.services.grafana.loadbalancer.server.port=3000"
 
+  redis:
+    image: redis:7.2.0
+    container_name: redis
+    environment:
+      - ENABLE_OVERCOMMIT_MEMORY=true
+    ports:
+    - 6379:6379
+
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:v0.47.2
     container_name: cadvisor
@@ -52,7 +38,7 @@ services:
     - 8987:8080
     volumes:
     - /:/rootfs:ro
-    - /var/run:/var/run:rw
+    - /var/run:/var/run:ro
     - /sys:/sys:ro
     - /var/lib/docker/:/var/lib/docker:ro
     depends_on:
@@ -60,11 +46,68 @@ services:
     labels:
       - "traefik.enable=false"
 
-  redis:
-    image: redis:7.2.0
-    container_name: redis
-    ports:
-    - 6379:6379
+        #  loki:
+        #    image: grafana/loki:latest
+        #    container_name: loki
+        #    user: "0:0"
+        #    ports:
+        #      - 3100:3100
+        #    volumes:
+        #      - $JOHNCLOUD_ROOT/monitoring/loki:/loki
+        #      - ./loki/config.yml:/etc/loki/loki-config.yaml
+        #    command: -config.file=/etc/loki/loki-config.yaml
+        #    labels:
+        #      - "traefik.enable=false"
+        #
+        #  promtail:
+        #    image:  grafana/promtail:latest
+        #    container_name: promtail
+        #    volumes:
+        #      - ./promtail/config.yml:/etc/promtail/docker-config.yaml
+        #      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+        #      - /var/run/docker.sock:/var/run/docker.sock:ro
+        #    command: -config.file=/etc/promtail/docker-config.yaml
+        #    depends_on:
+        #      - loki
+        #    labels:
+        #      - "traefik.enable=false"
+        #
+        #  node-exporter:
+        #    image: prom/node-exporter:latest
+        #    container_name: node-exporter
+        #    restart: unless-stopped
+        #    volumes:
+        #      - /proc:/host/proc:ro
+        #      - /sys:/host/sys:ro
+        #      - /:/rootfs:ro
+        #    command:
+        #      - '--path.procfs=/host/proc'
+        #      - '--path.rootfs=/rootfs'
+        #      - '--path.sysfs=/host/sys'
+        #      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+        #    expose:
+        #      - 9100
+        #    labels:
+        #      - "traefik.enable=false"
+
+  prometheus:
+    image: prom/prometheus:v2.15.2
+    restart: unless-stopped
+    container_name: prometheus
+    user: "0:0"
+    volumes:
+      - ./prometheus/:/etc/prometheus/
+      - $JOHNCLOUD_ROOT/monitoring/prometheus/db:/prometheus
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    command:
+      - "--web.route-prefix=/"
+      - "--web.external-url=https://$PROM_HOST"
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+      - "--web.enable-lifecycle"
     labels:
       - "traefik.enable=false"
 
@@ -72,4 +115,4 @@ networks:
   default:
     external: true
     name: traefik-proxy
-    
+      
