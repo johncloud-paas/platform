@@ -8,6 +8,7 @@ services:
     image: baserow/baserow:1.13.2
     restart: unless-stopped
     environment:
+      TZ: $TZ
       BASEROW_PUBLIC_URL: https://$HOST
     ports:
       - "8059:80"

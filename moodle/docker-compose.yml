@@ -8,6 +8,7 @@ services:
     restart: unless-stopped
     container_name: moodle
     environment:
+      - TZ=$TZ
       - MOODLE_DATABASE_HOST=$DB_HOST
       - MOODLE_DATABASE_PORT_NUMBER=$DB_PORT_NUMBER
       - MOODLE_DATABASE_USER=$DB_USER
@@ -29,6 +30,7 @@ services:
     restart: unless-stopped
     container_name: moodle_db
     environment:
+      - TZ=$TZ
       - MARIADB_PASSWORD=$DB_PASSWORD
       - MARIADB_USER=$DB_USER
       - MARIADB_DATABASE=$DB_NAME

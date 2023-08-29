@@ -9,7 +9,7 @@ services:
     environment:
       - PUID=1000
       - PGID=1000
-      - TZ=Europe/Paris
+      - TZ=$TZ
     volumes:
       - $JOHNCLOUD_ROOT/vscode/workspace_data:/config
     ports:

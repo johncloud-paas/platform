@@ -10,6 +10,7 @@ services:
     volumes:
       - $JOHNCLOUD_ROOT/nextcloud/db:/var/lib/mysql
     environment:
+      - TZ=$TZ
       - MYSQL_ROOT_PASSWORD=$NEXTCLOUD_MYSQL_ROOT_PASSWORD # Mot de passe de l'utilisateur root de mariadb
       - MYSQL_DATABASE=$NEXTCLOUD_MYSQL_DATABASE # Nom de la base de données à créer à l'initialisation du conteneur
       - MYSQL_USER=$NEXTCLOUD_MYSQL_USER # Nom de l'utilisateur de la base de données créée
@@ -26,6 +27,7 @@ services:
     volumes:
       - $JOHNCLOUD_ROOT/nextcloud/data:/var/www/html
     environment:
+      - TZ=$TZ
       - MYSQL_HOST=nextcloud_db # Nom du conteneur de la base de données
       - MYSQL_DATABASE=$NEXTCLOUD_MYSQL_DATABASE # Nom de la base de données
       - MYSQL_USER=$NEXTCLOUD_MYSQL_USER # Nom de l'utilisateur de la base de données
