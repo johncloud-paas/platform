@@ -41,6 +41,7 @@ services:
       - /var/run:/var/run:ro
       - /sys:/sys:ro
       - /var/lib/docker/:/var/lib/docker:ro
+    command: -max_procs=4 -docker_only=true
     depends_on:
       - redis
     labels:
