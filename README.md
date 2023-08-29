@@ -15,4 +15,4 @@ Define the root data folder in a .env file,
 Then define all the `.env` files, for each service, using `sample.env` as template
 
 For backup management, see https://velero.io/docs/v1.12
-
+For online docs editing, this is interesting (though already in nextcloud) : https://www.onlyoffice.com/
