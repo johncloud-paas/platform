@@ -1,4 +1,3 @@
-To initialize the first user, run:
-
-    sudo docker exec -it backup-app-1 php bwc setupauth
+Try urbackup https://hub.docker.com/r/uroni/urbackup-client
+https://hub.docker.com/r/linuxserver/duplicati
 
