@@ -35,7 +35,7 @@ scrape_configs:
           expression: (?P<image_name>(?:[^|]*[^|])).(?P<container_name>(?:[^|]*[^|])).(?P<image_id>(?:[^|]*[^|])).(?P<container_id>(?:[^|]*[^|]))
           source: tag
       - timestamp:
-          format: RFC3339Nano
+          format: RFC3339
           source: time
       - labels:
           tag:
