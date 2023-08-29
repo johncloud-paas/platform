@@ -17,10 +17,10 @@ services:
     restart: unless-stopped
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.wordpress.rule=Host(`$HOST`)"
-      - "traefik.http.routers.wordpress.entrypoints=websecure"
-      - "traefik.http.routers.wordpress.tls.certresolver=letsencrypt"
-      - "traefik.http.services.grafana.loadbalancer.server.port=8200"
+      - "traefik.http.routers.backup.rule=Host(`$HOST`)"
+      - "traefik.http.routers.backup.entrypoints=websecure"
+      - "traefik.http.routers.backup.tls.certresolver=letsencrypt"
+      - "traefik.http.services.backup.loadbalancer.server.port=8200"
 
 networks:
   default:
