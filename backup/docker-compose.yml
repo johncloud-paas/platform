@@ -1,0 +1,39 @@
+version: '3.1'
+
+services:
+  app:
+    image: baculaweb/bacula-web
+    restart: unless-stopped
+    ports:
+      - 8876:80
+    environment:
+      TZ: $TZ
+    volumes:
+      - ./config/config.php:/var/www/html/application/config/config.php \
+      - $JOHNCLOUD_ROOT/backup/protected:/var/www/html/application/assets/protected \
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.wordpress.rule=Host(`$HOST`)"
+      - "traefik.http.routers.wordpress.entrypoints=websecure"
+      - "traefik.http.routers.wordpress.tls.certresolver=letsencrypt"
+  
+  db:
+    image: mysql
+    restart: unless-stopped
+    container_name: bacula_db
+    environment:
+      TZ: $TZ
+      MYSQL_DATABASE: $DB_NAME
+      MYSQL_USER: $DB_USER
+      MYSQL_PASSWORD: $DB_PASSWORD
+      MYSQL_RANDOM_ROOT_PASSWORD: $DB_RANDOM_ROOT_PASSWORD
+    volumes:
+      - $JOHNCLOUD_ROOT/backup/db:/var/lib/mysql
+    labels:
+      - "traefik.enable=false"
+
+networks:
+  default:
+    external: true
+    name: traefik-proxy
+    
