@@ -1,10 +1,10 @@
 version: '3.1'
 
 services:
-  wordpress:
+  app:
     image: wordpress:6.3.0
     restart: unless-stopped
-    container_name: wordpress
+    container_name: app
     ports:
       - 8082:80
     environment:
@@ -16,16 +16,16 @@ services:
     volumes:
       - $JOHNCLOUD_ROOT/wordpress/data:/var/www/html
     depends_on:
-      - wordpress_db
+      - db
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.wordpress.rule=Host(`$HOST`)"
       - "traefik.http.routers.wordpress.entrypoints=websecure"
       - "traefik.http.routers.wordpress.tls.certresolver=letsencrypt"
 
-  wordpress_db:
+  db:
     image: mysql:5.7
-    container_name: wordpress_db
+    container_name: db
     restart: unless-stopped
     environment:
       TZ: $TZ

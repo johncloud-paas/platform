@@ -3,8 +3,8 @@
 version: "3.4"
 
 services:
-  baserow:
-    container_name: baserow
+  app:
+    container_name: app
     image: baserow/baserow:1.13.2
     restart: unless-stopped
     environment:

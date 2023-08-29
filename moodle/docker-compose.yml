@@ -1,7 +1,7 @@
 version: '2'
 
 services:
-  moodle:
+  app:
     image: docker.io/bitnami/moodle:4.1.4-debian-11-r43
     ports:
       - '8090:8080'
@@ -18,17 +18,17 @@ services:
       - $JOHNCLOUD_ROOT/moodle/data:/bitnami/moodle
       - $JOHNCLOUD_ROOT/moodle/moodledata:/bitnami/moodledata
     depends_on:
-      - moodle_db
+      - db
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.moodle.rule=Host(`$HOST`)"
       - "traefik.http.routers.moodle.entrypoints=websecure"
       - "traefik.http.routers.moodle.tls.certresolver=letsencrypt"
 
-  moodle_db:
+  db:
     image: mariadb:lts
     restart: unless-stopped
-    container_name: moodle_db
+    container_name: db
     environment:
       - TZ=$TZ
       - MARIADB_PASSWORD=$DB_PASSWORD

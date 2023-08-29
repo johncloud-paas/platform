@@ -3,10 +3,10 @@
 version: "2.4"
 
 services:
-  mattermost_db:
+  db:
     image: postgres:${POSTGRES_IMAGE_TAG}
     restart: ${RESTART_POLICY}
-    container_name: mattermost_db
+    container_name: db
     security_opt:
       - no-new-privileges:true
     pids_limit: 100
@@ -26,12 +26,12 @@ services:
     labels:
       - "traefik.enable=false"
 
-  mattermost:
+  app:
     depends_on:
-      - mattermost_db
+      - db
     image: mattermost/${MATTERMOST_IMAGE}:${MATTERMOST_IMAGE_TAG}
     restart: ${RESTART_POLICY}
-    container_name: mattermost
+    container_name: app
     security_opt:
       - no-new-privileges:true
     pids_limit: 200
