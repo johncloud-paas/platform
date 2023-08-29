@@ -73,9 +73,9 @@ $config['rows_per_page'] = 25;
 // MySQL bacula catalog
 $config[0]['label'] = 'Backup Server';
 $config[0]['host'] = 'bacula_db';
-$config[0]['login'] = 'bacula';
-$config[0]['password'] = 'KxkJZxWYeWfg6Y';
-$config[0]['db_name'] = 'bacula';
+$config[0]['login'] = '$DB_USER';
+$config[0]['password'] = '$DB_PASSWORD';
+$config[0]['db_name'] = '$DB_NAME';
 $config[0]['db_type'] = 'mysql';
 $config[0]['db_port'] = '3306';
 
