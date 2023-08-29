@@ -1,7 +1,7 @@
 version: "2.4"
 
 services:
-  mattermost:
+  app:
     ports:
       - ${APP_PORT}:8065
       - ${CALLS_PORT}:8443/udp

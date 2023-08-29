@@ -4,7 +4,6 @@ services:
   grafana:
     image: grafana/grafana:10.1.0
     restart: unless-stopped
-    container_name: grafana
     user: "0:0"
     environment:
       - TZ=$TZ
@@ -33,16 +32,16 @@ services:
 
   redis:
     image: redis:7.2.0
-    container_name: redis
     environment:
       - TZ=$TZ
       - ENABLE_OVERCOMMIT_MEMORY=true
     ports:
     - 6379:6379
+    labels:
+      - "traefik.enable=false"
 
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:v0.47.2
-    container_name: cadvisor
     ports:
       - 8987:8080
     volumes:
@@ -60,7 +59,6 @@ services:
 
   loki:
     image: grafana/loki:latest
-    container_name: loki
     user: "0:0"
     ports:
       - 3100:3100
@@ -75,7 +73,6 @@ services:
         
   promtail:
     image:  grafana/promtail:latest
-    container_name: promtail
     volumes:
       - ./promtail/config.yml:/etc/promtail/docker-config.yaml
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
@@ -91,7 +88,6 @@ services:
   prometheus:
     image: prom/prometheus:v2.15.2
     restart: unless-stopped
-    container_name: prometheus
     user: "0:0"
     volumes:
       - ./prometheus/:/etc/prometheus/

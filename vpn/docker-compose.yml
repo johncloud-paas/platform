@@ -1,9 +1,8 @@
 version: "2.1"
 
 services:
-  vpn:
+  app:
     image: alekslitvinenk/openvpn:v1.11.1
-    container_name: vpn
     cap_add:
       - NET_ADMIN
     ports:

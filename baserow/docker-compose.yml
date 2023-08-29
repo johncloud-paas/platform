@@ -4,9 +4,9 @@ version: "3.4"
 
 services:
   app:
-    container_name: app
     image: baserow/baserow:1.13.2
     restart: unless-stopped
+    env_file: .env
     environment:
       TZ: $TZ
       BASEROW_PUBLIC_URL: https://$HOST

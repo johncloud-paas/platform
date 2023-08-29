@@ -6,7 +6,7 @@ services:
   db:
     image: postgres:${POSTGRES_IMAGE_TAG}
     restart: ${RESTART_POLICY}
-    container_name: db
+    container_name: mattermost_db
     security_opt:
       - no-new-privileges:true
     pids_limit: 100
@@ -31,7 +31,6 @@ services:
       - db
     image: mattermost/${MATTERMOST_IMAGE}:${MATTERMOST_IMAGE_TAG}
     restart: ${RESTART_POLICY}
-    container_name: app
     security_opt:
       - no-new-privileges:true
     pids_limit: 200

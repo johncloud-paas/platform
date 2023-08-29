@@ -1,4 +1,6 @@
-version: '2'
+version: '3.8'
+
+name: moodle
 
 services:
   app:
@@ -6,7 +8,6 @@ services:
     ports:
       - '8090:8080'
     restart: unless-stopped
-    container_name: moodle
     environment:
       - TZ=$TZ
       - MOODLE_DATABASE_HOST=$DB_HOST
@@ -28,7 +29,7 @@ services:
   db:
     image: mariadb:lts
     restart: unless-stopped
-    container_name: db
+    container_name: moodle_db
     environment:
       - TZ=$TZ
       - MARIADB_PASSWORD=$DB_PASSWORD

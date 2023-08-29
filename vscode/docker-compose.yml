@@ -5,7 +5,6 @@ version: "2.1"
 services:
   app:
     image: lscr.io/linuxserver/code-server:4.16.1
-    container_name: app
     environment:
       - PUID=1000
       - PGID=1000
