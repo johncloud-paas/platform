@@ -1,36 +1,25 @@
-version: '3.1'
+version: "3.8"
 
 services:
   app:
-    image: baculaweb/bacula-web
-    restart: unless-stopped
-    ports:
-      - 8876:80
+    image: lscr.io/linuxserver/duplicati:latest
     environment:
-      TZ: $TZ
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
+      - CLI_ARGS=$CLI_ARGS
     volumes:
-      - ./config/config.php:/var/www/html/application/config/config.php \
-      - $JOHNCLOUD_ROOT/backup/protected:/var/www/html/application/assets/protected \
+      - $JOHNCLOUD_ROOT/backup/appdata/config:/config
+      - $JOHNCLOUD_ROOT/backup/backups:/backups
+      - $JOHNCLOUD_ROOT:/source
+    ports:
+      - 8200:8200
+    restart: unless-stopped
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.wordpress.rule=Host(`$HOST`)"
       - "traefik.http.routers.wordpress.entrypoints=websecure"
       - "traefik.http.routers.wordpress.tls.certresolver=letsencrypt"
-  
-  db:
-    image: mysql
-    restart: unless-stopped
-    container_name: bacula_db
-    environment:
-      TZ: $TZ
-      MYSQL_DATABASE: $DB_NAME
-      MYSQL_USER: $DB_USER
-      MYSQL_PASSWORD: $DB_PASSWORD
-      MYSQL_RANDOM_ROOT_PASSWORD: $DB_RANDOM_ROOT_PASSWORD
-    volumes:
-      - $JOHNCLOUD_ROOT/backup/db:/var/lib/mysql
-    labels:
-      - "traefik.enable=false"
 
 networks:
   default:
