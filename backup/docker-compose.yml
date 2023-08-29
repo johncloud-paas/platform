@@ -9,8 +9,8 @@ services:
       - TZ=$TZ
       - CLI_ARGS=$CLI_ARGS
     volumes:
-      - $JOHNCLOUD_ROOT/backup/appdata/config:/config
-      - $JOHNCLOUD_ROOT/backup/backups:/backups
+      - $BACKUP_ROOT/appdata/config:/config
+      - $BACKUP_ROOT/backups:/backups
       - $JOHNCLOUD_ROOT:/source
     ports:
       - 8200:8200
@@ -20,6 +20,7 @@ services:
       - "traefik.http.routers.wordpress.rule=Host(`$HOST`)"
       - "traefik.http.routers.wordpress.entrypoints=websecure"
       - "traefik.http.routers.wordpress.tls.certresolver=letsencrypt"
+      - "traefik.http.services.grafana.loadbalancer.server.port=8200"
 
 networks:
   default:
