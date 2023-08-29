@@ -13,3 +13,6 @@ Define the root data folder in a .env file,
     echo "JOHNCLOUD_ROOT=/path/to/root/of/paas/data" > .env
 
 Then define all the `.env` files, for each service, using `sample.env` as template
+
+For backup management, see https://velero.io/docs/v1.12
+

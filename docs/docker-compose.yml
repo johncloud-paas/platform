@@ -2,8 +2,7 @@ version: '3.8'
 
 services:
   app:
-    build:
-      context: .
+    image: onlyoffice/documentserver
     depends_on:
       - db
       - rabbitmq
@@ -18,8 +17,7 @@ services:
       - JWT_HEADER=$JWT_HEADER
       - JWT_IN_BODY=$JWT_IN_BODY
     ports:
-      - '80:80'
-      - '443:443'
+      - 8668:80
     stdin_open: true
     restart: unless-stopped
     stop_grace_period: 60s
