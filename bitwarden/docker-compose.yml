@@ -6,7 +6,7 @@ services:
   app:
     depends_on:
       - db
-    image: bitwarden/self-host:2023.7.1-beta
+    image: bitwarden/self-host:beta
     restart: unless-stopped
     ports:
       - "8018:8080"
@@ -24,7 +24,7 @@ services:
       MARIADB_PASSWORD: $BW_DB_PASSWORD
       MARIADB_DATABASE: $BW_DB_DATABASE
       MARIADB_RANDOM_ROOT_PASSWORD: "true"
-    image: mariadb:10
+    image: mariadb:lts
     restart: unless-stopped
     container_name: bitwarden_db
     volumes:
