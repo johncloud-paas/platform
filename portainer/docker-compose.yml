@@ -13,7 +13,7 @@ services:
       - $JOHNCLOUD_ROOT/portainer/data:/data
     networks:
       - internal
-      -  traefik-proxy
+      - default
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.portainer.rule=Host(`$HOST`)"
