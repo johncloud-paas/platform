@@ -9,6 +9,10 @@ services:
       - PUID=$PUID
       - PGID=$PGID
       - CLI_ARGS=$CLI_ARGS
+    depends_on:
+      - resolver
+    dns:
+      - 192.168.203.254
     volumes:
       - $BACKUP_ROOT:/data
       - $JOHNCLOUD_ROOT:/source
@@ -24,6 +28,17 @@ services:
       # - "traefik.http.middlewares.test-redirectregex.redirectregex.regex=https://(.*)/(.*)"
       # - "traefik.http.middlewares.test-redirectregex.redirectregex.replacement=^http://backup-app-1/$${2}"
       # - "traefik.http.routers.backup.middlewares=test-redirectregex"
+
+  resolver:
+    image: ghcr.io/mailu/unbound:2.0
+    restart: unless-stopped
+    env_file: .env
+    container_name: resolver
+    networks:
+      default:
+        ipv4_address: 192.168.203.254
+    labels:
+      - "traefik.enable=false"
 
 networks:
   default:
