@@ -2,16 +2,15 @@ version: "3.8"
 
 services:
   app:
-    image: lscr.io/linuxserver/duplicati:latest
-    user: "0:0"
+    # image: lscr.io/linuxserver/duplicati:latest
+    image: duplicati/duplicati:latest
     environment:
+      - TZ=$TZ
       - PUID=$PUID
       - PGID=$PGID
-      - TZ=$TZ
       - CLI_ARGS=$CLI_ARGS
     volumes:
-      - $BACKUP_ROOT/appdata/config:/config
-      - $BACKUP_ROOT/backups:/backups
+      - $BACKUP_ROOT:/data
       - $JOHNCLOUD_ROOT:/source
     ports:
       - 8200:8200
@@ -22,6 +21,9 @@ services:
       - "traefik.http.routers.backup.entrypoints=websecure"
       - "traefik.http.routers.backup.tls.certresolver=letsencrypt"
       - "traefik.http.services.backup.loadbalancer.server.port=8200"
+      # - "traefik.http.middlewares.test-redirectregex.redirectregex.regex=https://(.*)/(.*)"
+      # - "traefik.http.middlewares.test-redirectregex.redirectregex.replacement=^http://backup-app-1/$${2}"
+      # - "traefik.http.routers.backup.middlewares=test-redirectregex"
 
 networks:
   default:
