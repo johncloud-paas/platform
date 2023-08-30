@@ -34,4 +34,9 @@ networks:
   default:
     external: true
     name: traefik-proxy
+  internal:
+    driver: overlay
+    ipam:
+      config:
+        - subnet: 172.16.13.0/24
     
