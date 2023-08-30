@@ -9,6 +9,10 @@ services:
       - PGID=$PGID
       - TZ=$TZ
       - CLI_ARGS=$CLI_ARGS
+    depends_on:
+      - resolver
+    dns:
+      - 192.168.203.254
     volumes:
       - $BACKUP_ROOT/appdata/config:/config
       - $BACKUP_ROOT/backups:/backups
@@ -22,6 +26,17 @@ services:
       - "traefik.http.routers.backup.entrypoints=websecure"
       - "traefik.http.routers.backup.tls.certresolver=letsencrypt"
       - "traefik.http.services.backup.loadbalancer.server.port=8200"
+
+  resolver:
+    image: ghcr.io/mailu/unbound:2.0
+    restart: unless-stopped
+    env_file: .env
+    container_name: resolver
+    networks:
+      default:
+        ipv4_address: 192.168.203.254
+    labels:
+      - "traefik.enable=false"
 
 networks:
   default:
