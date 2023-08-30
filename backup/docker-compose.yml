@@ -2,17 +2,12 @@ version: "3.8"
 
 services:
   app:
-    # image: lscr.io/linuxserver/duplicati:latest
-    image: duplicati/duplicati:latest
+    image: lscr.io/linuxserver/duplicati:latest
     environment:
       - TZ=$TZ
-      - PUID=$PUID
-      - PGID=$PGID
+      - PUID=0
+      - PGID=0
       - CLI_ARGS=$CLI_ARGS
-    depends_on:
-      - resolver
-    dns:
-      - 192.168.203.254
     volumes:
       - $BACKUP_ROOT:/data
       - $JOHNCLOUD_ROOT:/source
@@ -25,20 +20,6 @@ services:
       - "traefik.http.routers.backup.entrypoints=websecure"
       - "traefik.http.routers.backup.tls.certresolver=letsencrypt"
       - "traefik.http.services.backup.loadbalancer.server.port=8200"
-      # - "traefik.http.middlewares.test-redirectregex.redirectregex.regex=https://(.*)/(.*)"
-      # - "traefik.http.middlewares.test-redirectregex.redirectregex.replacement=^http://backup-app-1/$${2}"
-      # - "traefik.http.routers.backup.middlewares=test-redirectregex"
-
-  resolver:
-    image: ghcr.io/mailu/unbound:2.0
-    restart: unless-stopped
-    env_file: .env
-    container_name: resolver
-    networks:
-      default:
-        ipv4_address: 192.168.203.254
-    labels:
-      - "traefik.enable=false"
 
 networks:
   default:
