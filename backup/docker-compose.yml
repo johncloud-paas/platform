@@ -1,7 +1,5 @@
 version: "3.8"
 
-# https://github.com/duplicati/duplicati/issues/4108
-
 services:
   app:
     image: kopia/kopia:latest
@@ -17,8 +15,6 @@ services:
         - --disable-csrf-token-checks
         - --insecure
         - --address=0.0.0.0:51515
-        - --server-username=$KOPIA_USER
-        - --server-password=$KOPIA_PASSWORD
     environment:
         # Set repository password
         KOPIA_PASSWORD: $KOPIA_PASSWORD
