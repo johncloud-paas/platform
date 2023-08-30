@@ -30,10 +30,7 @@ services:
         - $JOHNCLOUD_ROOT/backup/config:/app/config
         - $JOHNCLOUD_ROOT/backup/cache:/app/cache
         - $JOHNCLOUD_ROOT/backup/logs:/app/logs
-        # Mount local folders to snapshot
-        - $JOHNCLOUD_ROOT/backup/data:/data:ro
-        # Mount repository location
-        - $JOHNCLOUD_ROOT/backup/repository:/repository
+        - $JOHNCLOUD_ROOT:/source
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.backup.rule=Host(`$HOST`)"
