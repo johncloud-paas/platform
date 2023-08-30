@@ -20,6 +20,7 @@ services:
       - "traefik.http.routers.backup.entrypoints=websecure"
       - "traefik.http.routers.backup.tls.certresolver=letsencrypt"
       - "traefik.http.services.backup.loadbalancer.server.port=8200"
+      - "traefik.http.routers.backup.middlewares=forward-auth-verify"
 
 networks:
   default:
