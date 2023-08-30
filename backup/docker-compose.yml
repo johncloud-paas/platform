@@ -27,9 +27,9 @@ services:
         - /etc/timezone:/etc/timezone:ro
         - /etc/localtime:/etc/localtime:ro
         # Mount local folders needed by kopia
-        - $JOHNCLOUD_ROOT/backup/config:/app/config
-        - $JOHNCLOUD_ROOT/backup/cache:/app/cache
-        - $JOHNCLOUD_ROOT/backup/logs:/app/logs
+        - $BACKUP_ROOT/backup/config:/app/config
+        - $BACKUP_ROOT/backup/cache:/app/cache
+        - $BACKUP_ROOT/backup/logs:/app/logs
         - $JOHNCLOUD_ROOT:/source
     labels:
       - "traefik.enable=true"
