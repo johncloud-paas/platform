@@ -11,6 +11,9 @@ services:
       - /etc/localtime:/etc/localtime:ro
       - /var/run/docker.sock:/var/run/docker.sock
       - $JOHNCLOUD_ROOT/portainer/data:/data
+    networks:
+      - internal
+      -  traefik-proxy
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.portainer.rule=Host(`$HOST`)"
@@ -18,6 +21,14 @@ services:
       - "traefik.http.routers.portainer.tls.certresolver=letsencrypt"
       - "traefik.http.services.portainer.loadbalancer.server.port=8000"
       - "traefik.http.routers.portainer.middlewares=forward-auth-verify"
+
+  agent:
+    image: portainer/agent
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/lib/docker/volumes:/var/lib/docker/volumes
+    networks:
+      - internal
 
 networks:
   default:
