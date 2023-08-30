@@ -9,7 +9,7 @@ services:
       - PGID=0
       - CLI_ARGS=$CLI_ARGS
     volumes:
-      - $BACKUP_ROOT:/data
+      - $BACKUP_ROOT:/config
       - $JOHNCLOUD_ROOT:/source
     ports:
       - 8200:8200
