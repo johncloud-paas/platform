@@ -6,13 +6,9 @@ services:
     restart: unless-stopped
     ports:
       - 8761:8000
-    environment:
-      TZ: $TZ
-      WORDPRESS_DB_HOST: wordpress_db
-      WORDPRESS_DB_USER: $DB_USER
-      WORDPRESS_DB_PASSWORD: $DB_PASSWORD
-      WORDPRESS_DB_NAME: $DB_NAME
     volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
       - /var/run/docker.sock:/var/run/docker.sock
       - $JOHNCLOUD_ROOT/portainer/data:/data
     labels:
