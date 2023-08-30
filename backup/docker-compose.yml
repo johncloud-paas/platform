@@ -4,25 +4,42 @@ version: "3.8"
 
 services:
   app:
-    # image: lscr.io/linuxserver/duplicati:latest
-    image: lscr.io/linuxserver/duplicati:development-version-v2.0.7.2-2.0.7.2_canary_2023-05-25
-    environment:
-      - TZ=$TZ
-      - PUID=0
-      - PGID=0
-      - CLI_ARGS=$CLI_ARGS
-    volumes:
-      - $BACKUP_ROOT:/config
-      - $JOHNCLOUD_ROOT:/source
-    ports:
-      - 8200:8200
+    image: kopia/kopia:latest
+    container_name: backup_app
+    hostname: backup_app
     restart: unless-stopped
+    ports:
+        - 51515:51515
+    # Setup the server that provides the web gui
+    command:
+        - server
+        - start
+        - --disable-csrf-token-checks
+        - --insecure
+        - --address=0.0.0.0:51515
+        - --server-username=$KOPIA_USER
+        - --server-password=$KOPIA_PASSWORD
+    environment:
+        # Set repository password
+        KOPIA_PASSWORD: $KOPIA_PASSWORD
+        USER: $KOPIA_USER
+    volumes:
+        - /etc/timezone:/etc/timezone:ro
+        - /etc/localtime:/etc/localtime:ro
+        # Mount local folders needed by kopia
+        - $JOHNCLOUD_ROOT/backup/config:/app/config
+        - $JOHNCLOUD_ROOT/backup/cache:/app/cache
+        - $JOHNCLOUD_ROOT/backup/logs:/app/logs
+        # Mount local folders to snapshot
+        - $JOHNCLOUD_ROOT/backup/data:/data:ro
+        # Mount repository location
+        - $JOHNCLOUD_ROOT/backup/repository:/repository
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.backup.rule=Host(`$HOST`)"
       - "traefik.http.routers.backup.entrypoints=websecure"
       - "traefik.http.routers.backup.tls.certresolver=letsencrypt"
-      - "traefik.http.services.backup.loadbalancer.server.port=8200"
+      - "traefik.http.services.backup.loadbalancer.server.port=51515"
       - "traefik.http.routers.backup.middlewares=forward-auth-verify"
 
 networks:
