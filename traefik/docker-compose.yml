@@ -1,4 +1,5 @@
 # https://blog.filador.fr/je-supervise-mon-traefik-avec-prometheus-et-grafana/
+# env $(cat .env | xargs) envsubst < ./docker-compose.yml | sudo docker stack deploy --compose-file - traefik
 
 version: "3"
 
@@ -36,14 +37,15 @@ services:
       - COOKIE_DOMAIN=$COOKIE_DOMAIN
       - WHITELIST=$WHITELIST
       - INSECURE_COOKIE=$INSECURE_COOKIE
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.forward.rule=Host(`$AUTH_HOST`)"   
-      - "traefik.http.routers.forward.entrypoints=websecure"
-      - "traefik.http.routers.forward.tls.certresolver=letsencrypt"
-      - "traefik.http.services.forward.loadbalancer.server.port=4181"
-      - "traefik.http.middlewares.forward-auth-verify.forwardauth.address=http://traefik-forward-auth:4181"      
-      - "traefik.http.middlewares.forward-auth-verify.forwardauth.authResponseHeaders=X-Forwarded-User"
+    deploy:
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.forward.rule=Host(`$AUTH_HOST`)"   
+        - "traefik.http.routers.forward.entrypoints=websecure"
+        - "traefik.http.routers.forward.tls.certresolver=letsencrypt"
+        - "traefik.http.services.forward.loadbalancer.server.port=4181"
+        - "traefik.http.middlewares.forward-auth-verify.forwardauth.address=http://traefik-forward-auth:4181"      
+        - "traefik.http.middlewares.forward-auth-verify.forwardauth.authResponseHeaders=X-Forwarded-User"
 
   certdumper:
     restart: unless-stopped
@@ -61,8 +63,9 @@ services:
     volumes:
       - $JOHNCLOUD_ROOT/traefik/letsencrypt:/traefik:ro
       - $JOHNCLOUD_ROOT/traefik/certs:/output
-    labels:
-      - "traefik.enable=false"
+    deploy:
+      labels:
+        - "traefik.enable=false"
 
 networks:
   default:
