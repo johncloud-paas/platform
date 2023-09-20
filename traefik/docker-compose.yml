@@ -10,20 +10,33 @@ services:
       - "80:80"
       - "443:443"
       - "8080:8080"
-    restart: unless-stopped
     volumes:
-      - ./traefik.yml:/etc/traefik/traefik.yml
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - $JOHNCLOUD_ROOT/traefik/log:/var/log/traefik/
       - $JOHNCLOUD_ROOT/traefik/letsencrypt:/letsencrypt
+    command:
+      - --entrypoints.web.address=:80
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      - --entrypoints.web.http.redirections.entrypoint.permanent=true
+      - --entrypoints.websecure.address=:443
+      - --entrypoints.websecure.http.tls.certResolver=letsencrypt
+      - --providers.docker.swarmMode=true
+      - --api.dashboard=true
+      - --api.insecure=false
+      - --certificatesResolvers.letsencrypt.acme.email=$ADMIN_EMAIL
+      - --certificatesResolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
+      - --certificatesResolvers.letsencrypt.acme.httpChallenge.entrypoint=web
     deploy:
       labels:
         - "traefik.enable=true"
-        - "traefik.http.routers.dashboard.rule=Host(`$HOST`)"
-        - "traefik.http.routers.dashboard.service=api@internal"
-        - "traefik.http.routers.dashboard.entrypoints=websecure"
-        - "traefik.http.routers.dashboard.tls.certresolver=letsencrypt"
-        - "traefik.http.routers.dashboard.middlewares=forward-auth-verify"
+        - "traefik.http.routers.traefik.rule=Host(`$HOST`)"
+        - "traefik.docker.network=traefik-proxy"
+        - "traefik.http.routers.traefik.service=api@internal"
+        - "traefik.http.routers.traefik.entrypoints=websecure"
+        - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
+        - "traefik.http.routers.traefik.middlewares=forward-auth-verify"
+        - "traefik.http.services.traefik.loadbalancer.server.port=8080"
 
   traefik-forward-auth:
     image: thomseddon/traefik-forward-auth:latest
@@ -54,9 +67,9 @@ services:
         - "traefik.http.routers.whoami.rule=Host(`whoami.douceville.fr`)"   
         - "traefik.http.routers.whoami.entrypoints=websecure"
         - "traefik.http.routers.whoami.tls.certresolver=letsencrypt"
+        - "traefik.http.services.whoami.loadbalancer.server.port=80"
 
   certdumper:
-    restart: unless-stopped
     image: ldez/traefik-certs-dumper:v2.8.1
     entrypoint: sh -c '
       apk add jq
