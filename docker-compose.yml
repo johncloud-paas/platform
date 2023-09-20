@@ -67,16 +67,16 @@ services:
         - "traefik.http.middlewares.forward-auth-verify.forwardauth.address=http://traefik-forward-auth:4181"      
         - "traefik.http.middlewares.forward-auth-verify.forwardauth.authResponseHeaders=X-Forwarded-User"
 
-  whoami:
-    image: traefik/whoami:latest
-    deploy:
-      labels:
-        - "traefik.enable=true"
-        - "traefik.docker.network=traefik-proxy"
-        - "traefik.http.routers.whoami.rule=Host(`whoami.douceville.fr`)"   
-        - "traefik.http.routers.whoami.entrypoints=websecure"
-        - "traefik.http.routers.whoami.tls.certresolver=letsencrypt"
-        - "traefik.http.services.whoami.loadbalancer.server.port=80"
+  # whoami:
+  #   image: traefik/whoami:latest
+  #   deploy:
+  #     labels:
+  #       - "traefik.enable=true"
+  #       - "traefik.docker.network=traefik-proxy"
+  #       - "traefik.http.routers.whoami.rule=Host(`whoami.douceville.fr`)"   
+  #       - "traefik.http.routers.whoami.entrypoints=websecure"
+  #       - "traefik.http.routers.whoami.tls.certresolver=letsencrypt"
+  #       - "traefik.http.services.whoami.loadbalancer.server.port=80"
 
   certdumper:
     image: ldez/traefik-certs-dumper:v2.8.1
