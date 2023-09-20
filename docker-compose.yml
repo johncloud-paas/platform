@@ -1,0 +1,234 @@
+# https://blog.filador.fr/je-supervise-mon-traefik-avec-prometheus-et-grafana/
+
+version: "3"
+
+services:
+  traefik:
+    image: traefik:v2.10.4
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"
+    restart: unless-stopped
+    container_name: traefik
+    environment:
+      - "OVH_ENDPOINT=$OVH_ENDPOINT"
+      - "OVH_APPLICATION_KEY=$OVH_APPLICATION_KEY"
+      - "OVH_APPLICATION_SECRET=$OVH_APPLICATION_SECRET"
+      - "OVH_CONSUMER_KEY=$OVH_CONSUMER_KEY"
+    command:
+      - --entrypoints.web.address=:80
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      - --entrypoints.web.http.redirections.entrypoint.permanent=true
+      - --entrypoints.websecure.address=:443
+      - --entrypoints.websecure.http.tls.certResolver=letsencrypt
+      - --entrypoints.metrics.address=:8080
+      - --providers.docker=true
+      - --api.dashboard=true
+      - --api.insecure=false
+      - --certificatesResolvers.letsencrypt.acme.email=$ADMIN_EMAIL
+      - --certificatesResolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
+      - --certificatesresolvers.letsencrypt.acme.dnschallenge=true
+      - --certificatesresolvers.letsencrypt.acme.dnschallenge.provider=ovh
+      - --accesslog.filepath=/var/log/traefik/access.log
+      - --accesslog.format=json
+      - --metrics.prometheus.entrypoint=metrics
+      - --metrics.prometheus.buckets=0.1,0.3,1.2,5.0
+      - --metrics.prometheus.addEntryPointsLabels=true
+      - --metrics.prometheus.addServicesLabels=true
+    depends_on:
+      - oauth
+      - whoami
+      - portainer
+      - grafana
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - $JOHNCLOUD_ROOT/traefik/log:/var/log/traefik/
+      - $JOHNCLOUD_ROOT/traefik/letsencrypt:/letsencrypt
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.$HOST`)"
+      - "traefik.http.routers.traefik.service=api@internal"
+      - "traefik.http.routers.traefik.entrypoints=websecure"
+      - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.traefik.middlewares=forward-auth-verify"
+
+  oauth:
+    image: thomseddon/traefik-forward-auth:latest
+    container_name: oauth
+    environment:
+      - TZ=$TZ
+      - PROVIDERS_GOOGLE_CLIENT_ID=$PROVIDERS_GOOGLE_CLIENT_ID
+      - PROVIDERS_GOOGLE_CLIENT_SECRET=$PROVIDERS_GOOGLE_CLIENT_SECRET
+      - SECRET=$SECRET
+      - AUTH_HOST=oauth.$HOST
+      - COOKIE_DOMAIN=$COOKIE_DOMAIN
+      - WHITELIST=$WHITELIST
+      - INSECURE_COOKIE=$INSECURE_COOKIE
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.forward.rule=Host(`oauth.$HOST`)"   
+      - "traefik.http.routers.forward.entrypoints=websecure"
+      - "traefik.http.routers.forward.tls.certresolver=letsencrypt"
+      - "traefik.http.services.forward.loadbalancer.server.port=4181"
+      - "traefik.http.middlewares.forward-auth-verify.forwardauth.address=http://oauth:4181"      
+      - "traefik.http.middlewares.forward-auth-verify.forwardauth.authResponseHeaders=X-Forwarded-User"
+
+  whoami:
+    image: traefik/whoami:latest
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.whoami.rule=Host(`whoami.$HOST`)"   
+      - "traefik.http.routers.whoami.entrypoints=websecure"
+      - "traefik.http.routers.whoami.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.whoami.middlewares=forward-auth-verify"
+
+  certdumper:
+    restart: unless-stopped
+    image: ldez/traefik-certs-dumper:v2.8.1
+    container_name: certdumper
+    entrypoint: sh -c '
+      apk add jq
+      ; while ! [ -e /traefik/acme.json ]
+      || ! [ `jq ".[] | .Certificates | length" /traefik/acme.json` != 0 ]; do
+      sleep 1
+      ; done
+      && traefik-certs-dumper file --version v2 --watch
+        --source /traefik/acme.json --dest /output
+        --domain-subdir --crt-ext=.pem --key-ext=.pem'
+    volumes:
+      - $JOHNCLOUD_ROOT/traefik/letsencrypt:/traefik:ro
+      - $JOHNCLOUD_ROOT/traefik/certs:/output
+    depends_on:
+      - traefik
+    labels:
+      - "traefik.enable=false"
+
+  portainer:
+    image: portainer/portainer-ce:latest
+    restart: unless-stopped
+    ports:
+      - 9761:9000
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      - $JOHNCLOUD_ROOT/portainer/data:/data
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.portainer.rule=Host(`portainer.$HOST`)"
+      - "traefik.http.routers.portainer.entrypoints=websecure"
+      - "traefik.http.routers.portainer.tls.certresolver=letsencrypt"
+      - "traefik.http.services.portainer.loadbalancer.server.port=9000"
+
+  grafana:
+    image: grafana/grafana:10.1.0
+    restart: unless-stopped
+    user: "0:0"
+    environment:
+      - TZ=$TZ
+      - GF_AUTH_ANONYMOUS_ENABLED=$GF_AUTH_ANONYMOUS_ENABLED
+      - GF_AUTH_BASIC_ENABLED=$GF_AUTH_BASIC_ENABLED
+      - GF_AUTH_PROXY_ENABLED=$GF_AUTH_PROXY_ENABLED
+      - GF_USERS_ALLOW_SIGN_UP=$GF_USERS_ALLOW_SIGN_UP
+      - GF_INSTALL_PLUGINS=$GF_INSTALL_PLUGINS
+      - GF_SERVER_ROOT_URL=$GF_SERVER_ROOT_URL
+    volumes:
+      - $JOHNCLOUD_ROOT/monitoring/grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    depends_on:
+      - prometheus
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.grafana-secure.entrypoints=websecure"
+      - "traefik.http.routers.grafana-secure.rule=Host(`monitoring.$HOST`)"
+      - "traefik.http.routers.grafana-secure.middlewares=forward-auth-verify"
+      - "traefik.http.routers.grafana-secure.tls=true"
+      - "traefik.http.routers.grafana-secure.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.grafana-secure.service=grafana"
+      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+
+  redis:
+    image: redis:7.2.0
+    environment:
+      - TZ=$TZ
+      - ENABLE_OVERCOMMIT_MEMORY=true
+    ports:
+    - 6379:6379
+    labels:
+      - "traefik.enable=false"
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.47.2
+    ports:
+      - 8987:8080
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    command: -max_procs=4 -docker_only=true
+    environment:
+      - TZ=$TZ
+    depends_on:
+      - redis
+    labels:
+      - "traefik.enable=false"
+
+  loki:
+    image: grafana/loki:latest
+    user: "0:0"
+    ports:
+      - 3100:3100
+    volumes:
+      - $JOHNCLOUD_ROOT/monitoring/loki:/loki
+      - ./loki/config.yml:/etc/loki/loki-config.yaml
+    command: -config.file=/etc/loki/loki-config.yaml
+    environment:
+      - TZ=$TZ
+    labels:
+      - "traefik.enable=false"
+        
+  promtail:
+    image:  grafana/promtail:latest
+    volumes:
+      - ./promtail/config.yml:/etc/promtail/docker-config.yaml
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command: -config.file=/etc/promtail/docker-config.yaml
+    environment:
+      - TZ=$TZ
+    depends_on:
+      - loki
+    labels:
+      - "traefik.enable=false"
+        
+  prometheus:
+    image: prom/prometheus:v2.15.2
+    restart: unless-stopped
+    user: "0:0"
+    volumes:
+      - ./prometheus/:/etc/prometheus/
+      - $JOHNCLOUD_ROOT/monitoring/prometheus/db:/prometheus
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    command:
+      - "--web.route-prefix=/"
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+      - "--web.enable-lifecycle"
+    environment:
+      - TZ=$TZ
+    labels:
+      - "traefik.enable=false"
+
+networks:
+  default:
+    external: true
+    name: traefik-proxy
+    
