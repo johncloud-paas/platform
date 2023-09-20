@@ -14,6 +14,11 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - $JOHNCLOUD_ROOT/traefik/log:/var/log/traefik/
       - $JOHNCLOUD_ROOT/traefik/letsencrypt:/letsencrypt
+    environment:
+      - "OVH_ENDPOINT=$OVH_ENDPOINT"
+      - "OVH_APPLICATION_KEY=$OVH_APPLICATION_KEY"
+      - "OVH_APPLICATION_SECRET=$OVH_APPLICATION_SECRET"
+      - "OVH_CONSUMER_KEY=$OVH_CONSUMER_KEY"
     command:
       - --entrypoints.web.address=:80
       - --entrypoints.web.http.redirections.entrypoint.to=websecure
@@ -27,7 +32,9 @@ services:
       - --api.insecure=false
       - --certificatesResolvers.letsencrypt.acme.email=$ADMIN_EMAIL
       - --certificatesResolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
-      - --certificatesResolvers.letsencrypt.acme.httpChallenge.entrypoint=web
+      # - --certificatesResolvers.letsencrypt.acme.httpChallenge.entrypoint=web
+      - --certificatesresolvers.letsencrypt.acme.dnschallenge=true
+      - --certificatesresolvers.letsencrypt.acme.dnschallenge.provider=ovh
       - --accesslog.filepath=/var/log/traefik/access.log
       - --accesslog.format=json
       - --metrics.prometheus.entrypoint=metrics
