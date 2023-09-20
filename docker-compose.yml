@@ -12,8 +12,7 @@ services:
       - "8080:8080"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - $JOHNCLOUD_ROOT/traefik/log:/var/log/traefik/
-      - $JOHNCLOUD_ROOT/traefik/letsencrypt:/letsencrypt
+      - traefik:/letsencrypt
     environment:
       - "OVH_ENDPOINT=$OVH_ENDPOINT"
       - "OVH_APPLICATION_KEY=$OVH_APPLICATION_KEY"
@@ -52,7 +51,7 @@ services:
         - "traefik.http.routers.traefik.middlewares=forward-auth-verify"
         - "traefik.http.services.traefik.loadbalancer.server.port=8080"
 
-  traefik-forward-auth:
+  oauth:
     image: thomseddon/traefik-forward-auth:latest
     environment:
       - TZ=$TZ
@@ -71,7 +70,7 @@ services:
         - "traefik.http.routers.forward.entrypoints=websecure"
         - "traefik.http.routers.forward.tls.certresolver=letsencrypt"
         - "traefik.http.services.forward.loadbalancer.server.port=4181"
-        - "traefik.http.middlewares.forward-auth-verify.forwardauth.address=http://traefik-forward-auth:4181"      
+        - "traefik.http.middlewares.forward-auth-verify.forwardauth.address=http://oauth:4181"      
         - "traefik.http.middlewares.forward-auth-verify.forwardauth.authResponseHeaders=X-Forwarded-User"
 
   # whoami:
@@ -97,8 +96,8 @@ services:
         --source /traefik/acme.json --dest /output
         --domain-subdir --crt-ext=.pem --key-ext=.pem'
     volumes:
-      - $JOHNCLOUD_ROOT/traefik/letsencrypt:/traefik:ro
-      - $JOHNCLOUD_ROOT/traefik/certs:/output
+      - traefik:/traefik:ro
+      - certificates:/output
     deploy:
       labels:
         - "traefik.enable=false"
@@ -111,7 +110,7 @@ services:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
       - /var/run/docker.sock:/var/run/docker.sock
-      - $JOHNCLOUD_ROOT/portainer/data:/data
+      - portainer:/data
     deploy:
       labels:
         - "traefik.enable=true"
@@ -120,6 +119,14 @@ services:
         - "traefik.http.routers.portainer.entrypoints=websecure"
         - "traefik.http.routers.portainer.tls.certresolver=letsencrypt"
         - "traefik.http.services.portainer.loadbalancer.server.port=9000"
+
+volumes:
+  traefik:
+    external: true
+  certificates:
+    external: true
+  portainer:
+    external: true
 
 networks:
   default:
