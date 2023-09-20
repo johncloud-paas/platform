@@ -21,12 +21,19 @@ services:
       - --entrypoints.web.http.redirections.entrypoint.permanent=true
       - --entrypoints.websecure.address=:443
       - --entrypoints.websecure.http.tls.certResolver=letsencrypt
+      - --entrypoints.metrics.address=:8080
       - --providers.docker.swarmMode=true
       - --api.dashboard=true
       - --api.insecure=false
       - --certificatesResolvers.letsencrypt.acme.email=$ADMIN_EMAIL
       - --certificatesResolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
       - --certificatesResolvers.letsencrypt.acme.httpChallenge.entrypoint=web
+      - --accesslog.filepath=/var/log/traefik/access.log
+      - --accesslog.format=json
+      - --metrics.prometheus.entrypoint=metrics
+      - --metrics.prometheus.buckets=0.1,0.3,1.2,5.0
+      - --metrics.prometheus.addEntryPointsLabels=true
+      - --metrics.prometheus.addServicesLabels=true
     deploy:
       labels:
         - "traefik.enable=true"
