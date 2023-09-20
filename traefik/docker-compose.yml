@@ -30,7 +30,7 @@ services:
     deploy:
       labels:
         - "traefik.enable=true"
-        - "traefik.http.routers.traefik.rule=Host(`$HOST`)"
+        - "traefik.http.routers.traefik.rule=Host(`traefik.$HOST`)"
         - "traefik.docker.network=traefik-proxy"
         - "traefik.http.routers.traefik.service=api@internal"
         - "traefik.http.routers.traefik.entrypoints=websecure"
@@ -45,14 +45,15 @@ services:
       - PROVIDERS_GOOGLE_CLIENT_ID=$PROVIDERS_GOOGLE_CLIENT_ID
       - PROVIDERS_GOOGLE_CLIENT_SECRET=$PROVIDERS_GOOGLE_CLIENT_SECRET
       - SECRET=$SECRET
-      - AUTH_HOST=$AUTH_HOST
+      - AUTH_HOST=oauth.$HOST
       - COOKIE_DOMAIN=$COOKIE_DOMAIN
       - WHITELIST=$WHITELIST
       - INSECURE_COOKIE=$INSECURE_COOKIE
     deploy:
       labels:
         - "traefik.enable=true"
-        - "traefik.http.routers.forward.rule=Host(`$AUTH_HOST`)"   
+        - "traefik.docker.network=traefik-proxy"
+        - "traefik.http.routers.forward.rule=Host(`oauth.$HOST`)"   
         - "traefik.http.routers.forward.entrypoints=websecure"
         - "traefik.http.routers.forward.tls.certresolver=letsencrypt"
         - "traefik.http.services.forward.loadbalancer.server.port=4181"
@@ -64,6 +65,7 @@ services:
     deploy:
       labels:
         - "traefik.enable=true"
+        - "traefik.docker.network=traefik-proxy"
         - "traefik.http.routers.whoami.rule=Host(`whoami.douceville.fr`)"   
         - "traefik.http.routers.whoami.entrypoints=websecure"
         - "traefik.http.routers.whoami.tls.certresolver=letsencrypt"
@@ -86,6 +88,24 @@ services:
     deploy:
       labels:
         - "traefik.enable=false"
+
+  portainer:
+    image: portainer/portainer-ce:latest
+    ports:
+      - 9761:9000
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      - $JOHNCLOUD_ROOT/portainer/data:/data
+    deploy:
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.portainer.rule=Host(`portainer.$HOST`)"
+        - "traefik.docker.network=traefik-proxy"
+        - "traefik.http.routers.portainer.entrypoints=websecure"
+        - "traefik.http.routers.portainer.tls.certresolver=letsencrypt"
+        - "traefik.http.services.portainer.loadbalancer.server.port=9000"
 
 networks:
   default:
