@@ -11,23 +11,22 @@ services:
       - "443:443"
       - "8080:8080"
     restart: unless-stopped
-    container_name: traefik
     volumes:
       - ./traefik.yml:/etc/traefik/traefik.yml
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - $JOHNCLOUD_ROOT/traefik/log:/var/log/traefik/
       - $JOHNCLOUD_ROOT/traefik/letsencrypt:/letsencrypt
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.dashboard.rule=Host(`$HOST`)"
-      - "traefik.http.routers.dashboard.service=api@internal"
-      - "traefik.http.routers.dashboard.entrypoints=websecure"
-      - "traefik.http.routers.dashboard.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.dashboard.middlewares=forward-auth-verify"
+    deploy:
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.dashboard.rule=Host(`$HOST`)"
+        - "traefik.http.routers.dashboard.service=api@internal"
+        - "traefik.http.routers.dashboard.entrypoints=websecure"
+        - "traefik.http.routers.dashboard.tls.certresolver=letsencrypt"
+        - "traefik.http.routers.dashboard.middlewares=forward-auth-verify"
 
   traefik-forward-auth:
     image: thomseddon/traefik-forward-auth:latest
-    container_name: traefik-forward-auth
     environment:
       - TZ=$TZ
       - PROVIDERS_GOOGLE_CLIENT_ID=$PROVIDERS_GOOGLE_CLIENT_ID
@@ -47,10 +46,18 @@ services:
         - "traefik.http.middlewares.forward-auth-verify.forwardauth.address=http://traefik-forward-auth:4181"      
         - "traefik.http.middlewares.forward-auth-verify.forwardauth.authResponseHeaders=X-Forwarded-User"
 
+  whoami:
+    image: traefik/whoami:latest
+    deploy:
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.whoami.rule=Host(`whoami.douceville.fr`)"   
+        - "traefik.http.routers.whoami.entrypoints=websecure"
+        - "traefik.http.routers.whoami.tls.certresolver=letsencrypt"
+
   certdumper:
     restart: unless-stopped
     image: ldez/traefik-certs-dumper:v2.8.1
-    container_name: certdumper
     entrypoint: sh -c '
       apk add jq
       ; while ! [ -e /traefik/acme.json ]
