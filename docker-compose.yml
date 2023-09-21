@@ -39,7 +39,6 @@ services:
       - --metrics.prometheus.addServicesLabels=true
     depends_on:
       - oauth
-      - whoami
       - portainer
       - grafana
     volumes:
@@ -74,15 +73,6 @@ services:
       - "traefik.http.services.forward.loadbalancer.server.port=4181"
       - "traefik.http.middlewares.forward-auth-verify.forwardauth.address=http://oauth:4181"      
       - "traefik.http.middlewares.forward-auth-verify.forwardauth.authResponseHeaders=X-Forwarded-User"
-
-  whoami:
-    image: traefik/whoami:latest
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.whoami.rule=Host(`whoami.$HOST`)"   
-      - "traefik.http.routers.whoami.entrypoints=websecure"
-      - "traefik.http.routers.whoami.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.whoami.middlewares=forward-auth-verify"
 
   certdumper:
     restart: unless-stopped
