@@ -22,9 +22,7 @@ services:
       - --entrypoints.web.http.redirections.entrypoint.scheme=https
       - --entrypoints.web.http.redirections.entrypoint.permanent=true
       - --entrypoints.websecure.address=:443
-      - --entrypoints.websecure.http.tls.certResolver=letsencrypt
       - --entrypoints.metrics.address=:8080
-      - --entrypoints.ldap.address=:636
       - --providers.docker=true
       - --api.dashboard=true
       - --api.insecure=false
