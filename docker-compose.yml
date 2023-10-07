@@ -26,10 +26,12 @@ services:
       - --providers.docker=true
       - --api.dashboard=true
       - --api.insecure=false
-      - --certificatesResolvers.letsencrypt.acme.email=$ADMIN_EMAIL
-      - --certificatesResolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
-      - --certificatesresolvers.letsencrypt.acme.dnschallenge=true
-      - --certificatesresolvers.letsencrypt.acme.dnschallenge.provider=ovh
+      - --certificatesresolvers.letsencrypt.acme.email=$ADMIN_EMAIL
+      - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
+      - --certificatesresolvers.letsencrypt.acme.httpchallenge=true
+      - --certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web
+      # - --certificatesresolvers.letsencrypt.acme.dnschallenge=true
+      # - --certificatesresolvers.letsencrypt.acme.dnschallenge.provider=ovh
       - --accesslog.filepath=/var/log/traefik/access.log
       - --accesslog.format=json
       - --metrics.prometheus.entrypoint=metrics
