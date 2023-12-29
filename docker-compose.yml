@@ -218,6 +218,22 @@ services:
     labels:
       - "traefik.enable=false"
 
+  homepage:
+    image: ghcr.io/gethomepage/homepage:latest
+    restart: unless-stopped
+    user: $UID:$GID 
+    # ports:
+    #   - 3000:3000
+    volumes:
+      - $JOHNCLOUD_ROOT/home/config:/app/config # Make sure your local config directory exists
+      - /var/run/docker.sock:/var/run/docker.sock # (optional) For docker integrations
+    labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.homepage.rule=Host(`home.$HOST`)"
+        - "traefik.http.routers.homepage.entrypoints=websecure"
+        - "traefik.http.routers.homepage.tls.certresolver=letsencrypt"
+        - "traefik.http.routers.homepage.middlewares=forward-auth-verify"
+
 networks:
   default:
     external: true
