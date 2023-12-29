@@ -1,4 +1,5 @@
 # https://blog.filador.fr/je-supervise-mon-traefik-avec-prometheus-et-grafana/
+# https://github.com/loganmarchione/homelab-svg-assets/blob/main/ICONS.md
 
 version: "3"
 
@@ -55,7 +56,7 @@ services:
       - "traefik.http.routers.traefik.middlewares=forward-auth-verify"
       - "homepage.group=Monitoring"
       - "homepage.name=Traefik"
-      - "homepage.icon=https://github.com/traefik/traefik/blob/0ee377bc9f036124b063e7abc3f0958d51ace5fb/webui/src/statics/icons/apple-icon-180x180.png"
+      - "homepage.icon=https://github.com/traefik/traefik/blob/master/webui/src/assets/traefik.avatar.svg"
       - "homepage.href=https://traefik.$HOST"
       - "homepage.description=Traefik reverse proxy"
 
@@ -119,7 +120,7 @@ services:
       - "traefik.http.services.portainer.loadbalancer.server.port=9000"
       - "homepage.group=Monitoring"
       - "homepage.name=Portainer"
-      - "homepage.icon=https://github.com/portainer/portainer/blob/2e15cad0480a77c8b3045be61a6b5280f3459d57/app/assets/ico/android-chrome-256x256.png"
+      - "homepage.icon=https://github.com/portainer/portainer/blob/develop/app/assets/images/logo_alt.svg"
       - "homepage.href=https://portainer.$HOST"
       - "homepage.description=Container Management Software"
 
@@ -156,6 +157,8 @@ services:
       - "homepage.icon=https://raw.githubusercontent.com/grafana/grafana/main/public/img/icons/mono/grafana.svg"
       - "homepage.href=https://monitoring.$HOST"
       - "homepage.description=Resource dashboard"
+      - "homepage.widget.type=grafana"
+      - "homepage.widget.url=https://monitoring.$HOST"
 
   redis:
     image: redis:7.2.0
