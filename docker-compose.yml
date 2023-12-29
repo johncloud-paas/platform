@@ -53,6 +53,11 @@ services:
       - "traefik.http.routers.traefik.entrypoints=websecure"
       - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
       - "traefik.http.routers.traefik.middlewares=forward-auth-verify"
+      - "homepage.group=Monitoring"
+      - "homepage.name=Traefik"
+      - "homepage.icon=https://raw.githubusercontent.com/jellyfin/jellyfin-ux/master/branding/SVG/icon-transparent-vue.svg"
+      - "homepage.href=https://traefik.$HOST"
+      - "homepage.description=Traefik reverse proxy"
 
   oauth:
     image: thomseddon/traefik-forward-auth:latest
