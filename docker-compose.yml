@@ -157,8 +157,6 @@ services:
       - "homepage.icon=grafana.svg"
       - "homepage.href=https://monitoring.$HOST"
       - "homepage.description=Resource dashboard"
-      - "homepage.widget.type=grafana"
-      - "homepage.widget.url=https://monitoring.$HOST"
 
   redis:
     image: redis:7.2.0
