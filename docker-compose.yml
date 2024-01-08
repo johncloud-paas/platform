@@ -33,7 +33,7 @@ services:
       - --entrypoints.metrics.address=:8080
       - --providers.docker=true
       - --providers.docker.exposedByDefault=false
-      - --providers.file.directory=traefik
+      - --providers.file.directory=conf.d
       - --api.dashboard=true
       - --api.insecure=false
       - --certificatesresolvers.letsencrypt.acme.email=$ADMIN_EMAIL
@@ -60,6 +60,7 @@ services:
       timeout: 10s
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik:/conf.d
       - $JOHNCLOUD_ROOT/traefik/log:/var/log/traefik/
       - $JOHNCLOUD_ROOT/traefik/letsencrypt:/letsencrypt
     labels:
