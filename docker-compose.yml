@@ -18,18 +18,9 @@ services:
       - "OVH_APPLICATION_SECRET=$OVH_APPLICATION_SECRET"
       - "OVH_CONSUMER_KEY=$OVH_CONSUMER_KEY"
     command:
+      - --entryPoints.ping.address=:8082
+      - --ping.entryPoint=ping
       - --entrypoints.web.address=:80
-      - --traefik.http.middlewares.default.chain.middlewares=default-security-headers,gzip
-      - --traefik.http.middlewares.default-security-headers.headers.browserXssFilter=true                            # X-XSS-Protection=1; mode=block
-      - --traefik.http.middlewares.default-security-headers.headers.contentTypeNosniff=true                          # X-Content-Type-Options=nosniff
-      - --traefik.http.middlewares.default-security-headers.headers.forceSTSHeader=true                              # Add the Strict-Transport-Security header even when the connection is HTTP
-      - --traefik.http.middlewares.default-security-headers.headers.frameDeny=true                                   # X-Frame-Options=deny
-      - --traefik.http.middlewares.default-security-headers.headers.referrerPolicy=strict-origin-when-cross-origin
-      - --traefik.http.middlewares.default-security-headers.headers.sslRedirect=true                                 # Allow only https requests
-      - --traefik.http.middlewares.default-security-headers.headers.stsIncludeSubdomains=true                        # Add includeSubdomains to the Strict-Transport-Security header
-      - --traefik.http.middlewares.default-security-headers.headers.stsPreload=true                                  # Add preload flag appended to the Strict-Transport-Security header
-      - --traefik.http.middlewares.default-security-headers.headers.stsSeconds=63072000                              # Set the max-age of the Strict-Transport-Security header (63072000 = 2 years)
-      - --traefik.http.middlewares.gzip.compress={}
       - --entrypoints.web.http.redirections.entrypoint.to=websecure
       - --entrypoints.web.http.redirections.entrypoint.scheme=https
       - --entrypoints.web.http.redirections.entrypoint.permanent=true
@@ -37,6 +28,17 @@ services:
       - --entrypoints.websecure.http.tls.certresolver=letsencrypt
       - --entrypoints.websecure.http.tls.domains.main=$HOST
       - --entrypoints.websecure.http.tls.domains.sans=*.$HOST
+      - --entrypoints.websecure.http.middlewares.default.chain.middlewares=default-security-headers,gzip
+      - --entrypoints.websecure.http.middlewares.default-security-headers.headers.browserXssFilter=true                            # X-XSS-Protection=1; mode=block
+      - --entrypoints.websecure.http.middlewares.default-security-headers.headers.contentTypeNosniff=true                          # X-Content-Type-Options=nosniff
+      - --entrypoints.websecure.http.middlewares.default-security-headers.headers.forceSTSHeader=true                              # Add the Strict-Transport-Security header even when the connection is HTTP
+      - --entrypoints.websecure.http.middlewares.default-security-headers.headers.frameDeny=true                                   # X-Frame-Options=deny
+      - --entrypoints.websecure.http.middlewares.default-security-headers.headers.referrerPolicy=strict-origin-when-cross-origin
+      - --entrypoints.websecure.http.middlewares.default-security-headers.headers.sslRedirect=true                                 # Allow only https requests
+      - --entrypoints.websecure.http.middlewares.default-security-headers.headers.stsIncludeSubdomains=true                        # Add includeSubdomains to the Strict-Transport-Security header
+      - --entrypoints.websecure.http.middlewares.default-security-headers.headers.stsPreload=true                                  # Add preload flag appended to the Strict-Transport-Security header
+      - --entrypoints.websecure.http.middlewares.default-security-headers.headers.stsSeconds=63072000                              # Set the max-age of the Strict-Transport-Security header (63072000 = 2 years)
+      - --entrypoints.websecure.http.middlewares.gzip.compress={}
       - --entrypoints.websecure.http.middlewares=default@file
       - --entrypoints.metrics.address=:8080
       - --providers.docker=true
@@ -59,6 +61,12 @@ services:
       - oauth
       - portainer
       - grafana
+    healthcheck:
+      test: traefik healthcheck || exit 1
+      interval: 60s
+      retries: 5
+      start_period: 20s
+      timeout: 10s
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - $JOHNCLOUD_ROOT/traefik/log:/var/log/traefik/
@@ -121,6 +129,7 @@ services:
 
   portainer:
     image: portainer/portainer-ce:latest
+    container_name: portainer
     restart: unless-stopped
     ports:
       - 9761:9000
@@ -143,6 +152,7 @@ services:
 
   grafana:
     image: grafana/grafana:10.1.0
+    container_name: grafana
     restart: unless-stopped
     user: "0:0"
     environment:
@@ -177,6 +187,7 @@ services:
 
   redis:
     image: redis:7.2.0
+    container_name: redis
     environment:
       - TZ=$TZ
       - ENABLE_OVERCOMMIT_MEMORY=true
@@ -187,6 +198,7 @@ services:
 
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:v0.47.2
+    container_name: cadvisor
     ports:
       - 8987:8080
     volumes:
@@ -232,6 +244,7 @@ services:
         
   prometheus:
     image: prom/prometheus:v2.15.2
+    container_name: prometheus
     restart: unless-stopped
     user: "0:0"
     volumes:
@@ -253,6 +266,7 @@ services:
 
   homepage:
     image: ghcr.io/gethomepage/homepage:latest
+    container_name: homepage
     restart: unless-stopped
     volumes:
       - $JOHNCLOUD_ROOT/home/config:/app/config # Make sure your local config directory exists
