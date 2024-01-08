@@ -37,7 +37,7 @@ services:
       - --entrypoints.websecure.http.tls.certresolver=letsencrypt
       - --entrypoints.websecure.http.tls.domains.main=$HOST
       - --entrypoints.websecure.http.tls.domains.sans=*.$HOST
-      - --entrypoints.websecure.middlewares=default@file
+      - --entrypoints.websecure.http.middlewares=default@file
       - --entrypoints.metrics.address=:8080
       - --providers.docker=true
       - --providers.docker.exposedByDefault=false
