@@ -24,7 +24,19 @@ services:
       - --entrypoints.web.http.redirections.entrypoint.permanent=true
       - --entrypoints.websecure.address=:443
       - --entrypoints.metrics.address=:8080
+      - --http.middlewares.default.chain.middlewares=default-security-headers,gzip
+      - --http.middlewares.default-security-headers.headers.browserXssFilter=true                            # X-XSS-Protection=1; mode=block
+      - --http.middlewares.default-security-headers.headers.contentTypeNosniff=true                          # X-Content-Type-Options=nosniff
+      - --http.middlewares.default-security-headers.headers.forceSTSHeader=true                              # Add the Strict-Transport-Security header even when the connection is HTTP
+      - --http.middlewares.default-security-headers.headers.frameDeny=true                                   # X-Frame-Options=deny
+      - --http.middlewares.default-security-headers.headers.referrerPolicy="strict-origin-when-cross-origin"
+      - --http.middlewares.default-security-headers.headers.sslRedirect=true                                 # Allow only https requests
+      - --http.middlewares.default-security-headers.headers.stsIncludeSubdomains=true                        # Add includeSubdomains to the Strict-Transport-Security header
+      - --http.middlewares.default-security-headers.headers.stsPreload=true                                  # Add preload flag appended to the Strict-Transport-Security header
+      - --http.middlewares.default-security-headers.headers.stsSeconds=63072000                              # Set the max-age of the Strict-Transport-Security header (63072000 = 2 years)
+      - --http.middlewares.gzip.compress={}
       - --providers.docker=true
+      - --providers.docker.exposedByDefault=false
       - --api.dashboard=true
       - --api.insecure=false
       - --certificatesresolvers.letsencrypt.acme.email=$ADMIN_EMAIL
@@ -52,6 +64,7 @@ services:
       - "traefik.http.routers.traefik.rule=Host(`traefik.$HOST`)"
       - "traefik.http.routers.traefik.service=api@internal"
       - "traefik.http.routers.traefik.entrypoints=websecure"
+      - "traefik.http.routers.traefik.middlewares=default@file"
       - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
       - "traefik.http.routers.traefik.middlewares=forward-auth-verify"
       - "homepage.group=Platform"
