@@ -19,8 +19,6 @@ services:
       - "OVH_APPLICATION_SECRET=$OVH_APPLICATION_SECRET"
       - "OVH_CONSUMER_KEY=$OVH_CONSUMER_KEY"
     command:
-      - --entryPoints.ping.address=:8082
-      - --ping.entryPoint=ping
       - --entrypoints.web.address=:80
       - --entrypoints.web.http.redirections.entrypoint.to=websecure
       - --entrypoints.web.http.redirections.entrypoint.scheme=https
@@ -52,12 +50,6 @@ services:
       - oauth
       - portainer
       - grafana
-    healthcheck:
-      test: traefik healthcheck || exit 1
-      interval: 5s
-      retries: 5
-      start_period: 10s
-      timeout: 10s
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./traefik:/conf.d
