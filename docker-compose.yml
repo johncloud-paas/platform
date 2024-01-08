@@ -18,23 +18,24 @@ services:
       - "OVH_APPLICATION_SECRET=$OVH_APPLICATION_SECRET"
       - "OVH_CONSUMER_KEY=$OVH_CONSUMER_KEY"
     command:
+      - --entrypoints.web.http.middlewares.default.chain.middlewares=default-security-headers,gzip
+      - --entrypoints.web.http.middlewares.default-security-headers.headers.browserXssFilter=true                            # X-XSS-Protection=1; mode=block
+      - --entrypoints.web.http.middlewares.default-security-headers.headers.contentTypeNosniff=true                          # X-Content-Type-Options=nosniff
+      - --entrypoints.web.http.middlewares.default-security-headers.headers.forceSTSHeader=true                              # Add the Strict-Transport-Security header even when the connection is HTTP
+      - --entrypoints.web.http.middlewares.default-security-headers.headers.frameDeny=true                                   # X-Frame-Options=deny
+      - --entrypoints.web.http.middlewares.default-security-headers.headers.referrerPolicy=strict-origin-when-cross-origin
+      - --entrypoints.web.http.middlewares.default-security-headers.headers.sslRedirect=true                                 # Allow only https requests
+      - --entrypoints.web.http.middlewares.default-security-headers.headers.stsIncludeSubdomains=true                        # Add includeSubdomains to the Strict-Transport-Security header
+      - --entrypoints.web.http.middlewares.default-security-headers.headers.stsPreload=true                                  # Add preload flag appended to the Strict-Transport-Security header
+      - --entrypoints.web.http.middlewares.default-security-headers.headers.stsSeconds=63072000                              # Set the max-age of the Strict-Transport-Security header (63072000 = 2 years)
+      - --entrypoints.web.http.middlewares.gzip.compress={}
       - --entrypoints.web.address=:80
       - --entrypoints.web.http.redirections.entrypoint.to=websecure
       - --entrypoints.web.http.redirections.entrypoint.scheme=https
       - --entrypoints.web.http.redirections.entrypoint.permanent=true
       - --entrypoints.websecure.address=:443
+      - --entrypoints.websecure.middlewares=default@file
       - --entrypoints.metrics.address=:8080
-      - --http.middlewares.default.chain.middlewares=default-security-headers,gzip
-      - --http.middlewares.default-security-headers.headers.browserXssFilter=true                            # X-XSS-Protection=1; mode=block
-      - --http.middlewares.default-security-headers.headers.contentTypeNosniff=true                          # X-Content-Type-Options=nosniff
-      - --http.middlewares.default-security-headers.headers.forceSTSHeader=true                              # Add the Strict-Transport-Security header even when the connection is HTTP
-      - --http.middlewares.default-security-headers.headers.frameDeny=true                                   # X-Frame-Options=deny
-      - --http.middlewares.default-security-headers.headers.referrerPolicy="strict-origin-when-cross-origin"
-      - --http.middlewares.default-security-headers.headers.sslRedirect=true                                 # Allow only https requests
-      - --http.middlewares.default-security-headers.headers.stsIncludeSubdomains=true                        # Add includeSubdomains to the Strict-Transport-Security header
-      - --http.middlewares.default-security-headers.headers.stsPreload=true                                  # Add preload flag appended to the Strict-Transport-Security header
-      - --http.middlewares.default-security-headers.headers.stsSeconds=63072000                              # Set the max-age of the Strict-Transport-Security header (63072000 = 2 years)
-      - --http.middlewares.gzip.compress={}
       - --providers.docker=true
       - --providers.docker.exposedByDefault=false
       - --api.dashboard=true
