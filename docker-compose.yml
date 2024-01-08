@@ -18,22 +18,25 @@ services:
       - "OVH_APPLICATION_SECRET=$OVH_APPLICATION_SECRET"
       - "OVH_CONSUMER_KEY=$OVH_CONSUMER_KEY"
     command:
-      - --entrypoints.web.http.middlewares.default.chain.middlewares=default-security-headers,gzip
-      - --entrypoints.web.http.middlewares.default-security-headers.headers.browserXssFilter=true                            # X-XSS-Protection=1; mode=block
-      - --entrypoints.web.http.middlewares.default-security-headers.headers.contentTypeNosniff=true                          # X-Content-Type-Options=nosniff
-      - --entrypoints.web.http.middlewares.default-security-headers.headers.forceSTSHeader=true                              # Add the Strict-Transport-Security header even when the connection is HTTP
-      - --entrypoints.web.http.middlewares.default-security-headers.headers.frameDeny=true                                   # X-Frame-Options=deny
-      - --entrypoints.web.http.middlewares.default-security-headers.headers.referrerPolicy=strict-origin-when-cross-origin
-      - --entrypoints.web.http.middlewares.default-security-headers.headers.sslRedirect=true                                 # Allow only https requests
-      - --entrypoints.web.http.middlewares.default-security-headers.headers.stsIncludeSubdomains=true                        # Add includeSubdomains to the Strict-Transport-Security header
-      - --entrypoints.web.http.middlewares.default-security-headers.headers.stsPreload=true                                  # Add preload flag appended to the Strict-Transport-Security header
-      - --entrypoints.web.http.middlewares.default-security-headers.headers.stsSeconds=63072000                              # Set the max-age of the Strict-Transport-Security header (63072000 = 2 years)
-      - --entrypoints.web.http.middlewares.gzip.compress={}
       - --entrypoints.web.address=:80
+      - --traefik.http.middlewares.default.chain.middlewares=default-security-headers,gzip
+      - --traefik.http.middlewares.default-security-headers.headers.browserXssFilter=true                            # X-XSS-Protection=1; mode=block
+      - --traefik.http.middlewares.default-security-headers.headers.contentTypeNosniff=true                          # X-Content-Type-Options=nosniff
+      - --traefik.http.middlewares.default-security-headers.headers.forceSTSHeader=true                              # Add the Strict-Transport-Security header even when the connection is HTTP
+      - --traefik.http.middlewares.default-security-headers.headers.frameDeny=true                                   # X-Frame-Options=deny
+      - --traefik.http.middlewares.default-security-headers.headers.referrerPolicy=strict-origin-when-cross-origin
+      - --traefik.http.middlewares.default-security-headers.headers.sslRedirect=true                                 # Allow only https requests
+      - --traefik.http.middlewares.default-security-headers.headers.stsIncludeSubdomains=true                        # Add includeSubdomains to the Strict-Transport-Security header
+      - --traefik.http.middlewares.default-security-headers.headers.stsPreload=true                                  # Add preload flag appended to the Strict-Transport-Security header
+      - --traefik.http.middlewares.default-security-headers.headers.stsSeconds=63072000                              # Set the max-age of the Strict-Transport-Security header (63072000 = 2 years)
+      - --traefik.http.middlewares.gzip.compress={}
       - --entrypoints.web.http.redirections.entrypoint.to=websecure
       - --entrypoints.web.http.redirections.entrypoint.scheme=https
       - --entrypoints.web.http.redirections.entrypoint.permanent=true
       - --entrypoints.websecure.address=:443
+      - --entrypoints.websecure.http.tls.certresolver=letsencrypt
+      - --entrypoints.websecure.http.tls.domains.main=$HOST
+      - --entrypoints.websecure.http.tls.domains.sans=*.$HOST
       - --entrypoints.websecure.middlewares=default@file
       - --entrypoints.metrics.address=:8080
       - --providers.docker=true
