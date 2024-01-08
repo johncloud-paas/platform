@@ -1,5 +1,6 @@
 # https://blog.filador.fr/je-supervise-mon-traefik-avec-prometheus-et-grafana/
 # https://github.com/loganmarchione/homelab-svg-assets/blob/main/ICONS.md
+# https://joeeey.com/blog/selfhosting-sso-with-traefik-keycloak-part-1/#setting-up-keycloak
 
 version: "3"
 
@@ -187,7 +188,6 @@ services:
 
   redis:
     image: redis:7.2.0
-    container_name: redis
     environment:
       - TZ=$TZ
       - ENABLE_OVERCOMMIT_MEMORY=true
