@@ -9,7 +9,7 @@ http:
         middlewares:
           - default-security-headers
           - gzip
-          - waf
+          # - waf
 
     waf:
       plugin:
