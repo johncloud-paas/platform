@@ -9,6 +9,13 @@ http:
         middlewares:
           - default-security-headers
           - gzip
+          - waf
+
+    waf:
+      plugin:
+        traefik-modsecurity-plugin:
+          modSecurityUrl: http://waf:80
+        maxBodySize: 10485760
 
     authentik:
       forwardAuth:
