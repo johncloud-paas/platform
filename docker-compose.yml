@@ -28,7 +28,7 @@ services:
       - --entrypoints.websecure.http.tls.certresolver=letsencrypt
       - --entrypoints.websecure.http.tls.domains.main=$HOST
       - --entrypoints.websecure.http.tls.domains.sans=*.$HOST
-      # - --entrypoints.websecure.http.middlewares=default@file
+      - --entrypoints.websecure.http.middlewares=default@file
       - --entrypoints.ldaps.address=:636
       - --entrypoints.metrics.address=:8080
       - --providers.docker=true
@@ -63,9 +63,8 @@ services:
       - "traefik.http.routers.traefik.rule=Host(`traefik.$HOST`)"
       - "traefik.http.routers.traefik.service=api@internal"
       - "traefik.http.routers.traefik.entrypoints=websecure"
-      - "traefik.http.routers.traefik.middlewares=default@file"
-      - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
       - "traefik.http.routers.traefik.middlewares=forward-auth-verify"
+      - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
       - "homepage.group=Platform"
       - "homepage.name=Traefik"
       - "homepage.icon=traefik.svg"
@@ -193,6 +192,7 @@ services:
 
   redis:
     image: redis:7.2.0
+    container_name: redis
     environment:
       - TZ=$TZ
       - ENABLE_OVERCOMMIT_MEMORY=true
