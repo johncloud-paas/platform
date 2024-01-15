@@ -1,18 +1,19 @@
 # https://blog.filador.fr/je-supervise-mon-traefik-avec-prometheus-et-grafana/
 # https://github.com/loganmarchione/homelab-svg-assets/blob/main/ICONS.md
 # https://joeeey.com/blog/selfhosting-sso-with-traefik-keycloak-part-1/#setting-up-keycloak
+# https://goauthentik.io/docs/providers/proxy/server_traefik
 
 version: "3"
 
 services:
   traefik:
     image: traefik:v2.10.4
+    container_name: traefik
     ports:
       - "80:80"
       - "443:443"
       - "8080:8080"
     restart: unless-stopped
-    container_name: traefik
     environment:
       - "OVH_ENDPOINT=$OVH_ENDPOINT"
       - "OVH_APPLICATION_KEY=$OVH_APPLICATION_KEY"
@@ -27,13 +28,16 @@ services:
       - --entrypoints.websecure.http.tls.certresolver=letsencrypt
       - --entrypoints.websecure.http.tls.domains.main=$HOST
       - --entrypoints.websecure.http.tls.domains.sans=*.$HOST
-      - --entrypoints.websecure.http.middlewares=default@file
+      # - --entrypoints.websecure.http.middlewares=default@file
+      - --entrypoints.ldaps.address=:636
       - --entrypoints.metrics.address=:8080
       - --providers.docker=true
       - --providers.docker.exposedByDefault=false
       - --providers.file.directory=conf.d
       - --api.dashboard=true
       - --api.insecure=false
+      - --experimental.plugins.traefik-modsecurity-plugin.modulename=github.com/acouvreur/traefik-modsecurity-plugin
+      - --experimental.plugins.traefik-modsecurity-plugin.version=v1.3.0
       - --certificatesresolvers.letsencrypt.acme.email=$ADMIN_EMAIL
       - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
       - --certificatesresolvers.letsencrypt.acme.httpchallenge=true
@@ -53,7 +57,6 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./traefik:/conf.d
-      - $JOHNCLOUD_ROOT/traefik/log:/var/log/traefik/
       - $JOHNCLOUD_ROOT/traefik/letsencrypt:/letsencrypt
     labels:
       - "traefik.enable=true"
@@ -63,11 +66,32 @@ services:
       - "traefik.http.routers.traefik.middlewares=default@file"
       - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
       - "traefik.http.routers.traefik.middlewares=forward-auth-verify"
+      - "traefik.http.middlewares.waf.plugin.traefik-modsecurity-plugin.modSecurityUrl=http://waf:80"
+      - "traefik.http.middlewares.waf.plugin.traefik-modsecurity-plugin.maxBodySize=10485760"
       - "homepage.group=Platform"
       - "homepage.name=Traefik"
       - "homepage.icon=traefik.svg"
       - "homepage.href=https://traefik.$HOST"
       - "homepage.description=Traefik reverse proxy"
+
+  # Nginx server with OWASP CRS (Core Rule Set) rules
+  waf:
+    image: owasp/modsecurity-crs:nginx-alpine
+    container_name: waf
+    environment:
+      - PARANOIA=2
+      - ANOMALY_INBOUND=10
+      - ANOMALY_OUTBOUND=5
+      - BACKEND=http://dummy
+    labels:
+      - "traefik.enable=false"
+
+  # Dummy service that always returns status HTTP 200 to WAF container
+  dummy:
+    image: traefik/whoami
+    container_name: dummy
+    labels:
+      - "traefik.enable=false"
 
   oauth:
     image: thomseddon/traefik-forward-auth:latest
