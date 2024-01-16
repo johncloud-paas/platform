@@ -47,6 +47,7 @@ http:
         stsIncludeSubdomains: true                        # Add includeSubdomains to the Strict-Transport-Security header
         stsPreload: true                                  # Add preload flag appended to the Strict-Transport-Security header
         stsSeconds: 63072000                              # Set the max-age of the Strict-Transport-Security header (63072000 = 2 years)
+        customFrameOptionsValue: "sameorigin"
 
     # Enable GZIP compression
     gzip:
