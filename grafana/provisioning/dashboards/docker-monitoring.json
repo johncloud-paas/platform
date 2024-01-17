@@ -338,7 +338,9 @@
           ],
           "displayMode": "table",
           "placement": "right",
-          "showLegend": true
+          "showLegend": true,
+          "sortBy": "Mean",
+          "sortDesc": true
         },
         "tooltip": {
           "mode": "multi",
@@ -438,7 +440,9 @@
           ],
           "displayMode": "table",
           "placement": "right",
-          "showLegend": true
+          "showLegend": true,
+          "sortBy": "Mean",
+          "sortDesc": true
         },
         "tooltip": {
           "mode": "multi",
@@ -658,7 +662,7 @@
       "type": "timeseries"
     }
   ],
-  "refresh": false,
+  "refresh": "",
   "schemaVersion": 38,
   "style": "dark",
   "tags": [
@@ -699,6 +703,6 @@
   "timezone": "browser",
   "title": "Docker monitoring",
   "uid": "c62b2e41-f0c0-49fd-ad35-035549505e3a",
-  "version": 1,
+  "version": 3,
   "weekStart": ""
 }
