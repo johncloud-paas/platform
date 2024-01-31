@@ -7,12 +7,11 @@ version: "3"
 
 services:
   traefik:
-    image: traefik:v2.10.4
+    image: traefik:latest
     container_name: traefik
     ports:
       - "80:80"
       - "443:443"
-      - "8080:8080"
     restart: unless-stopped
     environment:
       - "OVH_ENDPOINT=$OVH_ENDPOINT"
@@ -30,12 +29,12 @@ services:
       - --entrypoints.websecure.http.tls.domains.sans=*.$HOST
       - --entrypoints.websecure.http.middlewares=default@file
       - --entrypoints.ldaps.address=:636
-      - --entrypoints.metrics.address=:8080
+      # - --entrypoints.metrics.address=:8080
       - --providers.docker=true
       - --providers.docker.exposedByDefault=false
       - --providers.file.directory=conf.d
       - --api.dashboard=true
-      - --api.insecure=false
+      - --api.insecure=true
       - --experimental.plugins.traefik-modsecurity-plugin.modulename=github.com/acouvreur/traefik-modsecurity-plugin
       - --experimental.plugins.traefik-modsecurity-plugin.version=v1.3.0
       - --certificatesresolvers.letsencrypt.acme.email=$ADMIN_EMAIL
@@ -44,12 +43,10 @@ services:
       - --certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web
       # - --certificatesresolvers.letsencrypt.acme.dnschallenge=true
       # - --certificatesresolvers.letsencrypt.acme.dnschallenge.provider=ovh
-      - --accesslog.filepath=/var/log/traefik/access.log
-      - --accesslog.format=json
-      - --metrics.prometheus.entrypoint=metrics
-      - --metrics.prometheus.buckets=0.1,0.3,1.2,5.0
-      - --metrics.prometheus.addEntryPointsLabels=true
-      - --metrics.prometheus.addServicesLabels=true
+      # - --metrics.prometheus.entrypoint=metrics
+      # - --metrics.prometheus.buckets=0.1,0.3,1.2,5.0
+      # - --metrics.prometheus.addEntryPointsLabels=true
+      # - --metrics.prometheus.addServicesLabels=true
     depends_on:
       - oauth
       - portainer
@@ -62,18 +59,14 @@ services:
       default:
         ipv4_address: 192.168.203.26
     labels:
-      - "traefik.enable=false"
-      # - "traefik.enable=true"
-      # - "traefik.http.routers.traefik.rule=Host(`traefik.$HOST`)"
-      # - "traefik.http.routers.traefik.service=api@internal"
-      # - "traefik.http.routers.traefik.entrypoints=websecure"
-      # - "traefik.http.routers.traefik.middlewares=forward-auth-verify"
-      # - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.rule=PathPrefix(`/api`, `/dashboard`)"
+      - "traefik.http.routers.traefik.service=api@internal"
+      - "traefik.http.routers.traefik.entrypoints=web"
       - "homepage.group=Platform"
       - "homepage.name=Traefik"
       - "homepage.icon=traefik.svg"
-      # - "homepage.href=https://traefik.$HOST"
-      - "homepage.href=http://192.168.203.26:8080"
+      - "homepage.href=http://192.168.203.26:8080/dashboard/"
       - "homepage.description=Traefik reverse proxy"
 
   oauth:
