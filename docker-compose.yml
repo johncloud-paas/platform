@@ -49,15 +49,16 @@ services:
       # - --metrics.prometheus.addServicesLabels=true
     depends_on:
       - oauth
-      - portainer
+      # - portainer
       # - grafana
+    networks:
+      default:
+      frontend:
+        ipv4_address: 192.168.205.10
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./traefik:/conf.d
       - $JOHNCLOUD_ROOT/traefik/letsencrypt:/letsencrypt
-    networks:
-      default:
-        ipv4_address: 192.168.203.26
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.traefik.rule=PathPrefix(`/api`, `/dashboard`)"
@@ -66,7 +67,7 @@ services:
       - "homepage.group=Platform"
       - "homepage.name=Traefik"
       - "homepage.icon=traefik.svg"
-      - "homepage.href=http://192.168.203.26:8080/dashboard/"
+      - "homepage.href=http://192.168.205.10:8080/dashboard/"
       - "homepage.description=Traefik reverse proxy"
 
   oauth:
@@ -121,14 +122,14 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - $JOHNCLOUD_ROOT/portainer/data:/data
     networks:
-      default:
-        ipv4_address: 192.168.203.16
+      frontend:
+        ipv4_address: 192.168.205.20
     labels:
       - "traefik.enable=false"
       - "homepage.group=Platform"
       - "homepage.name=Portainer"
       - "homepage.icon=portainer.svg"
-      - "homepage.href=http://192.168.203.16:9000"
+      - "homepage.href=http://192.168.205.20:9000"
       - "homepage.description=Container Management Software"
 
   # grafana:
@@ -294,6 +295,8 @@ services:
       - TS_SOCKS5_SERVER=$TS_SOCKS5_SERVER
       - TS_USERSPACE=$TS_USERSPACE
       - TS_STATE_DIR=$TS_STATE_DIR
+    networks:
+      - frontend
     volumes:
       - /var/lib:/var/lib
       - /dev/net/tun:/dev/net/tun
@@ -304,4 +307,6 @@ networks:
   default:
     external: true
     name: traefik-proxy
-    
+  frontend:
+    external: true
+    name: platform-network
