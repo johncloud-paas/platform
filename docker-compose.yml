@@ -61,7 +61,7 @@ services:
       - $JOHNCLOUD_ROOT/traefik/letsencrypt:/letsencrypt
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.traefik.rule=PathPrefix(`/api`, `/dashboard`)"
+      - "traefik.http.routers.traefik.rule=PathPrefix(`/api`)"
       - "traefik.http.routers.traefik.service=api@internal"
       - "traefik.http.routers.traefik.entrypoints=web"
       - "homepage.group=Platform"
