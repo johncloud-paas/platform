@@ -4,42 +4,42 @@
 # https://goauthentik.io/docs/providers/proxy/server_traefik
 
 services:
-  datadog-agent:
-    image: gcr.io/datadoghq/agent:latest
-    container_name: datadog-agent
-    restart: unless-stopped
-    depends_on:
-      - redis
-    environment:
-      - DD_API_KEY=$DATADOG_API_KEY
-      - DD_SITE=datadoghq.eu
-      - DD_LOGS_ENABLED=true
-      - DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL=true
-      - DD_CONTAINER_EXCLUDE_LOGS=name:datadog-agent
-      - DD_APM_ENABLED=true
-      - DD_APM_NON_LOCAL_TRAFFIC=true
-      - DD_DOGSTATSD_NON_LOCAL_TRAFFIC=true
-      # - DD_APM_RECEIVER_SOCKET=/opt/datadog/apm/inject/run/apm.socket
-      # - DD_DOGSTATSD_SOCKET=/opt/datadog/apm/inject/run/dsd.socket
-      - DD_PROCESS_CONFIG_PROCESS_COLLECTION_ENABLED=true
-    links:
-     - redis
-    networks:
-      frontend:
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /proc/:/host/proc/:ro
-      - /sys/fs/cgroup/:/host/sys/fs/cgroup:ro
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
-      - /opt/datadog/apm:/opt/datadog/apm
-      - /opt/datadog-agent/run:/opt/datadog-agent/run:rw
-    labels:
-      - "traefik.enable=false"
-      - "homepage.group=Platform"
-      - "homepage.name=Datadog"
-      - "homepage.icon=datadog.png"
-      - "homepage.href=$DATADOG_URL"
-      - "homepage.description=Modern monitoring & security"
+  # datadog-agent:
+  #   image: gcr.io/datadoghq/agent:latest
+  #   container_name: datadog-agent
+  #   restart: unless-stopped
+  #   depends_on:
+  #     - redis
+  #   environment:
+  #     - DD_API_KEY=$DATADOG_API_KEY
+  #     - DD_SITE=datadoghq.eu
+  #     - DD_LOGS_ENABLED=true
+  #     - DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL=true
+  #     - DD_CONTAINER_EXCLUDE_LOGS=name:datadog-agent
+  #     - DD_APM_ENABLED=true
+  #     - DD_APM_NON_LOCAL_TRAFFIC=true
+  #     - DD_DOGSTATSD_NON_LOCAL_TRAFFIC=true
+  #     # - DD_APM_RECEIVER_SOCKET=/opt/datadog/apm/inject/run/apm.socket
+  #     # - DD_DOGSTATSD_SOCKET=/opt/datadog/apm/inject/run/dsd.socket
+  #     - DD_PROCESS_CONFIG_PROCESS_COLLECTION_ENABLED=true
+  #   links:
+  #    - redis
+  #   networks:
+  #     frontend:
+  #   volumes:
+  #     - /var/run/docker.sock:/var/run/docker.sock:ro
+  #     - /proc/:/host/proc/:ro
+  #     - /sys/fs/cgroup/:/host/sys/fs/cgroup:ro
+  #     - /var/lib/docker/containers:/var/lib/docker/containers:ro
+  #     - /opt/datadog/apm:/opt/datadog/apm
+  #     - /opt/datadog-agent/run:/opt/datadog-agent/run:rw
+  #   labels:
+  #     - "traefik.enable=false"
+  #     - "homepage.group=Platform"
+  #     - "homepage.name=Datadog"
+  #     - "homepage.icon=datadog.png"
+  #     - "homepage.href=$DATADOG_URL"
+  #     - "homepage.description=Modern monitoring & security"
 
   # dynatrace:
   #   image: dynatrace/oneagent
