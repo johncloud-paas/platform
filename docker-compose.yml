@@ -5,12 +5,15 @@
 
 services:
   datadog:
-    image: gcr.io/datadoghq/agent:7
+    image: gcr.io/datadoghq/agent:latest
     container_name: datadog
     restart: unless-stopped
     environment:
       - DD_API_KEY=$DATADOG_API_KEY
       - DD_SITE=datadoghq.eu
+      - DD_LOGS_ENABLED=true
+      - DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL=true
+      - DD_CONTAINER_EXCLUDE_LOGS=name:datadog-agent
     networks:
       frontend:
     volumes:
