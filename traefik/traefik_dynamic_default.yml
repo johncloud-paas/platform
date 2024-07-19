@@ -11,28 +11,28 @@ http:
           - gzip
           # - waf
 
-    waf:
-      plugin:
-        traefik-modsecurity-plugin:
-          modSecurityUrl: http://waf:80
-          maxBodySize: 10485760
+    # waf:
+    #   plugin:
+    #     traefik-modsecurity-plugin:
+    #       modSecurityUrl: http://waf:80
+    #       maxBodySize: 10485760
 
-    authentik:
-      forwardAuth:
-        address: http://outpost.company:9000/outpost.goauthentik.io/auth/traefik
-        trustForwardHeader: true
-        authResponseHeaders:
-          - X-authentik-username
-          - X-authentik-groups
-          - X-authentik-email
-          - X-authentik-name
-          - X-authentik-uid
-          - X-authentik-jwt
-          - X-authentik-meta-jwks
-          - X-authentik-meta-outpost
-          - X-authentik-meta-provider
-          - X-authentik-meta-app
-          - X-authentik-meta-version
+    # authentik:
+    #   forwardAuth:
+    #     address: http://outpost.company:9000/outpost.goauthentik.io/auth/traefik
+    #     trustForwardHeader: true
+    #     authResponseHeaders:
+    #       - X-authentik-username
+    #       - X-authentik-groups
+    #       - X-authentik-email
+    #       - X-authentik-name
+    #       - X-authentik-uid
+    #       - X-authentik-jwt
+    #       - X-authentik-meta-jwks
+    #       - X-authentik-meta-outpost
+    #       - X-authentik-meta-provider
+    #       - X-authentik-meta-app
+    #       - X-authentik-meta-version
               
     # Add automatically some security headers
     default-security-headers:

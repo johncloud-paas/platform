@@ -89,6 +89,7 @@ services:
     ports:
       - "80:80"
       - "443:443"
+      - "8082:8082"
     restart: unless-stopped
     environment:
       - "OVH_ENDPOINT=$OVH_ENDPOINT"
@@ -105,6 +106,7 @@ services:
       - --entrypoints.websecure.http.tls.domains.main=$HOST
       - --entrypoints.websecure.http.tls.domains.sans=*.$HOST
       - --entrypoints.websecure.http.middlewares=default@file
+      # - --entrypoints.metrics.address=:8082
       - --entrypoints.ldaps.address=:1636/tcp
       - --providers.docker=true
       - --providers.docker.exposedByDefault=false
