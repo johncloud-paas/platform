@@ -1,16 +1,96 @@
 # https://blog.filador.fr/je-supervise-mon-traefik-avec-prometheus-et-grafana/
-
-version: "3"
+# https://github.com/loganmarchione/homelab-svg-assets/blob/main/ICONS.md
+# https://joeeey.com/blog/selfhosting-sso-with-traefik-keycloak-part-1/#setting-up-keycloak
+# https://goauthentik.io/docs/providers/proxy/server_traefik
 
 services:
+  # datadog-agent:
+  #   image: gcr.io/datadoghq/agent:latest
+  #   container_name: datadog-agent
+  #   restart: unless-stopped
+  #   depends_on:
+  #     - redis
+  #   environment:
+  #     - DD_API_KEY=$DATADOG_API_KEY
+  #     - DD_SITE=datadoghq.eu
+  #     - DD_LOGS_ENABLED=true
+  #     - DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL=true
+  #     - DD_CONTAINER_EXCLUDE_LOGS=name:datadog-agent
+  #     - DD_APM_ENABLED=true
+  #     - DD_APM_NON_LOCAL_TRAFFIC=true
+  #     - DD_DOGSTATSD_NON_LOCAL_TRAFFIC=true
+  #     # - DD_APM_RECEIVER_SOCKET=/opt/datadog/apm/inject/run/apm.socket
+  #     # - DD_DOGSTATSD_SOCKET=/opt/datadog/apm/inject/run/dsd.socket
+  #     - DD_PROCESS_CONFIG_PROCESS_COLLECTION_ENABLED=true
+  #   links:
+  #    - redis
+  #   networks:
+  #     frontend:
+  #   volumes:
+  #     - /var/run/docker.sock:/var/run/docker.sock:ro
+  #     - /proc/:/host/proc/:ro
+  #     - /sys/fs/cgroup/:/host/sys/fs/cgroup:ro
+  #     - /var/lib/docker/containers:/var/lib/docker/containers:ro
+  #     - /opt/datadog/apm:/opt/datadog/apm
+  #     - /opt/datadog-agent/run:/opt/datadog-agent/run:rw
+  #   labels:
+  #     - "traefik.enable=false"
+  #     - "homepage.group=Platform"
+  #     - "homepage.name=Datadog"
+  #     - "homepage.icon=datadog.png"
+  #     - "homepage.href=$DATADOG_URL"
+  #     - "homepage.description=Modern monitoring & security"
+
+  # dynatrace:
+  #   image: dynatrace/oneagent
+  #   container_name: dynatrace
+  #   restart: unless-stopped
+  #   cap_drop:
+  #     - ALL
+  #   cap_add:
+  #     - CHOWN
+  #     - DAC_OVERRIDE
+  #     - DAC_READ_SEARCH
+  #     - FOWNER
+  #     - FSETID
+  #     - KILL
+  #     - NET_ADMIN
+  #     - NET_RAW
+  #     - SETFCAP
+  #     - SETGID
+  #     - SETUID
+  #     - SYS_ADMIN
+  #     - SYS_CHROOT
+  #     - SYS_PTRACE
+  #     - SYS_RESOURCE
+  #   pid: "host"
+  #   network_mode: "host"
+  #   read_only: true
+  #   volumes:
+  #     - /:/mnt/root
+  #     - $JOHNCLOUD_ROOT/dynatrace:/mnt/volume_storage_mount
+  #   security_opt:
+  #     - apparmor:unconfined
+  #   environment:
+  #     - ONEAGENT_ENABLE_VOLUME_STORAGE=true
+  #     - ONEAGENT_INSTALLER_SCRIPT_URL=$ONEAGENT_INSTALLER_SCRIPT_URL
+  #     - ONEAGENT_INSTALLER_DOWNLOAD_TOKEN=$ONEAGENT_INSTALLER_DOWNLOAD_TOKEN
+  #   labels:
+  #     - "traefik.enable=false"
+  #     - "homepage.group=Platform"
+  #     - "homepage.name=Dynatrace"
+  #     - "homepage.icon=https://www.fluentd.org/images/datasources/dynatrace.png"
+  #     - "homepage.href=$DYNATRACE_DASHBOARD_URL"
+  #     - "homepage.description=Resource dashboard"
+    
   traefik:
-    image: traefik:v2.10.4
+    image: traefik:latest
+    container_name: traefik
     ports:
       - "80:80"
       - "443:443"
-      - "8080:8080"
+      - "8082:8082"
     restart: unless-stopped
-    container_name: traefik
     environment:
       - "OVH_ENDPOINT=$OVH_ENDPOINT"
       - "OVH_APPLICATION_KEY=$OVH_APPLICATION_KEY"
@@ -22,40 +102,64 @@ services:
       - --entrypoints.web.http.redirections.entrypoint.scheme=https
       - --entrypoints.web.http.redirections.entrypoint.permanent=true
       - --entrypoints.websecure.address=:443
-      - --entrypoints.websecure.http.tls.certResolver=letsencrypt
-      - --entrypoints.metrics.address=:8080
+      - --entrypoints.websecure.http.tls.certresolver=letsencrypt
+      - --entrypoints.websecure.http.tls.domains.main=$HOST
+      - --entrypoints.websecure.http.tls.domains.sans=*.$HOST
+      - --entrypoints.websecure.http.middlewares=default@file
+      # - --entrypoints.metrics.address=:8082
+      - --entrypoints.ldaps.address=:1636/tcp
       - --providers.docker=true
+      - --providers.docker.exposedByDefault=false
+      - --providers.file.directory=conf.d
       - --api.dashboard=true
-      - --api.insecure=false
-      - --certificatesResolvers.letsencrypt.acme.email=$ADMIN_EMAIL
-      - --certificatesResolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
-      - --certificatesresolvers.letsencrypt.acme.dnschallenge=true
-      - --certificatesresolvers.letsencrypt.acme.dnschallenge.provider=ovh
-      - --accesslog.filepath=/var/log/traefik/access.log
-      - --accesslog.format=json
-      - --metrics.prometheus.entrypoint=metrics
-      - --metrics.prometheus.buckets=0.1,0.3,1.2,5.0
-      - --metrics.prometheus.addEntryPointsLabels=true
-      - --metrics.prometheus.addServicesLabels=true
+      - --api.insecure=true
+      - --experimental.plugins.traefik-modsecurity-plugin.modulename=github.com/acouvreur/traefik-modsecurity-plugin
+      - --experimental.plugins.traefik-modsecurity-plugin.version=v1.3.0
+      - --certificatesresolvers.letsencrypt.acme.email=$ADMIN_EMAIL
+      - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
+      - --certificatesresolvers.letsencrypt.acme.httpchallenge=true
+      - --certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web
+      # - --certificatesresolvers.letsencrypt.acme.dnschallenge=true
+      # - --certificatesresolvers.letsencrypt.acme.dnschallenge.provider=ovh
+      # - --metrics.prometheus.entrypoint=metrics
+      # - --metrics.prometheus.buckets=0.1,0.3,1.2,5.0
+      # - --metrics.prometheus.addEntryPointsLabels=true
+      # - --metrics.prometheus.addServicesLabels=true
     depends_on:
+      # - dynatrace
       - oauth
-      - portainer
-      - grafana
+      # - portainer
+      # - grafana
+    networks:
+      default:
+      frontend:
+        ipv4_address: 192.168.205.10
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - $JOHNCLOUD_ROOT/traefik/log:/var/log/traefik/
+      - ./traefik:/conf.d
       - $JOHNCLOUD_ROOT/traefik/letsencrypt:/letsencrypt
     labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.traefik.rule=Host(`traefik.$HOST`)"
+      - "traefik.enable=false"
+      # - "traefik.enable=true"
+      # - "traefik.http.routers.traefik.rule=Host(`traefik.$HOST`)"  
+      # - "traefik.http.routers.traefik.rule=PathPrefix(`/api`)"
       - "traefik.http.routers.traefik.service=api@internal"
       - "traefik.http.routers.traefik.entrypoints=websecure"
       - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
+      - "traefik.http.services.traefik.loadbalancer.server.port=8080"
       - "traefik.http.routers.traefik.middlewares=forward-auth-verify"
+      - "homepage.group=Platform"
+      - "homepage.name=Traefik"
+      - "homepage.icon=traefik.svg"
+      - "homepage.href=http://192.168.205.10:8080/dashboard/"
+      # - "homepage.href=https://traefik.$HOST/dashboard"
+      - "homepage.description=Traefik reverse proxy"
 
   oauth:
     image: thomseddon/traefik-forward-auth:latest
     container_name: oauth
+    # depends_on:
+    #   - dynatrace
     environment:
       - TZ=$TZ
       - PROVIDERS_GOOGLE_CLIENT_ID=$PROVIDERS_GOOGLE_CLIENT_ID
@@ -67,7 +171,7 @@ services:
       - INSECURE_COOKIE=$INSECURE_COOKIE
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.forward.rule=Host(`oauth.$HOST`)"   
+      - "traefik.http.routers.forward.rule=Host(`oauth.$HOST`)"
       - "traefik.http.routers.forward.entrypoints=websecure"
       - "traefik.http.routers.forward.tls.certresolver=letsencrypt"
       - "traefik.http.services.forward.loadbalancer.server.port=4181"
@@ -92,128 +196,217 @@ services:
       - $JOHNCLOUD_ROOT/traefik/certs:/output
     depends_on:
       - traefik
+      # - dynatrace
     labels:
       - "traefik.enable=false"
 
   portainer:
-    image: portainer/portainer-ce:latest
+    image: portainer/portainer-ee:latest
+    container_name: portainer
     restart: unless-stopped
-    ports:
-      - 9761:9000
+    # depends_on:
+    #   - dynatrace
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
       - /var/run/docker.sock:/var/run/docker.sock
       - $JOHNCLOUD_ROOT/portainer/data:/data
+    networks:
+      frontend:
+        ipv4_address: 192.168.205.20
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.portainer.rule=Host(`portainer.$HOST`)"
+      - "traefik.http.routers.portainer.rule=Host(`portainer.$HOST`)"   
       - "traefik.http.routers.portainer.entrypoints=websecure"
       - "traefik.http.routers.portainer.tls.certresolver=letsencrypt"
       - "traefik.http.services.portainer.loadbalancer.server.port=9000"
+      - "homepage.group=Platform"
+      - "homepage.name=Portainer"
+      - "homepage.icon=portainer.svg"
+      # - "homepage.href=http://192.168.205.20:9000"
+      - "homepage.href=https://portainer.$HOST"
+      - "homepage.description=Container Management Software"
 
-  grafana:
-    image: grafana/grafana:10.1.0
-    restart: unless-stopped
-    user: "0:0"
-    environment:
-      - TZ=$TZ
-      - GF_AUTH_ANONYMOUS_ENABLED=$GF_AUTH_ANONYMOUS_ENABLED
-      - GF_AUTH_BASIC_ENABLED=$GF_AUTH_BASIC_ENABLED
-      - GF_AUTH_PROXY_ENABLED=$GF_AUTH_PROXY_ENABLED
-      - GF_USERS_ALLOW_SIGN_UP=$GF_USERS_ALLOW_SIGN_UP
-      - GF_INSTALL_PLUGINS=$GF_INSTALL_PLUGINS
-      - GF_SERVER_ROOT_URL=$GF_SERVER_ROOT_URL
-    volumes:
-      - $JOHNCLOUD_ROOT/monitoring/grafana_data:/var/lib/grafana
-      - ./grafana/provisioning:/etc/grafana/provisioning
-      - /etc/timezone:/etc/timezone:ro
-      - /etc/localtime:/etc/localtime:ro
-    depends_on:
-      - prometheus
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.grafana-secure.entrypoints=websecure"
-      - "traefik.http.routers.grafana-secure.rule=Host(`monitoring.$HOST`)"
-      - "traefik.http.routers.grafana-secure.middlewares=forward-auth-verify"
-      - "traefik.http.routers.grafana-secure.tls=true"
-      - "traefik.http.routers.grafana-secure.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.grafana-secure.service=grafana"
-      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+  # grafana:
+  #   image: grafana/grafana:10.1.0
+  #   container_name: grafana
+  #   restart: unless-stopped
+  #   user: "0:0"
+  #   environment:
+  #     - TZ=$TZ
+  #     - GF_AUTH_ANONYMOUS_ENABLED=$GF_AUTH_ANONYMOUS_ENABLED
+  #     - GF_AUTH_BASIC_ENABLED=$GF_AUTH_BASIC_ENABLED
+  #     - GF_AUTH_PROXY_ENABLED=$GF_AUTH_PROXY_ENABLED
+  #     - GF_USERS_ALLOW_SIGN_UP=$GF_USERS_ALLOW_SIGN_UP
+  #     - GF_INSTALL_PLUGINS=$GF_INSTALL_PLUGINS
+  #     - GF_SERVER_ROOT_URL=$GF_SERVER_ROOT_URL
+  #   volumes:
+  #     - $JOHNCLOUD_ROOT/monitoring/grafana_data:/var/lib/grafana
+  #     - ./grafana/provisioning:/etc/grafana/provisioning
+  #     - /etc/timezone:/etc/timezone:ro
+  #     - /etc/localtime:/etc/localtime:ro
+  #   depends_on:
+  #     - prometheus
+  #     # - dynatrace
+  #   labels:
+  #     - "traefik.enable=true"
+  #     - "traefik.http.routers.grafana-secure.entrypoints=websecure"
+  #     - "traefik.http.routers.grafana-secure.rule=Host(`monitoring.$HOST`)"
+  #     - "traefik.http.routers.grafana-secure.middlewares=forward-auth-verify"
+  #     - "traefik.http.routers.grafana-secure.tls=true"
+  #     - "traefik.http.routers.grafana-secure.tls.certresolver=letsencrypt"
+  #     - "traefik.http.routers.grafana-secure.service=grafana"
+  #     - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+  #     - "homepage.group=Platform"
+  #     - "homepage.name=Grafana"
+  #     - "homepage.icon=grafana.svg"
+  #     - "homepage.href=https://monitoring.$HOST"
+  #     - "homepage.description=Resource dashboard"
 
   redis:
     image: redis:7.2.0
+    container_name: redis
+    # depends_on:
+    #   - dynatrace
     environment:
       - TZ=$TZ
       - ENABLE_OVERCOMMIT_MEMORY=true
-    ports:
-    - 6379:6379
     labels:
       - "traefik.enable=false"
 
-  cadvisor:
-    image: gcr.io/cadvisor/cadvisor:v0.47.2
-    ports:
-      - 8987:8080
-    volumes:
-      - /:/rootfs:ro
-      - /var/run:/var/run:ro
-      - /sys:/sys:ro
-      - /var/lib/docker/:/var/lib/docker:ro
-    command: -max_procs=4 -docker_only=true
-    environment:
-      - TZ=$TZ
-    depends_on:
-      - redis
-    labels:
-      - "traefik.enable=false"
+  # cadvisor:
+  #   image: gcr.io/cadvisor/cadvisor:v0.47.2
+  #   container_name: cadvisor
+  #   volumes:
+  #     - /:/rootfs:ro
+  #     - /var/run:/var/run:ro
+  #     - /sys:/sys:ro
+  #     - /var/lib/docker/:/var/lib/docker:ro
+  #   command: -max_procs=4 -docker_only=true
+  #   environment:
+  #     - TZ=$TZ
+  #   depends_on:
+  #     - redis
+  #     # - dynatrace
+  #   labels:
+  #     - "traefik.enable=false"
 
-  loki:
-    image: grafana/loki:latest
-    user: "0:0"
-    ports:
-      - 3100:3100
-    volumes:
-      - $JOHNCLOUD_ROOT/monitoring/loki:/loki
-      - ./loki/config.yml:/etc/loki/loki-config.yaml
-    command: -config.file=/etc/loki/loki-config.yaml
-    environment:
-      - TZ=$TZ
-    labels:
-      - "traefik.enable=false"
+  # node_exporter:
+  #   image: quay.io/prometheus/node-exporter:latest
+  #   restart: unless-stopped
+  #   container_name: node_exporter
+  #   command:
+  #     - '--path.rootfs=/host'
+  #   pid: host
+  #   volumes:
+  #     - /:/host:ro,rslave
+  #   environment:
+  #     - TZ=$TZ
+  #   depends_on:
+  #     - redis
+  #     # - dynatrace
+  #   labels:
+  #     - "traefik.enable=false"
         
-  promtail:
-    image:  grafana/promtail:latest
-    volumes:
-      - ./promtail/config.yml:/etc/promtail/docker-config.yaml
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    command: -config.file=/etc/promtail/docker-config.yaml
-    environment:
-      - TZ=$TZ
-    depends_on:
-      - loki
-    labels:
-      - "traefik.enable=false"
+  # prometheus:
+  #   image: prom/prometheus:v2.15.2
+  #   container_name: prometheus
+  #   restart: unless-stopped
+  #   user: "0:0"
+  #   # depends_on:
+  #   #   - dynatrace
+  #   volumes:
+  #     - ./prometheus/:/etc/prometheus/
+  #     - $JOHNCLOUD_ROOT/monitoring/prometheus/db:/prometheus
+  #     - /etc/timezone:/etc/timezone:ro
+  #     - /etc/localtime:/etc/localtime:ro
+  #   command:
+  #     - "--web.route-prefix=/"
+  #     - "--config.file=/etc/prometheus/prometheus.yml"
+  #     - "--storage.tsdb.path=/prometheus"
+  #     - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+  #     - "--web.console.templates=/usr/share/prometheus/consoles"
+  #     - "--web.enable-lifecycle"
+  #   environment:
+  #     - TZ=$TZ
+  #   labels:
+  #     - "traefik.enable=false"
+
+  # loki:
+  #   image: grafana/loki:latest
+  #   container_name: loki
+  #   user: "0:0"
+  #   ports:
+  #     - 3100:3100
+  #   volumes:
+  #     - $JOHNCLOUD_ROOT/monitoring/loki:/loki
+  #     - ./loki/config.yml:/etc/loki/loki-config.yaml
+  #   command: -config.file=/etc/loki/loki-config.yaml
+  #   environment:
+  #     - TZ=$TZ
+  #   labels:
+  #     - "traefik.enable=false"
         
-  prometheus:
-    image: prom/prometheus:v2.15.2
+  # promtail:
+  #   image:  grafana/promtail:latest
+  #   container_name: promtail
+  #   volumes:
+  #     - ./promtail/config.yml:/etc/promtail/docker-config.yaml
+  #     - /var/lib/docker/containers:/var/lib/docker/containers:ro
+  #     - /var/run/docker.sock:/var/run/docker.sock:ro
+  #   command: -config.file=/etc/promtail/docker-config.yaml
+  #   environment:
+  #     - TZ=$TZ
+  #   depends_on:
+  #     - loki
+  #   labels:
+  #     - "traefik.enable=false"
+
+  homepage:
+    image: ghcr.io/gethomepage/homepage:latest
+    container_name: homepage
     restart: unless-stopped
-    user: "0:0"
+    depends_on:
+      - oauth
+      - tailscale
+      # - dynatrace
     volumes:
-      - ./prometheus/:/etc/prometheus/
-      - $JOHNCLOUD_ROOT/monitoring/prometheus/db:/prometheus
-      - /etc/timezone:/etc/timezone:ro
-      - /etc/localtime:/etc/localtime:ro
-    command:
-      - "--web.route-prefix=/"
-      - "--config.file=/etc/prometheus/prometheus.yml"
-      - "--storage.tsdb.path=/prometheus"
-      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
-      - "--web.console.templates=/usr/share/prometheus/consoles"
-      - "--web.enable-lifecycle"
+      - $JOHNCLOUD_ROOT/home/config:/app/config # Make sure your local config directory exists
+      - /var/run/docker.sock:/var/run/docker.sock:ro # (optional) For docker integrations
+    labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.homepage.rule=Host(`home.$HOST`)"
+        - "traefik.http.routers.homepage.entrypoints=websecure"
+        - "traefik.http.routers.homepage.tls.certresolver=letsencrypt"
+        - "traefik.http.routers.homepage.middlewares=forward-auth-verify"
+ 
+  tailscale:
+    image: ghcr.io/tailscale/tailscale:latest
+    container_name: tailscale
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    # depends_on:
+    #   - dynatrace
     environment:
-      - TZ=$TZ
+      - VIRTUAL_HOST=tailscale.${HOST}
+      - TS_ACCEPT_DNS=$TS_ACCEPT_DNS
+      - TS_AUTH_ONCE=$TS_AUTH_ONCE
+      - TS_AUTHKEY=$TS_AUTHKEY
+      - TS_DEST_IP=$TS_DEST_IP
+      - TS_HOSTNAME=$TS_HOSTNAME
+      - TS_OUTBOUND_HTTP_PROXY_LISTEN=$TS_OUTBOUND_HTTP_PROXY_LISTEN
+      - TS_ROUTES=$TS_ROUTES
+      - TS_SOCKET=$TS_SOCKET
+      - TS_SOCKS5_SERVER=$TS_SOCKS5_SERVER
+      - TS_USERSPACE=$TS_USERSPACE
+      - TS_STATE_DIR=$TS_STATE_DIR
+    networks:
+      - frontend
+    volumes:
+      - /var/lib:/var/lib
+      - /dev/net/tun:/dev/net/tun
     labels:
       - "traefik.enable=false"
 
@@ -221,4 +414,6 @@ networks:
   default:
     external: true
     name: traefik-proxy
-    
+  frontend:
+    external: true
+    name: platform-network
