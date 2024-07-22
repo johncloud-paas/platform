@@ -89,7 +89,7 @@ services:
     ports:
       - "80:80"
       - "443:443"
-      - "8082:8082"
+      # - "8082:8082"
     restart: unless-stopped
     environment:
       - "OVH_ENDPOINT=$OVH_ENDPOINT"
@@ -107,14 +107,19 @@ services:
       - --entrypoints.websecure.http.tls.domains.sans=*.$HOST
       - --entrypoints.websecure.http.middlewares=default@file
       # - --entrypoints.metrics.address=:8082
-      - --entrypoints.ldaps.address=:1636/tcp
+      # - --entrypoints.ldaps.address=:1636/tcp
       - --providers.docker=true
       - --providers.docker.exposedByDefault=false
       - --providers.file.directory=conf.d
+      - --providers.file.watch=true
       - --api.dashboard=true
       - --api.insecure=true
-      - --experimental.plugins.traefik-modsecurity-plugin.modulename=github.com/acouvreur/traefik-modsecurity-plugin
-      - --experimental.plugins.traefik-modsecurity-plugin.version=v1.3.0
+      # - --experimental.plugins.fail2ban.modulename=github.com/tomMoulard/fail2ban
+      # - --experimental.plugins.fail2ban.version=v0.8.1
+      # - --experimental.plugins.traefik-modsecurity-plugin.modulename=github.com/acouvreur/traefik-modsecurity-plugin
+      # - --experimental.plugins.traefik-modsecurity-plugin.version=v1.3.0
+      - --experimental.plugins.wafrisPlugin.moduleName=github.com/Wafris/wafris-traefik
+      - --experimental.plugins.wafrisPlugin.version=v0.0.2
       - --certificatesresolvers.letsencrypt.acme.email=$ADMIN_EMAIL
       - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
       - --certificatesresolvers.letsencrypt.acme.httpchallenge=true
@@ -128,6 +133,7 @@ services:
     depends_on:
       # - dynatrace
       - oauth
+      - redis
       # - portainer
       # - grafana
     networks:
