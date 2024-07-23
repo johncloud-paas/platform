@@ -24,8 +24,7 @@ services:
   #     - DD_PROCESS_CONFIG_PROCESS_COLLECTION_ENABLED=true
   #   links:
   #    - redis
-  #   networks:
-  #     frontend:
+  
   #   volumes:
   #     - /var/run/docker.sock:/var/run/docker.sock:ro
   #     - /proc/:/host/proc/:ro
@@ -89,7 +88,6 @@ services:
     ports:
       - "80:80"
       - "443:443"
-      # - "8082:8082"
     restart: unless-stopped
     environment:
       - "OVH_ENDPOINT=$OVH_ENDPOINT"
@@ -106,8 +104,6 @@ services:
       - --entrypoints.websecure.http.tls.domains.main=$HOST
       - --entrypoints.websecure.http.tls.domains.sans=*.$HOST
       - --entrypoints.websecure.http.middlewares=default@file
-      # - --entrypoints.metrics.address=:8082
-      # - --entrypoints.ldaps.address=:1636/tcp
       - --providers.docker=true
       - --providers.docker.exposedByDefault=false
       - --providers.file.directory=conf.d
@@ -136,29 +132,21 @@ services:
       - redis
       # - portainer
       # - grafana
-    networks:
-      default:
-      frontend:
-        ipv4_address: 192.168.205.10
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./traefik:/conf.d
       - $JOHNCLOUD_ROOT/traefik/letsencrypt:/letsencrypt
     labels:
-      - "traefik.enable=false"
-      # - "traefik.enable=true"
-      # - "traefik.http.routers.traefik.rule=Host(`traefik.$HOST`)"  
-      # - "traefik.http.routers.traefik.rule=PathPrefix(`/api`)"
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.$HOST`)"
       - "traefik.http.routers.traefik.service=api@internal"
       - "traefik.http.routers.traefik.entrypoints=websecure"
       - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
-      - "traefik.http.services.traefik.loadbalancer.server.port=8080"
       - "traefik.http.routers.traefik.middlewares=forward-auth-verify"
       - "homepage.group=Platform"
       - "homepage.name=Traefik"
       - "homepage.icon=traefik.svg"
-      - "homepage.href=http://192.168.205.10:8080/dashboard/"
-      # - "homepage.href=https://traefik.$HOST/dashboard"
+      - "homepage.href=https://traefik.$HOST"
       - "homepage.description=Traefik reverse proxy"
 
   oauth:
@@ -217,9 +205,6 @@ services:
       - /etc/localtime:/etc/localtime:ro
       - /var/run/docker.sock:/var/run/docker.sock
       - $JOHNCLOUD_ROOT/portainer/data:/data
-    networks:
-      frontend:
-        ipv4_address: 192.168.205.20
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.portainer.rule=Host(`portainer.$HOST`)"   
@@ -408,8 +393,6 @@ services:
       - TS_SOCKS5_SERVER=$TS_SOCKS5_SERVER
       - TS_USERSPACE=$TS_USERSPACE
       - TS_STATE_DIR=$TS_STATE_DIR
-    networks:
-      - frontend
     volumes:
       - /var/lib:/var/lib
       - /dev/net/tun:/dev/net/tun
@@ -420,6 +403,4 @@ networks:
   default:
     external: true
     name: traefik-proxy
-  frontend:
-    external: true
-    name: platform-network
+    
