@@ -15,8 +15,6 @@ services:
       - --entrypoints.websecure.http.tls.domains.main=$HOST
       - --entrypoints.websecure.http.tls.domains.sans=*.$HOST
       - --entrypoints.websecure.http.middlewares=default@file
-      - --tracing.otlp=true
-      - --tracing.otlp.http.endpoint=http://otel:4318/v1/traces
       - --providers.docker=true
       - --providers.docker.exposedByDefault=false
       - --providers.file.directory=conf.d
@@ -39,20 +37,6 @@ services:
       - "traefik.http.routers.traefik.service=api@internal"
       - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
       - "traefik.http.routers.traefik.entrypoints=websecure"
-
-  otel-collector:
-    image: otel/opentelemetry-collector-contrib
-    container_name: otel
-    volumes:
-      - ./otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml
-    ports:
-      - 1888:1888 # pprof extension
-      - 8888:8888 # Prometheus metrics exposed by the Collector
-      - 8889:8889 # Prometheus exporter metrics
-      - 13133:13133 # health_check extension
-      - 4317:4317 # OTLP gRPC receiver
-      - 4318:4318 # OTLP http receiver
-      - 55679:55679 # zpages extension
       
 volumes:
   test_data:
