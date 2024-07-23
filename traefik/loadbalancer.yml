@@ -8,6 +8,7 @@ http:
     waf-plugin:
       plugin:
         wafrisPlugin:
+          # url: "redis://redis:6379"
           url: "redis://TpuxPNCe59JMcKhnWdKp4eH4vh2ZYZ9U3GXWywALMA@redis-dedicated-cdg-hyihu66pn90z.fly.dev:9987"
           wafris_timeout: 3
 

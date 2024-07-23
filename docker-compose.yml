@@ -1,6 +1,6 @@
 services:
   traefik:
-    image: traefik:latest
+    image: traefik:v2.11.6
     ports:
       - "80:80"
       - "443:443"
@@ -14,11 +14,10 @@ services:
       - --entrypoints.websecure.http.tls.certresolver=letsencrypt
       - --entrypoints.websecure.http.tls.domains.main=$HOST
       - --entrypoints.websecure.http.tls.domains.sans=*.$HOST
-      - --entrypoints.websecure.http.middlewares=default@file
+      - --entrypoints.websecure.http.middlewares=waf-plugin@file
       - --providers.docker=true
       - --providers.docker.exposedByDefault=false
-      - --providers.file.directory=conf.d
-      - --providers.file.watch=true
+      - --providers.file.filename=conf.d/loadbalancer.yml
       - --api.dashboard=true
       - --api.insecure=true
       - --experimental.plugins.wafrisPlugin.moduleName=github.com/Wafris/wafris-traefik
@@ -37,10 +36,25 @@ services:
       - "traefik.http.routers.traefik.service=api@internal"
       - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
       - "traefik.http.routers.traefik.entrypoints=websecure"
-      
+  
+  redis:
+    image: redis:7.2.0
+    container_name: redis
+    # depends_on:
+    #   - dynatrace
+    environment:
+      - TZ=$TZ
+      - ENABLE_OVERCOMMIT_MEMORY=true
+    volumes:
+      - redis_data:/data
+    labels:
+      - "traefik.enable=false"
+
 volumes:
   test_data:
     name: test_data
+  redis_data:
+    name: redis_data
 
 networks:
   default:
