@@ -1,12 +1,15 @@
 FROM python:3.11
 
-ARG PORT
+ARG PORT=80
 ENV PORT=$PORT
 
 WORKDIR /code
 
-COPY tcp_ping/* /code/
+COPY tcp_ping/requirements.txt /code/
 
 RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
 
-CMD ["fastapi", "run", "/code/main.py", "--proxy-headers", "--port", "${PORT}"]
+COPY tcp_ping/main.py /code/
+COPY tcp_ping/start.sh /code/
+
+CMD ["/bin/sh", "/code/start.sh"]
