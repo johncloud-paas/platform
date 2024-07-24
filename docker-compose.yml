@@ -14,14 +14,17 @@ services:
       - --entrypoints.websecure.http.tls.certresolver=letsencrypt
       - --entrypoints.websecure.http.tls.domains.main=$HOST
       - --entrypoints.websecure.http.tls.domains.sans=*.$HOST
-      - --entrypoints.websecure.http.middlewares=waf-plugin@file
+      # - --entrypoints.websecure.http.middlewares=default@docker
       - --providers.docker=true
       - --providers.docker.exposedByDefault=false
-      - --providers.file.filename=conf.d/loadbalancer.yml
       - --api.dashboard=true
       - --api.insecure=true
-      - --experimental.plugins.wafrisPlugin.moduleName=github.com/Wafris/wafris-traefik
-      - --experimental.plugins.wafrisPlugin.version=v0.0.2
+      - --experimental.plugins.traefik-modsecurity-plugin.modulename=github.com/acouvreur/traefik-modsecurity-plugin
+      - --experimental.plugins.traefik-modsecurity-plugin.version=v1.3.0
+      - --experimental.plugins.google-oidc-auth-middleware.modulename=github.com/andrewkroh/google-oidc-auth-middleware
+      - --experimental.plugins.google-oidc-auth-middleware.version=v0.1.0
+      # - --experimental.plugins.wafrisPlugin.moduleName=github.com/Wafris/wafris-traefik
+      # - --experimental.plugins.wafrisPlugin.version=v0.0.2
       - --certificatesresolvers.letsencrypt.acme.email=$ADMIN_EMAIL
       - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
       - --certificatesresolvers.letsencrypt.acme.httpchallenge=true
@@ -36,25 +39,42 @@ services:
       - "traefik.http.routers.traefik.service=api@internal"
       - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
       - "traefik.http.routers.traefik.entrypoints=websecure"
+      - "traefik.http.middlewares.waf.plugin.traefik-modsecurity-plugin.modSecurityUrl=http://waf:80"
+      - "traefik.http.middlewares.waf.plugin.traefik-modsecurity-plugin.maxBodySize=10485760"
+      - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.oidc.clientID=942480273465-5ui6phn5umjmq9ak0tv5k2la38vmdcbs.apps.googleusercontent.com"
+      - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.oidc.clientSecret=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"
+      - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.cookie.secret=gkjzeghflzehjflkzehfmzef"
+      - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.authorized.emails=ydethe@gmail.com"
+      - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.authorized.domains=johncloud.fr"
+      # - "traefik.http.middlewares.default.chain.middlewares=waf"
+      # - "traefik.http.middlewares.default.chain.middlewares=oidc-auth"
   
-  redis:
-    image: redis:7.2.0
-    container_name: redis
-    # depends_on:
-    #   - dynatrace
+  waf:
+    image: owasp/modsecurity-crs:nginx-alpine
+    container_name: waf
     environment:
-      - TZ=$TZ
-      - ENABLE_OVERCOMMIT_MEMORY=true
-    volumes:
-      - redis_data:/data
+      - PARANOIA=1
+      - ANOMALY_INBOUND=10
+      - ANOMALY_OUTBOUND=5
+      - BACKEND=http://dummy
+
+  dummy:
+    image: containous/whoami
+    container_name: dummy
+
+  whoami:
+    image: traefik/whoami
+    restart: unless-stopped
     labels:
-      - "traefik.enable=false"
+      - "traefik.enable=true"
+      - "traefik.http.routers.whoami.rule=Host(`whoami.$HOST`)"
+      - "traefik.http.routers.whoami.entrypoints=websecure"
+      - "traefik.http.routers.whoami.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.whoami.middlewares=oidc-auth@docker"
 
 volumes:
   test_data:
     name: test_data
-  redis_data:
-    name: redis_data
 
 networks:
   default:
