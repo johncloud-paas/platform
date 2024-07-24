@@ -14,7 +14,7 @@ services:
       - --entrypoints.websecure.http.tls.certresolver=letsencrypt
       - --entrypoints.websecure.http.tls.domains.main=$HOST
       - --entrypoints.websecure.http.tls.domains.sans=*.$HOST
-      # - --entrypoints.websecure.http.middlewares=default@docker
+      - --entrypoints.websecure.http.middlewares=default@docker
       - --providers.docker=true
       - --providers.docker.exposedByDefault=false
       - --api.dashboard=true
@@ -23,8 +23,10 @@ services:
       - --experimental.plugins.traefik-modsecurity-plugin.version=v1.3.0
       - --experimental.plugins.google-oidc-auth-middleware.modulename=github.com/andrewkroh/google-oidc-auth-middleware
       - --experimental.plugins.google-oidc-auth-middleware.version=v0.1.0
-      # - --experimental.plugins.wafrisPlugin.moduleName=github.com/Wafris/wafris-traefik
-      # - --experimental.plugins.wafrisPlugin.version=v0.0.2
+      - --experimental.plugins.wafrisPlugin.moduleName=github.com/Wafris/wafris-traefik
+      - --experimental.plugins.wafrisPlugin.version=v0.0.2
+      - --experimental.plugins.bouncer.modulename=github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin
+      - --experimental.plugins.bouncer.version=v1.3.0
       - --certificatesresolvers.letsencrypt.acme.email=$ADMIN_EMAIL
       - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
       - --certificatesresolvers.letsencrypt.acme.httpchallenge=true
@@ -46,21 +48,31 @@ services:
       - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.cookie.secret=gkjzeghflzehjflkzehfmzef"
       - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.authorized.emails=ydethe@gmail.com"
       - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.authorized.domains=johncloud.fr"
+      - "traefik.http.middlewares.crowdsec.plugin.bouncer.enabled=true"
+      # crowdseclapikey is the key to authenticate to crowdsec
+      - "traefik.http.middlewares.crowdsec.plugin.bouncer.crowdseclapikey=FIXME-LAPI-KEY-1="
+      # enable AppSec real time check
+      - "traefik.http.middlewares.crowdsec.plugin.bouncer.crowdsecappsecenabled=true"
+      # forwardedheaderstrustedips should be the IP of the proxy that is in front of traefik (if any)
+      # - "traefik.http.middlewares.crowdsec.plugin.bouncer.forwardedheaderstrustedips=172.21.0.5"
       # - "traefik.http.middlewares.default.chain.middlewares=waf"
-      # - "traefik.http.middlewares.default.chain.middlewares=oidc-auth"
+      - "traefik.http.middlewares.default.chain.middlewares=crowdsec"
   
-  waf:
-    image: owasp/modsecurity-crs:nginx-alpine
-    container_name: waf
+  crowdsec:
+    image: crowdsecurity/crowdsec
+    container_name: crowdsec
+    restart: unless-stopped
     environment:
-      - PARANOIA=1
-      - ANOMALY_INBOUND=10
-      - ANOMALY_OUTBOUND=5
-      - BACKEND=http://dummy
-
-  dummy:
-    image: containous/whoami
-    container_name: dummy
+      COLLECTIONS: "crowdsecurity/traefik crowdsecurity/http-cve"
+      # CUSTOM_HOSTNAME: crowdsec
+      # We need to register one api key per service we will use
+      # BOUNCER_KEY_TRAEFIK: FIXME-LAPI-KEY-1=
+    volumes:
+      - $JOHNCLOUD_ROOT/crowdsec/logs:/var/log/traefik:ro
+      - $JOHNCLOUD_ROOT/crowdsec/db:/var/lib/crowdsec/data/
+      - $JOHNCLOUD_ROOT/crowdsec/config:/etc/crowdsec/
+    labels:
+      - "traefik.enable=false"
 
   whoami:
     image: traefik/whoami
