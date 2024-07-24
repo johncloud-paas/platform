@@ -19,6 +19,7 @@ services:
       - --providers.docker.exposedByDefault=false
       - --api.dashboard=true
       - --api.insecure=true
+      - --log.filePath=logs/traefik.log
       - --experimental.plugins.traefik-modsecurity-plugin.modulename=github.com/acouvreur/traefik-modsecurity-plugin
       - --experimental.plugins.traefik-modsecurity-plugin.version=v1.3.0
       - --experimental.plugins.google-oidc-auth-middleware.modulename=github.com/andrewkroh/google-oidc-auth-middleware
@@ -64,11 +65,12 @@ services:
     restart: unless-stopped
     environment:
       COLLECTIONS: "crowdsecurity/traefik crowdsecurity/http-cve"
-      # CUSTOM_HOSTNAME: crowdsec
+      CUSTOM_HOSTNAME: crowdsec
       # We need to register one api key per service we will use
       # BOUNCER_KEY_TRAEFIK: FIXME-LAPI-KEY-1=
     volumes:
-      - $JOHNCLOUD_ROOT/crowdsec/logs:/var/log/traefik:ro
+      - ./crowdsec/acquis.yaml:/etc/crowdsec/acquis.yaml
+      - ./logs:/var/log/traefik:ro
       - $JOHNCLOUD_ROOT/crowdsec/db:/var/lib/crowdsec/data/
       - $JOHNCLOUD_ROOT/crowdsec/config:/etc/crowdsec/
     labels:
