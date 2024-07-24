@@ -1,10 +1,12 @@
-FROM python:3.9
+FROM python:3.11
+
+ARG PORT
+ENV PORT=$PORT
 
 WORKDIR /code
 
-COPY tcp_ping/dist/*.whl /code/
-COPY tcp_ping/src/tcp_ping/main.py /code/
+COPY tcp_ping/* /code/
 
-RUN pip install --no-cache-dir --upgrade -r /code/*.whl
+RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
 
-CMD ["fastapi", "run", "/code/main.py", "--proxy-headers", "--port", "80"]
+CMD ["fastapi", "run", "/code/main.py", "--proxy-headers", "--port", "${PORT}"]

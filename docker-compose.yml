@@ -69,7 +69,11 @@ services:
 
   tcp_ping:
     build: .
-    
+    environment:
+      - PORT=3566
+    ports:
+      - 3567:3566
+
   whoami:
     image: traefik/whoami
     restart: unless-stopped
