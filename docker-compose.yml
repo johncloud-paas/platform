@@ -32,6 +32,8 @@ services:
       - --providers.docker.exposedByDefault=false
       - --providers.file.directory=conf.d
       - --providers.file.watch=true
+      - --accesslog.format=json
+      - --accesslog.fields.headers.names.X-Forwarded-User=keep
       - --api.dashboard=true
       - --api.insecure=true
       - --experimental.plugins.wafrisPlugin.moduleName=github.com/Wafris/wafris-traefik
@@ -51,8 +53,6 @@ services:
     depends_on:
       - oauth
       - redis
-      # - portainer
-      # - grafana
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./traefik:/conf.d
@@ -64,13 +64,14 @@ services:
       - "traefik.http.routers.traefik.entrypoints=websecure"
       - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
       - "traefik.http.routers.traefik.middlewares=forward-auth-verify"
-      # - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.oidc.clientID=$PROVIDERS_GOOGLE_CLIENT_ID"
-      # - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.oidc.clientSecret=$PROVIDERS_GOOGLE_CLIENT_SECRET"
+      # - "traefik.http.routers.traefik.middlewares=oidc-auth@docker"
+      - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.oidc.clientID=$PROVIDERS_GOOGLE_CLIENT_ID"
+      - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.oidc.clientSecret=$PROVIDERS_GOOGLE_CLIENT_SECRET"
       # - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.oidc.callbackPath=/"
-      # - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.cookie.secret=$SECRET"
-      # - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.cookie.insecure=$INSECURE_COOKIE"
-      # - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.authorized.emails=$WHITELIST"
-      # - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.authorized.domains=$COOKIE_DOMAIN"
+      - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.cookie.secret=$SECRET"
+      - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.cookie.insecure=$INSECURE_COOKIE"
+      - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.authorized.emails=$WHITELIST"
+      - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.authorized.domains=$COOKIE_DOMAIN"
       - "homepage.group=Platform"
       - "homepage.name=Traefik"
       - "homepage.icon=traefik.svg"
