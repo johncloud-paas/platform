@@ -4,6 +4,7 @@ services:
     ports:
       - "80:80"
       - "443:443"
+      - "3567:3567"
     restart: unless-stopped
     command:
       - --entrypoints.web.address=:80
@@ -11,6 +12,7 @@ services:
       - --entrypoints.web.http.redirections.entrypoint.scheme=https
       - --entrypoints.web.http.redirections.entrypoint.permanent=true
       - --entrypoints.ldap.address=:636/tcp
+      - --entrypoints.poney.address=:3567/tcp
       - --entrypoints.websecure.address=:443
       - --entrypoints.websecure.http.tls.certresolver=letsencrypt
       - --entrypoints.websecure.http.tls.domains.main=$HOST
@@ -70,9 +72,14 @@ services:
   tcp_ping:
     build: .
     environment:
-      - PORT=3566
-    ports:
-      - 3567:3566
+      - PORT=3567
+    # ports:
+    #   - 3567:3566
+    labels:
+      - "traefik.enable=true"
+      - "traefik.tcp.routers.ping.rule=HostSNI(`ping.$HOST`)"
+      - "traefik.tcp.routers.ping.entrypoints=poney"
+      # - "traefik.tcp.routers.ping.tls.certresolver=letsencrypt"
 
   whoami:
     image: traefik/whoami
