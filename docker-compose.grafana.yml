@@ -1,0 +1,125 @@
+services:
+  grafana:
+    image: grafana/grafana:10.1.0
+    container_name: grafana
+    restart: unless-stopped
+    user: "0:0"
+    environment:
+      - TZ=$TZ
+      - GF_AUTH_ANONYMOUS_ENABLED=$GF_AUTH_ANONYMOUS_ENABLED
+      - GF_AUTH_BASIC_ENABLED=$GF_AUTH_BASIC_ENABLED
+      - GF_AUTH_PROXY_ENABLED=$GF_AUTH_PROXY_ENABLED
+      - GF_USERS_ALLOW_SIGN_UP=$GF_USERS_ALLOW_SIGN_UP
+      - GF_INSTALL_PLUGINS=$GF_INSTALL_PLUGINS
+      - GF_SERVER_ROOT_URL=$GF_SERVER_ROOT_URL
+    volumes:
+      - $JOHNCLOUD_ROOT/monitoring/grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    depends_on:
+      - prometheus
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.grafana-secure.entrypoints=websecure"
+      - "traefik.http.routers.grafana-secure.rule=Host(`monitoring.$HOST`)"
+      - "traefik.http.routers.grafana-secure.middlewares=forward-auth-verify"
+      - "traefik.http.routers.grafana-secure.tls=true"
+      - "traefik.http.routers.grafana-secure.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.grafana-secure.service=grafana"
+      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+      - "homepage.group=Platform"
+      - "homepage.name=Grafana"
+      - "homepage.icon=grafana.svg"
+      - "homepage.href=https://monitoring.$HOST"
+      - "homepage.description=Resource dashboard"
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.47.2
+    container_name: cadvisor
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    command: -max_procs=4 -docker_only=true
+    environment:
+      - TZ=$TZ
+    depends_on:
+      - redis
+    labels:
+      - "traefik.enable=false"
+
+  node_exporter:
+    image: quay.io/prometheus/node-exporter:latest
+    restart: unless-stopped
+    container_name: node_exporter
+    command:
+      - '--path.rootfs=/host'
+    pid: host
+    volumes:
+      - /:/host:ro,rslave
+    environment:
+      - TZ=$TZ
+    depends_on:
+      - redis
+    labels:
+      - "traefik.enable=false"
+        
+  prometheus:
+    image: prom/prometheus:v2.15.2
+    container_name: prometheus
+    restart: unless-stopped
+    user: "0:0"
+    volumes:
+      - ./prometheus/:/etc/prometheus/
+      - $JOHNCLOUD_ROOT/monitoring/prometheus/db:/prometheus
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    command:
+      - "--web.route-prefix=/"
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+      - "--web.enable-lifecycle"
+    environment:
+      - TZ=$TZ
+    labels:
+      - "traefik.enable=false"
+
+  loki:
+    image: grafana/loki:latest
+    container_name: loki
+    user: "0:0"
+    ports:
+      - 3100:3100
+    volumes:
+      - $JOHNCLOUD_ROOT/monitoring/loki:/loki
+      - ./loki/config.yml:/etc/loki/loki-config.yaml
+    command: -config.file=/etc/loki/loki-config.yaml
+    environment:
+      - TZ=$TZ
+    labels:
+      - "traefik.enable=false"
+        
+  promtail:
+    image:  grafana/promtail:latest
+    container_name: promtail
+    volumes:
+      - ./promtail/config.yml:/etc/promtail/docker-config.yaml
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command: -config.file=/etc/promtail/docker-config.yaml
+    environment:
+      - TZ=$TZ
+    depends_on:
+      - loki
+    labels:
+      - "traefik.enable=false"
+
+networks:
+  default:
+    external: true
+    name: traefik-proxy
+    
