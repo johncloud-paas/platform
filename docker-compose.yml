@@ -77,9 +77,13 @@ services:
     #   - 3567:3566
     labels:
       - "traefik.enable=true"
+      # - "traefik.tcp.routers.ping.rule=HostSNI(`*`)"
       - "traefik.tcp.routers.ping.rule=HostSNI(`ping.$HOST`)"
+      - "traefik.tcp.routers.ping.service=ping_service"
       - "traefik.tcp.routers.ping.entrypoints=poney"
-      # - "traefik.tcp.routers.ping.tls.certresolver=letsencrypt"
+      - "traefik.tcp.routers.ping.tls.certresolver=letsencrypt"
+      - "traefik.tcp.services.ping_service.loadbalancer.server.port=3567"
+      # - "traefik.tcp.routers.ping.tls=false"  # Disable TLS
 
   whoami:
     image: traefik/whoami
