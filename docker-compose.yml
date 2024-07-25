@@ -12,7 +12,7 @@ services:
       - --entrypoints.web.http.redirections.entrypoint.scheme=https
       - --entrypoints.web.http.redirections.entrypoint.permanent=true
       - --entrypoints.ldap.address=:636/tcp
-      - --entrypoints.poney.address=:3567/tcp
+      - --entrypoints.poney.address=:3567
       - --entrypoints.websecure.address=:443
       - --entrypoints.websecure.http.tls.certresolver=letsencrypt
       - --entrypoints.websecure.http.tls.domains.main=$HOST
@@ -25,8 +25,8 @@ services:
       - --log.filePath=logs/traefik.log
       # - --experimental.plugins.traefik-modsecurity-plugin.modulename=github.com/acouvreur/traefik-modsecurity-plugin
       # - --experimental.plugins.traefik-modsecurity-plugin.version=v1.3.0
-      # - --experimental.plugins.google-oidc-auth-middleware.modulename=github.com/andrewkroh/google-oidc-auth-middleware
-      # - --experimental.plugins.google-oidc-auth-middleware.version=v0.1.0
+      - --experimental.plugins.google-oidc-auth-middleware.modulename=github.com/andrewkroh/google-oidc-auth-middleware
+      - --experimental.plugins.google-oidc-auth-middleware.version=v0.1.0
       # - --experimental.plugins.wafrisPlugin.moduleName=github.com/Wafris/wafris-traefik
       # - --experimental.plugins.wafrisPlugin.version=v0.0.2
       # - --experimental.plugins.bouncer.modulename=github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin
@@ -49,12 +49,13 @@ services:
       - "traefik.http.routers.traefik.entrypoints=websecure"
       # - "traefik.http.middlewares.waf.plugin.traefik-modsecurity-plugin.modSecurityUrl=http://waf:80"
       # - "traefik.http.middlewares.waf.plugin.traefik-modsecurity-plugin.maxBodySize=10485760"
-      # - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.oidc.clientID=942480273465-5ui6phn5umjmq9ak0tv5k2la38vmdcbs.apps.googleusercontent.com"
-      # - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.oidc.clientSecret=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"
-      # - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.cookie.secret=gkjzeghflzehjflkzehfmzef"
-      # - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.authorized.emails=ydethe@gmail.com"
-      # - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.authorized.domains=johncloud.fr"
-      # - "traefik.http.middlewares.default.chain.middlewares=waf"
+      - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.oidc.clientID=942480273465-5ui6phn5umjmq9ak0tv5k2la38vmdcbs.apps.googleusercontent.com"
+      - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.oidc.clientSecret=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"
+      # - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.oidc.callbackPath=/"
+      - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.cookie.secret=gkjzeghflzehjflkzehfmzef"
+      - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.authorized.emails=ydethe@gmail.com"
+      - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.authorized.domains=johncloud.fr"
+      # - "traefik.http.middlewares.default.chain.middlewares=oidc-auth"
 
   # waf:
   #   image: owasp/modsecurity-crs:apache
@@ -73,17 +74,13 @@ services:
     build: .
     environment:
       - PORT=3567
-    # ports:
-    #   - 3567:3566
     labels:
       - "traefik.enable=true"
-      # - "traefik.tcp.routers.ping.rule=HostSNI(`*`)"
       - "traefik.tcp.routers.ping.rule=HostSNI(`ping.$HOST`)"
       - "traefik.tcp.routers.ping.service=ping_service"
       - "traefik.tcp.routers.ping.entrypoints=poney"
       - "traefik.tcp.routers.ping.tls.certresolver=letsencrypt"
       - "traefik.tcp.services.ping_service.loadbalancer.server.port=3567"
-      # - "traefik.tcp.routers.ping.tls=false"  # Disable TLS
 
   whoami:
     image: traefik/whoami
@@ -93,6 +90,7 @@ services:
       - "traefik.http.routers.whoami.rule=Host(`whoami.$HOST`)"
       - "traefik.http.routers.whoami.entrypoints=websecure"
       - "traefik.http.routers.whoami.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.whoami.middlewares=oidc-auth@docker"
 
 volumes:
   test_data:
