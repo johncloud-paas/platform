@@ -17,8 +17,11 @@ services:
       - "OVH_APPLICATION_KEY=$OVH_APPLICATION_KEY"
       - "OVH_APPLICATION_SECRET=$OVH_APPLICATION_SECRET"
       - "OVH_CONSUMER_KEY=$OVH_CONSUMER_KEY"
+      - "TZ=$TZ"
     command:
       - --entrypoints.tcp_ping.address=:3567/tcp
+      # - --entrypoints.imap.address=:993/tcp
+      # - --entrypoints.smtp.address=:587/tcp
       - --entrypoints.web.address=:80
       - --entrypoints.web.http.redirections.entrypoint.to=websecure
       - --entrypoints.web.http.redirections.entrypoint.scheme=https
@@ -32,8 +35,6 @@ services:
       - --providers.docker.exposedByDefault=false
       - --providers.file.directory=conf.d
       - --providers.file.watch=true
-      - --accesslog.format=json
-      - --accesslog.fields.headers.names.X-Forwarded-User=keep
       - --api.dashboard=true
       - --api.insecure=true
       - --experimental.plugins.wafrisPlugin.moduleName=github.com/Wafris/wafris-traefik
@@ -46,10 +47,21 @@ services:
       - --certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web
       # - --certificatesresolvers.letsencrypt.acme.dnschallenge=true
       # - --certificatesresolvers.letsencrypt.acme.dnschallenge.provider=ovh
-      # - --metrics.prometheus.entrypoint=metrics
-      # - --metrics.prometheus.buckets=0.1,0.3,1.2,5.0
-      # - --metrics.prometheus.addEntryPointsLabels=true
-      # - --metrics.prometheus.addServicesLabels=true
+      # - --metrics.otlp=true
+      # - --metrics.otlp.addEntryPointsLabels=true
+      # - --metrics.otlp.addRoutersLabels=true
+      # - --metrics.otlp.addServicesLabels=true
+      # - --metrics.otlp.http.endpoint=http://localhost:4318/v1/metrics
+      # - --tracing=true
+      # - --tracing.otlp=true
+      # - --tracing.sampleRate=0.2
+      # - --tracing.otlp.http.endpoint=http://localhost:4318/v1/traces
+      # - --log.filePath=./logs/traefik.log
+      # - --log.format=json
+      # - --log.maxsize=10 # In Mb
+      - --accesslog.format=json
+      - --accesslog.filepath=./logs/access.log
+      - --accesslog.fields.headers.names.X-Forwarded-User=keep
     depends_on:
       - oauth
       - redis
