@@ -10,10 +10,10 @@ services:
     ports:
       - "80:80"
       - "443:443"
-      - "3567:3567"
+      - "3567:3567" #tcp_ping
       - "587:587" #smtps
-      # - "25:25" #smtp
-      # - "465:465" #submissions
+      - "465:465" #sieve
+      - "4190:4190" #submissions
       - "993:993" #imaps
     restart: unless-stopped
     environment:
@@ -25,8 +25,6 @@ services:
     command:
       - --entrypoints.tcp_ping.address=:3567/tcp
       - --entrypoints.smtp.address=:587/tcp
-      # - --entrypoints.smtp.address=:smtp
-      # - --entrypoints.submissions.address=:submissions
       - --entrypoints.imaps.address=:imaps
       - --entrypoints.sieve.address=:sieve
       - --entrypoints.submissions.address=:submissions
