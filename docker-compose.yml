@@ -38,7 +38,6 @@ services:
       - --entrypoints.websecure.http.tls.domains.sans=*.$HOST
       - --entrypoints.websecure.http.middlewares=default@file
       - --entryPoints.websecure.forwardedHeaders.insecure=false
-      - --entryPoints.websecure.proxyProtocol.insecure=false
       - --providers.docker=true
       - --providers.docker.exposedByDefault=false
       - --providers.file.directory=conf.d
