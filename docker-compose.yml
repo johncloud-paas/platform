@@ -28,6 +28,8 @@ services:
       # - --entrypoints.smtp.address=:smtp
       # - --entrypoints.submissions.address=:submissions
       - --entrypoints.imaps.address=:imaps
+      - --entrypoints.sieve.address=:sieve
+      - --entrypoints.submissions.address=:submissions
       - --entrypoints.web.address=:80
       - --entrypoints.web.http.redirections.entrypoint.to=websecure
       - --entrypoints.web.http.redirections.entrypoint.scheme=https
