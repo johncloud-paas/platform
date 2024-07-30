@@ -59,9 +59,9 @@ services:
       # - --log.filePath=./logs/traefik.log
       # - --log.format=json
       # - --log.maxsize=10 # In Mb
-      - --accesslog.format=json
-      - --accesslog.filepath=./logs/access.log
-      - --accesslog.fields.headers.names.X-Forwarded-User=keep
+      # - --accesslog.format=json
+      # - --accesslog.filepath=./logs/access.log
+      # - --accesslog.fields.headers.names.X-Forwarded-User=keep
     depends_on:
       - oauth
       - redis
