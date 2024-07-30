@@ -20,3 +20,6 @@ Install `ufw` and `rsyslog`
 Install `alloy` : https://grafana.com/docs/alloy/latest/
 Copy `config.alloy` in `/etc/alloy`
 Give to the user `alloy` the ownership on `/etc/alloy` and `/var/lib/alloy`, and read/write permissions
+
+Observability is done with Sumo Logic. It is run at host level with otelcol-sumo.service
+
