@@ -3,8 +3,13 @@ http:
     # Inspired by
     # https://www.benjaminrancourt.ca/a-complete-traefik-configuration/
 
-    # Recommended default middleware for most of the services
     default:
+      chain:
+        middlewares:
+          - waf-plugin
+
+    # Recommended default middleware for most of the services
+    secured:
       chain:
         middlewares:
           - waf-plugin

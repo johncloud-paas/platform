@@ -51,11 +51,13 @@ services:
       # - --metrics.otlp.addEntryPointsLabels=true
       # - --metrics.otlp.addRoutersLabels=true
       # - --metrics.otlp.addServicesLabels=true
-      # - --metrics.otlp.http.endpoint=http://localhost:4318/v1/metrics
+      # - --metrics.otlp.http.endpoint=https://otel.kloudmate.com:4318
+      # - --metrics.otlp.http.headers.Authorization=sk_k7TVHBRtUN6jptWREmR0ERLB
       # - --tracing=true
       # - --tracing.otlp=true
       # - --tracing.sampleRate=0.2
-      # - --tracing.otlp.http.endpoint=http://localhost:4318/v1/traces
+      # - --tracing.otlp.http.endpoint=https://otel.kloudmate.com:4318
+      # - --tracing.otlp.http.headers.Authorization=sk_k7TVHBRtUN6jptWREmR0ERLB
       # - --log.filePath=./logs/traefik.log
       # - --log.format=json
       # - --log.maxsize=10 # In Mb
