@@ -47,23 +47,6 @@ services:
       - --certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web
       # - --certificatesresolvers.letsencrypt.acme.dnschallenge=true
       # - --certificatesresolvers.letsencrypt.acme.dnschallenge.provider=ovh
-      # - --metrics.otlp=true
-      # - --metrics.otlp.addEntryPointsLabels=true
-      # - --metrics.otlp.addRoutersLabels=true
-      # - --metrics.otlp.addServicesLabels=true
-      # - --metrics.otlp.http.endpoint=https://otel.kloudmate.com:4318
-      # - --metrics.otlp.http.headers.Authorization=sk_k7TVHBRtUN6jptWREmR0ERLB
-      # - --tracing=true
-      # - --tracing.otlp=true
-      # - --tracing.sampleRate=0.2
-      # - --tracing.otlp.http.endpoint=https://otel.kloudmate.com:4318
-      # - --tracing.otlp.http.headers.Authorization=sk_k7TVHBRtUN6jptWREmR0ERLB
-      # - --log.filePath=./logs/traefik.log
-      # - --log.format=json
-      # - --log.maxsize=10 # In Mb
-      # - --accesslog.format=json
-      # - --accesslog.filepath=./logs/access.log
-      # - --accesslog.fields.headers.names.X-Forwarded-User=keep
     depends_on:
       - oauth
       - redis
