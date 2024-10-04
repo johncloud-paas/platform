@@ -7,14 +7,14 @@ http:
     default:
       chain:
         middlewares:
-          - waf-plugin
+          # - waf-plugin
           - default-security-headers
           - gzip
     
     waf-plugin:
       plugin:
         wafrisPlugin:
-          url: "redis://TpuxPNCe59JMcKhnWdKp4eH4vh2ZYZ9U3GXWywALMA@redis-dedicated-cdg-hyihu66pn90z.fly.dev:9987"
+          url: "redis://vpbDUlZB1VNgz9f4ekoTaa1rteI5zrND1UwRgxTY7l0@redis-dedicated-iad-lprf5p5blcm.fly.dev:9987"
           wafris_timeout: 3
 
     # authentik:
