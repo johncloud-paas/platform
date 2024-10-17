@@ -54,5 +54,5 @@ scrape_configs:
           - traefik
         labels:
           job: traefik
-          __path__: /var/logs/traefik/*/*log
+          __path__: /var/logs/traefik/*log
           
