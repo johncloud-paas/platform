@@ -47,3 +47,12 @@ scrape_configs:
       - output:
           source: output
 
+  - job_name: traefik_logs
+    # https://medium.com/@svenvanginkel/monitor-traefik-with-grafana-prometheus-loki-206611394552
+    static_configs:
+      - targets:
+          - traefik
+        labels:
+          job: traefik
+          __path__: /var/logs/traefik/*/*log
+          

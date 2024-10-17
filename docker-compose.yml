@@ -39,22 +39,30 @@ services:
       - --providers.file.watch=true
       - --api.dashboard=true
       - --api.insecure=true
+      - --metrics.otlp.http.endpoint=http://prometheus:9090/api/v1/otlp/v1/metrics
+      - --tracing.otlp.http.endpoint=http://jaeger:4318/v1/traces
+      - --accesslog=true
+      - --accesslog.filepath=/var/logs/access.log
+      - --accesslog.format=json
       - --experimental.plugins.wafrisPlugin.moduleName=github.com/Wafris/wafris-traefik
       - --experimental.plugins.wafrisPlugin.version=v0.0.3
       - --experimental.plugins.google-oidc-auth-middleware.modulename=github.com/andrewkroh/google-oidc-auth-middleware
       - --experimental.plugins.google-oidc-auth-middleware.version=v0.1.0
       - --certificatesresolvers.letsencrypt.acme.email=$ADMIN_EMAIL
       - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
-      # - --certificatesresolvers.letsencrypt.acme.httpchallenge=true
-      # - --certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web
-      - --certificatesresolvers.letsencrypt.acme.dnschallenge=true
-      - --certificatesresolvers.letsencrypt.acme.dnschallenge.provider=ovh
+      - --certificatesresolvers.letsencrypt.acme.httpchallenge=true
+      - --certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web
+      # - --certificatesresolvers.letsencrypt.acme.dnschallenge=true
+      # - --certificatesresolvers.letsencrypt.acme.dnschallenge.provider=ovh
     depends_on:
       - oauth
       - redis
+      - jaeger
+      - prometheus
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./traefik:/conf.d
+      - $JOHNCLOUD_ROOT/traefik/logs:/var/logs
       - $JOHNCLOUD_ROOT/traefik/letsencrypt:/letsencrypt
     labels:
       - "traefik.enable=true"
@@ -76,6 +84,102 @@ services:
       - "homepage.icon=traefik.svg"
       - "homepage.href=https://traefik.$HOST"
       - "homepage.description=Traefik reverse proxy"
+  
+  pdc:
+    # https://grafana.com/docs/grafana-cloud/connect-externally-hosted/private-data-source-connect/#private-data-source-connect-pdc-concepts
+    image: grafana/pdc-agent:latest
+    container_name: pdc
+    restart: unless-stopped
+    depends_on:
+      - jaeger
+      - prometheus
+      - promtail
+    command: ["-token","$GRAFANA_PDC_TOKEN","-cluster","$GRAFANA_PDC_CLUSTER","-gcloud-hosted-grafana-id","$GRAFANA_PDC_GCP_ID"]
+    labels:
+      - "traefik.enable=false"
+
+  loki:
+    image: grafana/loki:latest
+    container_name: loki
+    user: "0:0"
+    # ports:
+    #   - 3100:3100
+    depends_on:
+      - promtail
+    volumes:
+      - $JOHNCLOUD_ROOT/monitoring/loki:/loki
+      - ./loki/config.yml:/etc/loki/loki-config.yaml
+    command: -config.file=/etc/loki/loki-config.yaml
+    environment:
+      - TZ=$TZ
+    labels:
+      - "traefik.enable=false"
+        
+  promtail:
+    image:  grafana/promtail:latest
+    container_name: promtail
+    volumes:
+      - ./promtail/config.yml:/etc/promtail/docker-config.yaml
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - $JOHNCLOUD_ROOT/traefik/logs:/var/logs/traefik:ro
+    command: -config.file=/etc/promtail/docker-config.yaml
+    environment:
+      - TZ=$TZ
+    labels:
+      - "traefik.enable=false"
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.62.0
+    container_name: jaeger
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+    environment:
+      - TZ=$TZ
+      - COLLECTOR_OTLP_ENABLED=true
+      - METRICS_STORAGE_TYPE=prometheus
+      - PROMETHEUS_SERVER_URL=http://prometheus:9090
+    #   - SPAN_STORAGE_TYPE=badger
+    #   - BADGER_EPHEMERAL=false
+    #   - BADGER_DIRECTORY_VALUE=/badger/data
+    #   - BADGER_DIRECTORY_KEY=/badger/key
+    # volumes:
+    #   - $JOHNCLOUD_ROOT/jaeger/data:/badger
+    labels:
+      - "traefik.enable=false"
+      # - "traefik.http.routers.jaeger.rule=Host(`jaeger.$HOST`)"
+      # - "traefik.http.routers.jaeger.entrypoints=websecure"
+      # - "traefik.http.routers.jaeger.tls.certresolver=letsencrypt"
+      # - "traefik.http.services.jaeger.loadbalancer.server.port=16686"
+      # - "traefik.http.routers.jaeger.middlewares=forward-auth-verify"
+      # - "homepage.group=Platform"
+      # - "homepage.name=Jaeger"
+      # - "homepage.icon=jaeger.svg"
+      # - "homepage.href=https://jaeger.$HOST"
+      # - "homepage.description=Open source, distributed tracing platform"
+        
+  prometheus:
+    image: prom/prometheus:v2.15.2
+    container_name: prometheus
+    user: "0:0"
+    restart: unless-stopped
+    volumes:
+      - ./prometheus/:/etc/prometheus/
+      - $JOHNCLOUD_ROOT/monitoring/prometheus/db:/prometheus
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    command:
+      - "--web.route-prefix=/"
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+      - "--web.enable-lifecycle"
+    environment:
+      - TZ=$TZ
+    labels:
+      - "traefik.enable=false"
 
   tcp_ping:
     image: ydethe/tcp_ping
