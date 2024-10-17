@@ -209,17 +209,17 @@ services:
       - "$JOHNCLOUD_ROOT/influxdb/config:/etc/influxdb2"
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.influxdb.rule=Host(`influxdb.$HOST`)"
-      - "traefik.http.routers.influxdb.entrypoints=websecure"
-      - "traefik.http.routers.influxdb.tls.certresolver=letsencrypt"
-      - "traefik.http.services.influxdb.loadbalancer.server.port=8086"
-      - "homepage.group=Platform"
-      - "homepage.name=InfluxDB"
-      - "homepage.icon=influxdb.svg"
-      - "homepage.href=https://influxdb.$HOST"
-      - "homepage.description=Time Series Data Platform"
+    # labels:
+    #   - "traefik.enable=true"
+    #   - "traefik.http.routers.influxdb.rule=Host(`influxdb.$HOST`)"
+    #   - "traefik.http.routers.influxdb.entrypoints=websecure"
+    #   - "traefik.http.routers.influxdb.tls.certresolver=letsencrypt"
+    #   - "traefik.http.services.influxdb.loadbalancer.server.port=8086"
+    #   - "homepage.group=Platform"
+    #   - "homepage.name=InfluxDB"
+    #   - "homepage.icon=influxdb.svg"
+    #   - "homepage.href=https://influxdb.$HOST"
+    #   - "homepage.description=Time Series Data Platform"
 
   tcp_ping:
     # ncat --ssl ping.johncloud.fr 3567
