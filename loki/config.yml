@@ -16,39 +16,84 @@ ingester:
   max_chunk_age: 1h           # All chunks will be flushed when they hit this age, default is 1h
   chunk_target_size: 1048576  # Loki will attempt to build chunks up to 1.5MB, flushing first if chunk_idle_period or max_chunk_age is reached first
   chunk_retain_period: 30s    # Must be greater than index read cache TTL if using an index cache (Default index read cache TTL is 5m)
-  max_transfer_retries: 0     # Chunk transfers disabled
 
 schema_config:
   configs:
     - from: 2020-10-24
-      store: boltdb-shipper
+      # store: boltdb-shipper
+      store: tsdb
       object_store: filesystem
-      schema: v11
+      schema: v13
       index:
         prefix: index_
         period: 24h
 
 storage_config:
-  boltdb_shipper:
-    active_index_directory: /loki/boltdb-shipper-active
-    cache_location: /loki/boltdb-shipper-cache
-    cache_ttl: 24h         # Can be increased for faster performance over longer query periods, uses more disk space
-    shared_store: filesystem
+  # boltdb_shipper:
+  #   active_index_directory: /loki/boltdb-shipper-active
+  #   cache_location: /loki/boltdb-shipper-cache
+  #   cache_ttl: 24h         # Can be increased for faster performance over longer query periods, uses more disk space    shared_store: filesystem
   filesystem:
     directory: /loki/chunks
+  # Configures storing index in an Object Store
+  # (GCS/S3/Azure/Swift/COS/Filesystem) in a prometheus TSDB-like format. Required
+  # fields only required when TSDB is defined in config.
+  tsdb_shipper:
+    # Directory where ingesters would write index files which would then be
+    # uploaded by shipper to configured storage
+    # CLI flag: -tsdb.shipper.active-index-directory
+    active_index_directory: /loki/index
+
+    # Cache location for restoring index files from storage for queries
+    # CLI flag: -tsdb.shipper.cache-location
+    cache_location: /loki/cache
+
+    # TTL for index files restored in cache for queries
+    # CLI flag: -tsdb.shipper.cache-ttl
+    # [cache_ttl: <duration> | default = 24h]
+
+    # Resync downloaded files with the storage
+    # CLI flag: -tsdb.shipper.resync-interval
+    # [resync_interval: <duration> | default = 5m]
+
+    # Number of days of common index to be kept downloaded for queries. For per
+    # tenant index query readiness, use limits overrides config.
+    # CLI flag: -tsdb.shipper.query-ready-num-days
+    # [query_ready_num_days: <int> | default = 0]
+
+    # index_gateway_client:
+      # The grpc_client block configures the gRPC client used to communicate
+      # between a client and server component in Loki.
+      # The CLI flags prefix for this block configuration is:
+      # querier.frontend-grpc-client
+      # [grpc_client_config: <grpc_client>]
+
+      # Hostname or IP of the Index Gateway gRPC server running in simple mode.
+      # Can also be prefixed with dns+, dnssrv+, or dnssrvnoa+ to resolve a DNS A
+      # record with multiple IP's, a DNS SRV record with a followup A record
+      # lookup, or a DNS SRV record without a followup A record lookup,
+      # respectively.
+      # CLI flag: -tsdb.shipper.index-gateway-client.server-address
+      # [server_address: <string> | default = ""]
+
+      # Whether requests sent to the gateway should be logged or not.
+      # CLI flag: -tsdb.shipper.index-gateway-client.log-gateway-requests
+      # [log_gateway_requests: <boolean> | default = false]
+
+    # [ingestername: <string> | default = ""]
+
+    # [mode: <string> | default = ""]
+
+    # [ingesterdbretainperiod: <duration>]
 
 compactor:
   working_directory: /loki/boltdb-shipper-compactor
-  shared_store: filesystem
 
 limits_config:
   reject_old_samples: true
   reject_old_samples_max_age: 168h
   ingestion_burst_size_mb: 16
   ingestion_rate_mb: 16
-
-chunk_store_config:
-  max_look_back_period: 0s
 
 table_manager:
   retention_deletes_enabled: false
