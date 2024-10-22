@@ -40,17 +40,17 @@ services:
       - --providers.file.watch=true
       - --api.dashboard=true
       - --api.insecure=true
-      - --metrics.addinternals
-      - --metrics.influxdb2=true
-      - --metrics.influxdb2.address=http://influxdb:8086
-      - --metrics.influxdb2.org=$INFLUXDB_INIT_ORG
-      - --metrics.influxdb2.bucket=$INFLUXDB_INIT_BUCKET
-      - --metrics.influxdb2.token=$INFLUXDB_INIT_ADMIN_TOKEN
-      - --metrics.influxdb2.addServicesLabels=true
-      - --metrics.influxdb2.addEntryPointsLabels=true
-      - --metrics.influxdb2.addrouterslabels=true
-      - --metrics.influxdb2.pushInterval=10s
-      - --tracing.otlp.http.endpoint=http://jaeger:4318/v1/traces
+      # - --metrics.addinternals
+      # - --metrics.influxdb2=true
+      # - --metrics.influxdb2.address=http://influxdb:8086
+      # - --metrics.influxdb2.org=$INFLUXDB_INIT_ORG
+      # - --metrics.influxdb2.bucket=$INFLUXDB_INIT_BUCKET
+      # - --metrics.influxdb2.token=$INFLUXDB_INIT_ADMIN_TOKEN
+      # - --metrics.influxdb2.addServicesLabels=true
+      # - --metrics.influxdb2.addEntryPointsLabels=true
+      # - --metrics.influxdb2.addrouterslabels=true
+      # - --metrics.influxdb2.pushInterval=10s
+      # - --tracing.otlp.http.endpoint=http://jaeger:4318/v1/traces
       - --accesslog=true
       - --accesslog.filepath=/var/logs/access.log
       - --accesslog.fields.defaultMode=keep
@@ -69,9 +69,8 @@ services:
     depends_on:
       - oauth
       - redis
-      - jaeger
-      - influxdb
-      - loki
+      # - jaeger
+      # - prometheus
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./traefik:/conf.d
@@ -97,6 +96,41 @@ services:
       - "homepage.icon=traefik.svg"
       - "homepage.href=https://traefik.$HOST"
       - "homepage.description=Traefik reverse proxy"
+
+  node_exporter:
+    image: quay.io/prometheus/node-exporter:latest
+    restart: unless-stopped
+    container_name: node_exporter
+    command:
+      - '--path.rootfs=/host'
+    pid: host
+    volumes:
+      - /:/host:ro,rslave
+    environment:
+      - TZ=$TZ
+    depends_on:
+      - redis
+      - prometheus
+    labels:
+      - "traefik.enable=false"
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    command: -max_procs=2 -docker_only=true
+    # command: -max_procs=2 -docker_only=true -storage_driver=influxdb -storage_driver_db=cadvisor -storage_driver_host=influxdb:8086 -storage_driver_user=$INFLUXDB_INIT_USERNAME -storage_driver_password=$INFLUXDB_INIT_ADMIN_TOKEN
+    environment:
+      - TZ=$TZ
+    depends_on:
+      - redis
+      - prometheus
+    labels:
+      - "traefik.enable=false"
   
   pdc:
     # https://grafana.com/docs/grafana-cloud/connect-externally-hosted/private-data-source-connect/#private-data-source-connect-pdc-concepts
@@ -104,8 +138,8 @@ services:
     container_name: pdc
     restart: unless-stopped
     depends_on:
-      - jaeger
-      - influxdb
+      # - jaeger
+      - prometheus
       - loki
     command: ["-token","$GRAFANA_PDC_TOKEN","-cluster","$GRAFANA_PDC_CLUSTER","-gcloud-hosted-grafana-id","$GRAFANA_PDC_GCP_ID"]
     labels:
@@ -142,23 +176,23 @@ services:
     labels:
       - "traefik.enable=false"
 
-  jaeger:
-    image: jaegertracing/all-in-one:1.62.0
-    container_name: jaeger
-    restart: unless-stopped
-    environment:
-      - TZ=$TZ
-      - COLLECTOR_OTLP_ENABLED=true
-      # - METRICS_STORAGE_TYPE=prometheus
-      # - PROMETHEUS_SERVER_URL=http://prometheus:9090
+  # jaeger:
+  #   image: jaegertracing/all-in-one:1.62.0
+  #   container_name: jaeger
+  #   restart: unless-stopped
+  #   environment:
+  #     - TZ=$TZ
+  #     - COLLECTOR_OTLP_ENABLED=true
+  #     - METRICS_STORAGE_TYPE=prometheus
+  #     - PROMETHEUS_SERVER_URL=http://prometheus:9090
     #   - SPAN_STORAGE_TYPE=badger
     #   - BADGER_EPHEMERAL=false
     #   - BADGER_DIRECTORY_VALUE=/badger/data
     #   - BADGER_DIRECTORY_KEY=/badger/key
     # volumes:
     #   - $JOHNCLOUD_ROOT/jaeger/data:/badger
-    labels:
-      - "traefik.enable=false"
+    # labels:
+    #   - "traefik.enable=false"
       # - "traefik.http.routers.jaeger.rule=Host(`jaeger.$HOST`)"
       # - "traefik.http.routers.jaeger.entrypoints=websecure"
       # - "traefik.http.routers.jaeger.tls.certresolver=letsencrypt"
@@ -170,56 +204,66 @@ services:
       # - "homepage.href=https://jaeger.$HOST"
       # - "homepage.description=Open source, distributed tracing platform"
         
-  # prometheus:
-  #   image: prom/prometheus:v2.15.2
-  #   container_name: prometheus
-  #   user: "0:0"
-  #   restart: unless-stopped
-  #   volumes:
-  #     - ./prometheus/:/etc/prometheus/
-  #     - $JOHNCLOUD_ROOT/monitoring/prometheus/db:/prometheus
-  #     - /etc/timezone:/etc/timezone:ro
-  #     - /etc/localtime:/etc/localtime:ro
-  #   command:
-  #     - "--web.route-prefix=/"
-  #     - "--config.file=/etc/prometheus/prometheus.yml"
-  #     - "--storage.tsdb.path=/prometheus"
-  #     - "--web.console.libraries=/usr/share/prometheus/console_libraries"
-  #     - "--web.console.templates=/usr/share/prometheus/consoles"
-  #     - "--web.enable-lifecycle"
-  #   environment:
-  #     - TZ=$TZ
-  #   labels:
-  #     - "traefik.enable=false"
-  
-  influxdb:
-    image: influxdb:2
-    container_name: influxdb
+  prometheus:
+    image: prom/prometheus:main
+    container_name: prometheus
+    user: "0:0"
     restart: unless-stopped
-    environment:
-      - DOCKER_INFLUXDB_INIT_MODE=setup
-      - DOCKER_INFLUXDB_INIT_USERNAME=$INFLUXDB_INIT_USERNAME
-      - DOCKER_INFLUXDB_INIT_PASSWORD=$INFLUXDB_INIT_PASSWORD
-      - DOCKER_INFLUXDB_INIT_ORG=$INFLUXDB_INIT_ORG
-      - DOCKER_INFLUXDB_INIT_BUCKET=$INFLUXDB_INIT_BUCKET
-      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=$INFLUXDB_INIT_ADMIN_TOKEN
-      - TZ=$TZ
     volumes:
-      - "$JOHNCLOUD_ROOT/influxdb/data:/var/lib/influxdb2"
-      - "$JOHNCLOUD_ROOT/influxdb/config:/etc/influxdb2"
+      - ./prometheus/:/etc/prometheus/
+      - $JOHNCLOUD_ROOT/monitoring/prometheus/db:/prometheus
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
+    command:
+      - "--web.route-prefix=/"
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+      - "--web.enable-lifecycle"
+    environment:
+      - TZ=$TZ
     # labels:
     #   - "traefik.enable=true"
-    #   - "traefik.http.routers.influxdb.rule=Host(`influxdb.$HOST`)"
-    #   - "traefik.http.routers.influxdb.entrypoints=websecure"
-    #   - "traefik.http.routers.influxdb.tls.certresolver=letsencrypt"
-    #   - "traefik.http.services.influxdb.loadbalancer.server.port=8086"
+    #   - "traefik.http.routers.prom.rule=Host(`prom.$HOST`)"
+    #   - "traefik.http.routers.prom.entrypoints=websecure"
+    #   - "traefik.http.routers.prom.tls.certresolver=letsencrypt"
+    #   - "traefik.http.services.prom.loadbalancer.server.port=9090"
+    #   - "traefik.http.routers.prom.middlewares=forward-auth-verify"
     #   - "homepage.group=Platform"
-    #   - "homepage.name=InfluxDB"
-    #   - "homepage.icon=influxdb.svg"
-    #   - "homepage.href=https://influxdb.$HOST"
-    #   - "homepage.description=Time Series Data Platform"
+    #   - "homepage.name=Prometheus"
+    #   - "homepage.icon=prometheus.svg"
+    #   - "homepage.href=https://prometheus.$HOST"
+    #   - "homepage.description=From metrics to insight"
+  
+  # influxdb:
+  #   image: influxdb:2
+  #   container_name: influxdb
+  #   restart: unless-stopped
+  #   environment:
+  #     - DOCKER_INFLUXDB_INIT_MODE=setup
+  #     - DOCKER_INFLUXDB_INIT_USERNAME=$INFLUXDB_INIT_USERNAME
+  #     - DOCKER_INFLUXDB_INIT_PASSWORD=$INFLUXDB_INIT_PASSWORD
+  #     - DOCKER_INFLUXDB_INIT_ORG=$INFLUXDB_INIT_ORG
+  #     - DOCKER_INFLUXDB_INIT_BUCKET=$INFLUXDB_INIT_BUCKET
+  #     - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=$INFLUXDB_INIT_ADMIN_TOKEN
+  #     - TZ=$TZ
+  #   volumes:
+  #     - "$JOHNCLOUD_ROOT/influxdb/data:/var/lib/influxdb2"
+  #     - "$JOHNCLOUD_ROOT/influxdb/config:/etc/influxdb2"
+  #     - /etc/timezone:/etc/timezone:ro
+  #     - /etc/localtime:/etc/localtime:ro
+  #   labels:
+  #     - "traefik.enable=true"
+  #     - "traefik.http.routers.influxdb.rule=Host(`influxdb.$HOST`)"
+  #     - "traefik.http.routers.influxdb.entrypoints=websecure"
+  #     - "traefik.http.routers.influxdb.tls.certresolver=letsencrypt"
+  #     - "traefik.http.services.influxdb.loadbalancer.server.port=8086"
+  #     - "homepage.group=Platform"
+  #     - "homepage.name=InfluxDB"
+  #     - "homepage.icon=influxdb.svg"
+  #     - "homepage.href=https://influxdb.$HOST"
+  #     - "homepage.description=Time Series Data Platform"
 
   tcp_ping:
     # ncat --ssl ping.johncloud.fr 3567

@@ -34,38 +34,6 @@ services:
       - "homepage.href=https://monitoring.$HOST"
       - "homepage.description=Resource dashboard"
 
-  cadvisor:
-    image: gcr.io/cadvisor/cadvisor:v0.47.2
-    container_name: cadvisor
-    volumes:
-      - /:/rootfs:ro
-      - /var/run:/var/run:ro
-      - /sys:/sys:ro
-      - /var/lib/docker/:/var/lib/docker:ro
-    command: -max_procs=4 -docker_only=true
-    environment:
-      - TZ=$TZ
-    depends_on:
-      - redis
-    labels:
-      - "traefik.enable=false"
-
-  node_exporter:
-    image: quay.io/prometheus/node-exporter:latest
-    restart: unless-stopped
-    container_name: node_exporter
-    command:
-      - '--path.rootfs=/host'
-    pid: host
-    volumes:
-      - /:/host:ro,rslave
-    environment:
-      - TZ=$TZ
-    depends_on:
-      - redis
-    labels:
-      - "traefik.enable=false"
-
   # loki:
   #   image: grafana/loki:latest
   #   container_name: loki
