@@ -7,7 +7,7 @@ http:
     default:
       chain:
         middlewares:
-          - waf-plugin
+          # - waf-plugin
           - default-security-headers
           - gzip
     
