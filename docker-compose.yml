@@ -10,9 +10,7 @@ services:
     ports:
       - "80:80"
       - "443:443"
-      - "465:465"
-      - "587:587"
-      - "993:993"
+      - "3567:3567"
     restart: unless-stopped
     environment:
     # https://www.ovh.com/auth/api/createToken
@@ -24,13 +22,9 @@ services:
       - "TZ=$TZ"
     command:
       # - --entryPoints.metrics.address=:8082
-      # - --entrypoints.smtp.address=:25  # SMTP - mostly processing incoming mails from remote mail servers
-      - --entrypoints.smtps.address=:465 # SMTPS - Legacy SMTPs port
-      # - --entrypoints.msa.address=:587 # MSA - SMTP port primarily used by email clients after STARTTLS and auth
-      # - --entrypoints.pop3.address=:110 # POP3 - standard protocol for accessing mailbox, STARTTLS is required before client auth
-      # - --entrypoints.pop3s.address=:995 # POP3S - POP3 port with encryption from the start of the connection
-      # - --entrypoints.imap.address=:143 # IMAP - standard protocol for accessing mailbox, STARTTLS is required before client auth
-      - --entrypoints.imaps.address=:993 # IMAPS - alternative port for IMAP with encryption from the start of the connection
+      - --entrypoints.tcp_ping.address=:3567/tcp
+      # - --entrypoints.imap.address=:993/tcp
+      # - --entrypoints.smtp.address=:587/tcp
       - --entrypoints.web.address=:80
       - --entrypoints.web.http.redirections.entrypoint.to=websecure
       - --entrypoints.web.http.redirections.entrypoint.scheme=https
@@ -46,13 +40,41 @@ services:
       - --providers.file.watch=true
       - --api.dashboard=true
       - --api.insecure=true
+      # - --metrics.addinternals
+      # - --metrics.influxdb2=true
+      # - --metrics.influxdb2.address=http://influxdb:8086
+      # - --metrics.influxdb2.org=$INFLUXDB_INIT_ORG
+      # - --metrics.influxdb2.bucket=$INFLUXDB_INIT_BUCKET
+      # - --metrics.influxdb2.token=$INFLUXDB_INIT_ADMIN_TOKEN
+      # - --metrics.influxdb2.addServicesLabels=true
+      # - --metrics.influxdb2.addEntryPointsLabels=true
+      # - --metrics.influxdb2.addrouterslabels=true
+      # - --metrics.influxdb2.pushInterval=10s
+      # - --tracing.otlp.http.endpoint=http://jaeger:4318/v1/traces
+      - --accesslog=true
+      - --accesslog.filepath=/var/logs/access.log
+      - --accesslog.fields.defaultMode=keep
+      - --accesslog.fields.names.StartUTC=drop
+      - --accesslog.format=json
+      - --experimental.plugins.wafrisPlugin.moduleName=github.com/Wafris/wafris-traefik
+      - --experimental.plugins.wafrisPlugin.version=v0.0.3
+      - --experimental.plugins.google-oidc-auth-middleware.modulename=github.com/andrewkroh/google-oidc-auth-middleware
+      - --experimental.plugins.google-oidc-auth-middleware.version=v0.1.0
       - --certificatesresolvers.letsencrypt.acme.email=$ADMIN_EMAIL
       - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
       - --certificatesresolvers.letsencrypt.acme.httpchallenge=true
       - --certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web
+      # - --certificatesresolvers.letsencrypt.acme.dnschallenge=true
+      # - --certificatesresolvers.letsencrypt.acme.dnschallenge.provider=ovh
+    depends_on:
+      - oauth
+      - redis
+      # - jaeger
+      # - prometheus
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./traefik:/conf.d
+      - $JOHNCLOUD_ROOT/traefik/logs:/var/logs
       - $JOHNCLOUD_ROOT/traefik/letsencrypt:/letsencrypt
     labels:
       - "traefik.enable=true"
@@ -60,6 +82,224 @@ services:
       - "traefik.http.routers.traefik.service=api@internal"
       - "traefik.http.routers.traefik.entrypoints=websecure"
       - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.traefik.middlewares=forward-auth-verify"
+      # - "traefik.http.routers.traefik.middlewares=oidc-auth@docker"
+      - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.oidc.clientID=$PROVIDERS_GOOGLE_CLIENT_ID"
+      - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.oidc.clientSecret=$PROVIDERS_GOOGLE_CLIENT_SECRET"
+      # - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.oidc.callbackPath=/"
+      - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.cookie.secret=$SECRET"
+      - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.cookie.insecure=$INSECURE_COOKIE"
+      - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.authorized.emails=$WHITELIST"
+      - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.authorized.domains=$COOKIE_DOMAIN"
+      - "homepage.group=Platform"
+      - "homepage.name=Traefik"
+      - "homepage.icon=traefik.svg"
+      - "homepage.href=https://traefik.$HOST"
+      - "homepage.description=Traefik reverse proxy"
+
+  node_exporter:
+    image: quay.io/prometheus/node-exporter:latest
+    restart: unless-stopped
+    container_name: node_exporter
+    command:
+      - '--path.rootfs=/host'
+    pid: host
+    volumes:
+      - /:/host:ro,rslave
+    environment:
+      - TZ=$TZ
+    depends_on:
+      - redis
+      - prometheus
+    labels:
+      - "traefik.enable=false"
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    command: -max_procs=2 -docker_only=true
+    # command: -max_procs=2 -docker_only=true -storage_driver=influxdb -storage_driver_db=cadvisor -storage_driver_host=influxdb:8086 -storage_driver_user=$INFLUXDB_INIT_USERNAME -storage_driver_password=$INFLUXDB_INIT_ADMIN_TOKEN
+    environment:
+      - TZ=$TZ
+    depends_on:
+      - redis
+      - prometheus
+    labels:
+      - "traefik.enable=false"
+  
+  pdc:
+    # https://grafana.com/docs/grafana-cloud/connect-externally-hosted/private-data-source-connect/#private-data-source-connect-pdc-concepts
+    image: grafana/pdc-agent:latest
+    container_name: pdc
+    restart: unless-stopped
+    depends_on:
+      # - jaeger
+      - prometheus
+      - loki
+    command: ["-token","$GRAFANA_PDC_TOKEN","-cluster","$GRAFANA_PDC_CLUSTER","-gcloud-hosted-grafana-id","$GRAFANA_PDC_GCP_ID"]
+    labels:
+      - "traefik.enable=false"
+
+  loki:
+    image: grafana/loki:latest
+    container_name: loki
+    user: "0:0"
+    # ports:
+    #   - 3100:3100
+    depends_on:
+      - promtail
+    volumes:
+      - $JOHNCLOUD_ROOT/monitoring/loki:/loki
+      - ./loki/config.yml:/etc/loki/loki-config.yaml
+    command: -config.file=/etc/loki/loki-config.yaml
+    environment:
+      - TZ=$TZ
+    labels:
+      - "traefik.enable=false"
+        
+  promtail:
+    image:  grafana/promtail:latest
+    container_name: promtail
+    volumes:
+      - ./promtail/config.yml:/etc/promtail/docker-config.yaml
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - $JOHNCLOUD_ROOT/traefik/logs:/var/logs/traefik:ro
+    command: -config.file=/etc/promtail/docker-config.yaml
+    environment:
+      - TZ=$TZ
+    labels:
+      - "traefik.enable=false"
+
+  # jaeger:
+  #   image: jaegertracing/all-in-one:1.62.0
+  #   container_name: jaeger
+  #   restart: unless-stopped
+  #   environment:
+  #     - TZ=$TZ
+  #     - COLLECTOR_OTLP_ENABLED=true
+  #     - METRICS_STORAGE_TYPE=prometheus
+  #     - PROMETHEUS_SERVER_URL=http://prometheus:9090
+    #   - SPAN_STORAGE_TYPE=badger
+    #   - BADGER_EPHEMERAL=false
+    #   - BADGER_DIRECTORY_VALUE=/badger/data
+    #   - BADGER_DIRECTORY_KEY=/badger/key
+    # volumes:
+    #   - $JOHNCLOUD_ROOT/jaeger/data:/badger
+    # labels:
+    #   - "traefik.enable=false"
+      # - "traefik.http.routers.jaeger.rule=Host(`jaeger.$HOST`)"
+      # - "traefik.http.routers.jaeger.entrypoints=websecure"
+      # - "traefik.http.routers.jaeger.tls.certresolver=letsencrypt"
+      # - "traefik.http.services.jaeger.loadbalancer.server.port=16686"
+      # - "traefik.http.routers.jaeger.middlewares=forward-auth-verify"
+      # - "homepage.group=Platform"
+      # - "homepage.name=Jaeger"
+      # - "homepage.icon=jaeger.svg"
+      # - "homepage.href=https://jaeger.$HOST"
+      # - "homepage.description=Open source, distributed tracing platform"
+        
+  prometheus:
+    image: prom/prometheus:main
+    container_name: prometheus
+    user: "0:0"
+    restart: unless-stopped
+    volumes:
+      - ./prometheus/:/etc/prometheus/
+      - $JOHNCLOUD_ROOT/monitoring/prometheus/db:/prometheus
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    command:
+      - "--web.route-prefix=/"
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+      - "--web.enable-lifecycle"
+    environment:
+      - TZ=$TZ
+    # labels:
+    #   - "traefik.enable=true"
+    #   - "traefik.http.routers.prom.rule=Host(`prom.$HOST`)"
+    #   - "traefik.http.routers.prom.entrypoints=websecure"
+    #   - "traefik.http.routers.prom.tls.certresolver=letsencrypt"
+    #   - "traefik.http.services.prom.loadbalancer.server.port=9090"
+    #   - "traefik.http.routers.prom.middlewares=forward-auth-verify"
+    #   - "homepage.group=Platform"
+    #   - "homepage.name=Prometheus"
+    #   - "homepage.icon=prometheus.svg"
+    #   - "homepage.href=https://prometheus.$HOST"
+    #   - "homepage.description=From metrics to insight"
+  
+  # influxdb:
+  #   image: influxdb:2
+  #   container_name: influxdb
+  #   restart: unless-stopped
+  #   environment:
+  #     - DOCKER_INFLUXDB_INIT_MODE=setup
+  #     - DOCKER_INFLUXDB_INIT_USERNAME=$INFLUXDB_INIT_USERNAME
+  #     - DOCKER_INFLUXDB_INIT_PASSWORD=$INFLUXDB_INIT_PASSWORD
+  #     - DOCKER_INFLUXDB_INIT_ORG=$INFLUXDB_INIT_ORG
+  #     - DOCKER_INFLUXDB_INIT_BUCKET=$INFLUXDB_INIT_BUCKET
+  #     - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=$INFLUXDB_INIT_ADMIN_TOKEN
+  #     - TZ=$TZ
+  #   volumes:
+  #     - "$JOHNCLOUD_ROOT/influxdb/data:/var/lib/influxdb2"
+  #     - "$JOHNCLOUD_ROOT/influxdb/config:/etc/influxdb2"
+  #     - /etc/timezone:/etc/timezone:ro
+  #     - /etc/localtime:/etc/localtime:ro
+  #   labels:
+  #     - "traefik.enable=true"
+  #     - "traefik.http.routers.influxdb.rule=Host(`influxdb.$HOST`)"
+  #     - "traefik.http.routers.influxdb.entrypoints=websecure"
+  #     - "traefik.http.routers.influxdb.tls.certresolver=letsencrypt"
+  #     - "traefik.http.services.influxdb.loadbalancer.server.port=8086"
+  #     - "homepage.group=Platform"
+  #     - "homepage.name=InfluxDB"
+  #     - "homepage.icon=influxdb.svg"
+  #     - "homepage.href=https://influxdb.$HOST"
+  #     - "homepage.description=Time Series Data Platform"
+
+  tcp_ping:
+    # ncat --ssl ping.johncloud.fr 3567
+    image: ydethe/tcp_ping
+    container_name: tcp_ping
+    restart: unless-stopped
+    environment:
+      - PORT=3567
+    labels:
+      - "traefik.enable=true"
+      - "traefik.tcp.routers.ping.rule=HostSNI(`ping.$HOST`)"
+      - "traefik.tcp.routers.ping.service=ping_service"
+      - "traefik.tcp.routers.ping.entrypoints=tcp_ping"
+      - "traefik.tcp.routers.ping.tls.certresolver=letsencrypt"
+      - "traefik.tcp.services.ping_service.loadbalancer.server.port=3567"
+
+  oauth:
+    image: thomseddon/traefik-forward-auth:latest
+    container_name: oauth
+    environment:
+      - TZ=$TZ
+      - PROVIDERS_GOOGLE_CLIENT_ID=$PROVIDERS_GOOGLE_CLIENT_ID
+      - PROVIDERS_GOOGLE_CLIENT_SECRET=$PROVIDERS_GOOGLE_CLIENT_SECRET
+      - SECRET=$SECRET
+      - AUTH_HOST=oauth.$HOST
+      - COOKIE_DOMAIN=$COOKIE_DOMAIN
+      - WHITELIST=$WHITELIST
+      - INSECURE_COOKIE=$INSECURE_COOKIE
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.forward.rule=Host(`oauth.$HOST`)"
+      - "traefik.http.routers.forward.entrypoints=websecure"
+      - "traefik.http.routers.forward.tls.certresolver=letsencrypt"
+      - "traefik.http.services.forward.loadbalancer.server.port=4181"
+      - "traefik.http.middlewares.forward-auth-verify.forwardauth.address=http://oauth:4181"      
+      - "traefik.http.middlewares.forward-auth-verify.forwardauth.authResponseHeaders=X-Forwarded-User"
 
   certdumper:
     restart: unless-stopped
@@ -82,76 +322,78 @@ services:
     labels:
       - "traefik.enable=false"
 
-  posteio:
-    image: analogic/poste.io
+  portainer:
+    image: portainer/portainer-ee:latest
+    container_name: portainer
     restart: unless-stopped
-    # ports:
-    #   - "465:465"
-    #   - "587:587"
-    #   - "993:993"
-    # depends_on:
-    #   - traefik
     volumes:
-      - $JOHNCLOUD_ROOT/posteio:/data
-    environment:
-      TZ: $TZ
-      HTTPS: OFF
-      HTTP_PORT: 8534
-      # HTTPS_PORT: 8535
-      LETSENCRYPT_EMAIL: $ADMIN_EMAIL
-      LETSENCRYPT_HOST: $ADMIN_EMAIL
-      DISABLE_CLAMAV: $DISABLE_CLAMAV
-      DISABLE_RSPAMD: $DISABLE_RSPAMD
-      DISABLE_ROUNDCUBE: $DISABLE_ROUNDCUBE
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      - $JOHNCLOUD_ROOT/portainer/data:/data
     labels:
       - "traefik.enable=true"
+      - "traefik.http.routers.portainer.rule=Host(`portainer.$HOST`)"   
+      - "traefik.http.routers.portainer.entrypoints=websecure"
+      - "traefik.http.routers.portainer.tls.certresolver=letsencrypt"
+      - "traefik.http.services.portainer.loadbalancer.server.port=9000"
+      - "homepage.group=Platform"
+      - "homepage.name=Portainer"
+      - "homepage.icon=portainer.svg"
+      - "homepage.href=https://portainer.$HOST"
+      - "homepage.description=Container Management Software"
 
-      - "traefik.http.routers.posteio.rule=Host(`mail.$HOST`)"
-      - "traefik.http.routers.posteio.entrypoints=websecure"
-      - "traefik.http.routers.posteio.service=sposteio"
-      - "traefik.http.routers.posteio.tls.certresolver=letsencrypt"
-      - "traefik.http.services.sposteio.loadbalancer.server.port=8534"
+  redis:
+    image: redis:7.2.0
+    container_name: redis
+    environment:
+      - TZ=$TZ
+      - ENABLE_OVERCOMMIT_MEMORY=true
+    labels:
+      - "traefik.enable=false"
 
-      # # SMTPS (Port 465)
-      # # - "traefik.tcp.routers.posteio-smtps.rule=HostSNI(`*`)"
-      # - "traefik.tcp.routers.posteio-smtps.rule=HostSNI(`mail.$HOST`)"
-      # # - "traefik.tcp.routers.posteio-smtps.tls.certresolver=letsencrypt"
-      # - "traefik.tcp.routers.posteio-smtps.tls.passthrough=true"
-      # - "traefik.tcp.routers.posteio-smtps.entrypoints=smtps"
-      # - "traefik.tcp.routers.posteio-smtps.service=sposteio-smtps"
-      # - "traefik.tcp.services.sposteio-smtps.loadbalancer.server.port=465"
-
-      # # IMAPS (Port 993)
-      # # - "traefik.tcp.routers.posteio-imaps.rule=HostSNI(`*`)"
-      # - "traefik.tcp.routers.posteio-imaps.rule=HostSNI(`mail.$HOST`)"
-      # # - "traefik.tcp.routers.posteio-imaps.tls.certresolver=letsencrypt"
-      # - "traefik.tcp.routers.posteio-imaps.tls.passthrough=true"
-      # - "traefik.tcp.routers.posteio-imaps.entrypoints=imaps"
-      # - "traefik.tcp.routers.posteio-imaps.service=sposteio-imaps"
-      # - "traefik.tcp.services.sposteio-imaps.loadbalancer.server.port=993"
-
-      # # Submission (Port 587)
-      # # - "traefik.tcp.routers.posteio-msa.rule=HostSNI(`*`)"
-      # - "traefik.tcp.routers.posteio-msa.rule=HostSNI(`mail.$HOST`)"
-      # # - "traefik.tcp.routers.posteio-msa.tls.certresolver=letsencrypt"
-      # # - "traefik.tcp.routers.posteio-msa.tls.passthrough=true"
-      # - "traefik.tcp.routers.posteio-msa.entrypoints=msa"
-      # - "traefik.tcp.routers.posteio-msa.service=sposteio-msa"
-      # - "traefik.tcp.services.sposteio-msa.loadbalancer.server.port=587"
-
-      # IMAP (Port 143)
-      - "traefik.tcp.routers.posteio-imap.rule=HostSNI(`mail.$HOST`)"
-      - "traefik.tcp.routers.posteio-imap.tls.certresolver=letsencrypt"
-      - "traefik.tcp.routers.posteio-imap.entrypoints=imaps"
-      - "traefik.tcp.routers.posteio-imap.service=sposteio-imap"
-      - "traefik.tcp.services.sposteio-imap.loadbalancer.server.port=143"
-
-      # SMTP (Port 25)
-      - "traefik.tcp.routers.posteio-smtp.rule=HostSNI(`mail.$HOST`)"
-      - "traefik.tcp.routers.posteio-smtp.tls.certresolver=letsencrypt"
-      - "traefik.tcp.routers.posteio-smtp.entrypoints=smtps"
-      - "traefik.tcp.routers.posteio-smtp.service=sposteio-smtp"
-      - "traefik.tcp.services.sposteio-smtp.loadbalancer.server.port=25"
+  homepage:
+    image: ghcr.io/gethomepage/homepage:latest
+    container_name: homepage
+    restart: unless-stopped
+    depends_on:
+      - oauth
+      - tailscale
+    volumes:
+      - $JOHNCLOUD_ROOT/home/config:/app/config # Make sure your local config directory exists
+      - /var/run/docker.sock:/var/run/docker.sock:ro # (optional) For docker integrations
+    labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.homepage.rule=Host(`home.$HOST`)"
+        - "traefik.http.routers.homepage.entrypoints=websecure"
+        - "traefik.http.routers.homepage.tls.certresolver=letsencrypt"
+        - "traefik.http.routers.homepage.middlewares=forward-auth-verify"
+ 
+  tailscale:
+    image: ghcr.io/tailscale/tailscale:latest
+    container_name: tailscale
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    environment:
+      - VIRTUAL_HOST=tailscale.${HOST}
+      - TS_ACCEPT_DNS=$TS_ACCEPT_DNS
+      - TS_AUTH_ONCE=$TS_AUTH_ONCE
+      - TS_AUTHKEY=$TS_AUTHKEY
+      - TS_DEST_IP=$TS_DEST_IP
+      - TS_HOSTNAME=$TS_HOSTNAME
+      - TS_OUTBOUND_HTTP_PROXY_LISTEN=$TS_OUTBOUND_HTTP_PROXY_LISTEN
+      - TS_ROUTES=$TS_ROUTES
+      - TS_SOCKET=$TS_SOCKET
+      - TS_SOCKS5_SERVER=$TS_SOCKS5_SERVER
+      - TS_USERSPACE=$TS_USERSPACE
+      - TS_STATE_DIR=$TS_STATE_DIR
+    volumes:
+      - /var/lib:/var/lib
+      - /dev/net/tun:/dev/net/tun
+    labels:
+      - "traefik.enable=false"
 
 networks:
   default:
