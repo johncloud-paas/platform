@@ -84,6 +84,7 @@ services:
 
       - traefik.http.routers.mailserver.rule=Host(`mail.$HOST`) || Host(`autodiscover.$HOST`) || Host(`autoconfig.$HOST`) || Host(`mta-sts.$HOST`)
       - traefik.http.routers.mailserver.entrypoints=websecure
+      - traefik.http.routers.mailserver.tls.certresolver=letsencrypt
       - traefik.http.routers.mailserver.service=mailserver
       - traefik.http.services.mailserver.loadbalancer.server.port=8080
 
