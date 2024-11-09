@@ -1,87 +1,51 @@
-# https://blog.filador.fr/je-supervise-mon-traefik-avec-prometheus-et-grafana/
-# https://github.com/loganmarchione/homelab-svg-assets/blob/main/ICONS.md
-# https://joeeey.com/blog/selfhosting-sso-with-traefik-keycloak-part-1/#setting-up-keycloak
-# https://goauthentik.io/docs/providers/proxy/server_traefik
-
 services:
   traefik:
     image: traefik:v3.0
     container_name: traefik
-    ports:
-      - "80:80"
-      - "443:443"
-      - "25:25"
-      - "465:465"
-      - "993:993"
-    restart: unless-stopped
+    restart: always
     networks:
-      default:
-        ipv4_address: 192.168.203.2
-    environment:
-      - "TZ=$TZ"
-    command:
-      - --entrypoints.smtp.address=:25
-      - --entrypoints.smtp.proxyProtocol.trustedIPs=192.168.203.2,192.168.203.5
-      - --entrypoints.smtps.address=:465
-      - --entrypoints.smtps.proxyProtocol.trustedIPs=192.168.203.2,192.168.203.5
-      - --entrypoints.imaps.address=:993
-      - --entrypoints.imaps.proxyProtocol.trustedIPs=192.168.203.2,192.168.203.5
-      - --entrypoints.web.address=:80
-      - --entrypoints.web.http.redirections.entrypoint.to=websecure
-      - --entrypoints.web.http.redirections.entrypoint.scheme=https
-      - --entrypoints.web.http.redirections.entrypoint.permanent=true
-      - --entrypoints.websecure.address=:443
-      - --entrypoints.websecure.http.tls.certresolver=letsencrypt
-      - --providers.docker=true
-      - --providers.docker.exposedByDefault=false
-      - --api.dashboard=true
-      - --api.insecure=true
-      - --accesslog=true
-      - --accesslog.filepath=/var/logs/access.log
-      - --certificatesresolvers.letsencrypt.acme.email=$ADMIN_EMAIL
-      - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
-      - --certificatesresolvers.letsencrypt.acme.httpchallenge=true
-      - --certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web
+      proxy:
+        ipv4_address: 172.19.0.2
+    ports:
+      - 80:80
+      - 443:443
+      - 25:25
+      - 465:465
+      - 993:993
     volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ./traefik:/etc/traefik
+      - ./acme:/etc/certs
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - $JOHNCLOUD_ROOT/traefik/letsencrypt:/letsencrypt
-      - $JOHNCLOUD_ROOT/traefik/logs:/var/logs
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.traefik.rule=Host(`traefik.$HOST`)"
-      - "traefik.http.routers.traefik.service=api@internal"
-      - "traefik.http.routers.traefik.entrypoints=websecure"
-      - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
 
-  certdumper:
+  traefik-certs-dumper:
     image: ghcr.io/kereis/traefik-certs-dumper:latest
-    container_name: certdumper
+    container_name: traefik-certs-dumper
     restart: unless-stopped
     depends_on:
       - traefik
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - $JOHNCLOUD_ROOT/traefik/letsencrypt:/traefik:ro
-      - $JOHNCLOUD_ROOT/traefik/certs:/output
+      - ./acme:/traefik:ro
+      - ./certs:/output
 
   mailserver:
     image: stalwartlabs/mail-server:latest
     container_name: mailserver
     restart: unless-stopped
-    hostname: mail.$HOST
+    hostname: mail.johntest.ovh
+    networks:
+      proxy:
+        ipv4_address: 172.19.0.5
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - $JOHNCLOUD_ROOT/stalwart:/opt/stalwart-mail
-      - $JOHNCLOUD_ROOT/traefik/certs:/data/certs:ro
-    networks:
-      default:
-        ipv4_address: 192.168.203.5
+      - ./data:/opt/stalwart-mail
+      - ./certs:/data/certs:ro
     labels:
       - traefik.enable=true
 
-      - traefik.http.routers.mailserver.rule=Host(`mail.$HOST`) || Host(`autodiscover.$HOST`) || Host(`autoconfig.$HOST`) || Host(`mta-sts.$HOST`)
-      - traefik.http.routers.mailserver.entrypoints=websecure
-      - traefik.http.routers.mailserver.tls.certresolver=letsencrypt
+      - traefik.http.routers.mailserver.rule=Host(`mail.johntest.ovh`) || Host(`autodiscover.johntest.ovh`) || Host(`autoconfig.johntest.ovh`) || Host(`mta-sts.johntest.ovh`)
+      - traefik.http.routers.mailserver.entrypoints=https
       - traefik.http.routers.mailserver.service=mailserver
       - traefik.http.services.mailserver.loadbalancer.server.port=8080
 
@@ -93,7 +57,7 @@ services:
 
       - traefik.tcp.routers.jmap.rule=HostSNI(`*`)
       - traefik.tcp.routers.jmap.tls.passthrough=true
-      - traefik.tcp.routers.jmap.entrypoints=websecure
+      - traefik.tcp.routers.jmap.entrypoints=https
       - traefik.tcp.routers.jmap.service=jmap
       - traefik.tcp.services.jmap.loadbalancer.server.port=443
       - traefik.tcp.services.jmap.loadbalancer.proxyProtocol.version=2
@@ -111,11 +75,9 @@ services:
       - traefik.tcp.routers.imaps.service=imaps
       - traefik.tcp.services.imaps.loadbalancer.server.port=993
       - traefik.tcp.services.imaps.loadbalancer.proxyProtocol.version=2
-      
-# swaks --to yann@gmail.com --from yann@johntest.ovh --tls --server mail.johntest.ovh --auth-user yann@johntest.ovh --protocol SSMTP --port 465
 
 networks:
-  default:
+  proxy:
     external: true
-    name: traefik-proxy
+    name: $TRAEFIK_NETWORK
     
