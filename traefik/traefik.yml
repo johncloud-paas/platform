@@ -1,0 +1,60 @@
+global:
+  checkNewVersion: true
+  sendAnonymousUsage: false
+
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      keyType: EC256
+      httpChallenge:
+        entryPoint: http
+      email: ydethe@gmail.com
+      storage: /etc/certs/acme.json
+
+entryPoints:
+  http:
+    address: :80
+    http3: {}
+    http:
+      redirections:
+        entryPoint:
+          to: https
+          scheme: https
+
+  https:
+    address: :443
+    http3: {}
+    http:
+      tls:
+        certResolver: letsencrypt
+
+  smtp:
+    address: :25
+    proxyProtocol:
+      trustedIPs:
+        - 172.19.0.2
+        - 172.19.0.5
+
+  smtps:
+    address: :465
+    proxyProtocol:
+      trustedIPs:
+        - 172.19.0.2
+        - 172.19.0.5
+
+  imaps:
+    address: :993
+    proxyProtocol:
+      trustedIPs:
+        - 172.19.0.2
+        - 172.19.0.5
+
+tls:
+  options:
+    default:
+      minVersion: VersionTLS12
+
+providers:
+  docker:
+    exposedByDefault: false
+    
