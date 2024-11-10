@@ -1,10 +1,11 @@
 services:
+  # https://github.com/stalwartlabs/mail-server/discussions/206#discussioncomment-8438477
   traefik:
     image: traefik:v3.0
     container_name: traefik
     restart: always
     networks:
-      proxy:
+      default:
         ipv4_address: 172.19.0.2
     ports:
       - 80:80
@@ -33,9 +34,11 @@ services:
     image: stalwartlabs/mail-server:latest
     container_name: mailserver
     restart: unless-stopped
-    hostname: mail.johntest.ovh
+    hostname: mail.$HOST
+    depends_on:
+      - traefik
     networks:
-      proxy:
+      default:
         ipv4_address: 172.19.0.5
     volumes:
       - /etc/localtime:/etc/localtime:ro
@@ -44,7 +47,7 @@ services:
     labels:
       - traefik.enable=true
 
-      - traefik.http.routers.mailserver.rule=Host(`mail.johntest.ovh`) || Host(`autodiscover.johntest.ovh`) || Host(`autoconfig.johntest.ovh`) || Host(`mta-sts.johntest.ovh`)
+      - traefik.http.routers.mailserver.rule=Host(`mail.$HOST`) || Host(`autodiscover.$HOST`) || Host(`autoconfig.$HOST`) || Host(`mta-sts.$HOST`)
       - traefik.http.routers.mailserver.entrypoints=https
       - traefik.http.routers.mailserver.service=mailserver
       - traefik.http.services.mailserver.loadbalancer.server.port=8080
@@ -77,7 +80,7 @@ services:
       - traefik.tcp.services.imaps.loadbalancer.proxyProtocol.version=2
 
 networks:
-  proxy:
+  default:
     external: true
     name: $TRAEFIK_NETWORK
     
