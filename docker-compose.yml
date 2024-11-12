@@ -8,25 +8,17 @@ services:
     image: traefik:latest
     container_name: traefik
     ports:
-      - "80:80"
-      - "443:443"
-      - "465:465"
-      - "587:587"
-      - "993:993"
+      - 80:80
+      - 443:443
+      - 25:25
+      - 465:465
+      - 993:993
     restart: unless-stopped
-    environment:
-    # https://www.ovh.com/auth/api/createToken
-    # https://eu.api.ovh.com/console/?section=%2Fme&branch=v1#delete-/me/api/application/-applicationId-
-      - "OVH_ENDPOINT=$OVH_ENDPOINT"
-      - "OVH_APPLICATION_KEY=$OVH_APPLICATION_KEY"
-      - "OVH_APPLICATION_SECRET=$OVH_APPLICATION_SECRET"
-      - "OVH_CONSUMER_KEY=$OVH_CONSUMER_KEY"
-      - "TZ=$TZ"
     command:
       # - --entryPoints.metrics.address=:8082
       # - --entrypoints.smtp.address=:25  # SMTP - mostly processing incoming mails from remote mail servers
       - --entrypoints.smtps.address=:465 # SMTPS - Legacy SMTPs port
-      # - --entrypoints.msa.address=:587 # MSA - SMTP port primarily used by email clients after STARTTLS and auth
+      - --entrypoints.msa.address=:587 # MSA - SMTP port primarily used by email clients after STARTTLS and auth
       # - --entrypoints.pop3.address=:110 # POP3 - standard protocol for accessing mailbox, STARTTLS is required before client auth
       # - --entrypoints.pop3s.address=:995 # POP3S - POP3 port with encryption from the start of the connection
       # - --entrypoints.imap.address=:143 # IMAP - standard protocol for accessing mailbox, STARTTLS is required before client auth
@@ -51,6 +43,7 @@ services:
       - --certificatesresolvers.letsencrypt.acme.httpchallenge=true
       - --certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web
     volumes:
+      - /etc/localtime:/etc/localtime:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./traefik:/conf.d
       - $JOHNCLOUD_ROOT/traefik/letsencrypt:/letsencrypt
@@ -85,12 +78,6 @@ services:
   posteio:
     image: analogic/poste.io
     restart: unless-stopped
-    # ports:
-    #   - "465:465"
-    #   - "587:587"
-    #   - "993:993"
-    # depends_on:
-    #   - traefik
     volumes:
       - $JOHNCLOUD_ROOT/posteio:/data
     environment:
@@ -112,46 +99,35 @@ services:
       - "traefik.http.routers.posteio.tls.certresolver=letsencrypt"
       - "traefik.http.services.sposteio.loadbalancer.server.port=8534"
 
-      # # SMTPS (Port 465)
-      # # - "traefik.tcp.routers.posteio-smtps.rule=HostSNI(`*`)"
+      # SMTPS (Port 465)
+      - "traefik.tcp.routers.posteio-smtps.rule=HostSNI(`*`)"
       # - "traefik.tcp.routers.posteio-smtps.rule=HostSNI(`mail.$HOST`)"
-      # # - "traefik.tcp.routers.posteio-smtps.tls.certresolver=letsencrypt"
+      # - "traefik.tcp.routers.posteio-smtps.tls.certresolver=letsencrypt"
       # - "traefik.tcp.routers.posteio-smtps.tls.passthrough=true"
-      # - "traefik.tcp.routers.posteio-smtps.entrypoints=smtps"
-      # - "traefik.tcp.routers.posteio-smtps.service=sposteio-smtps"
-      # - "traefik.tcp.services.sposteio-smtps.loadbalancer.server.port=465"
+      - "traefik.tcp.routers.posteio-smtps.entrypoints=smtps"
+      - "traefik.tcp.routers.posteio-smtps.service=sposteio-smtps"
+      - "traefik.tcp.services.sposteio-smtps.loadbalancer.server.port=465"
+      - "traefik.tcp.services.sposteio-smtps.loadbalancer.proxyProtocol.version=2"
 
-      # # IMAPS (Port 993)
-      # # - "traefik.tcp.routers.posteio-imaps.rule=HostSNI(`*`)"
+      # IMAPS (Port 993)
+      - "traefik.tcp.routers.posteio-imaps.rule=HostSNI(`*`)"
       # - "traefik.tcp.routers.posteio-imaps.rule=HostSNI(`mail.$HOST`)"
-      # # - "traefik.tcp.routers.posteio-imaps.tls.certresolver=letsencrypt"
+      # - "traefik.tcp.routers.posteio-imaps.tls.certresolver=letsencrypt"
       # - "traefik.tcp.routers.posteio-imaps.tls.passthrough=true"
-      # - "traefik.tcp.routers.posteio-imaps.entrypoints=imaps"
-      # - "traefik.tcp.routers.posteio-imaps.service=sposteio-imaps"
-      # - "traefik.tcp.services.sposteio-imaps.loadbalancer.server.port=993"
+      - "traefik.tcp.routers.posteio-imaps.entrypoints=imaps"
+      - "traefik.tcp.routers.posteio-imaps.service=sposteio-imaps"
+      - "traefik.tcp.services.sposteio-imaps.loadbalancer.server.port=993"
+      - "traefik.tcp.services.sposteio-imaps.loadbalancer.proxyProtocol.version=2"
 
-      # # Submission (Port 587)
-      # # - "traefik.tcp.routers.posteio-msa.rule=HostSNI(`*`)"
+      # Submission (Port 587)
+      - "traefik.tcp.routers.posteio-msa.rule=HostSNI(`*`)"
       # - "traefik.tcp.routers.posteio-msa.rule=HostSNI(`mail.$HOST`)"
-      # # - "traefik.tcp.routers.posteio-msa.tls.certresolver=letsencrypt"
-      # # - "traefik.tcp.routers.posteio-msa.tls.passthrough=true"
-      # - "traefik.tcp.routers.posteio-msa.entrypoints=msa"
-      # - "traefik.tcp.routers.posteio-msa.service=sposteio-msa"
-      # - "traefik.tcp.services.sposteio-msa.loadbalancer.server.port=587"
-
-      # IMAP (Port 143)
-      - "traefik.tcp.routers.posteio-imap.rule=HostSNI(`mail.$HOST`)"
-      - "traefik.tcp.routers.posteio-imap.tls.certresolver=letsencrypt"
-      - "traefik.tcp.routers.posteio-imap.entrypoints=imaps"
-      - "traefik.tcp.routers.posteio-imap.service=sposteio-imap"
-      - "traefik.tcp.services.sposteio-imap.loadbalancer.server.port=143"
-
-      # SMTP (Port 25)
-      - "traefik.tcp.routers.posteio-smtp.rule=HostSNI(`mail.$HOST`)"
-      - "traefik.tcp.routers.posteio-smtp.tls.certresolver=letsencrypt"
-      - "traefik.tcp.routers.posteio-smtp.entrypoints=smtps"
-      - "traefik.tcp.routers.posteio-smtp.service=sposteio-smtp"
-      - "traefik.tcp.services.sposteio-smtp.loadbalancer.server.port=25"
+      # - "traefik.tcp.routers.posteio-msa.tls.certresolver=letsencrypt"
+      # - "traefik.tcp.routers.posteio-msa.tls.passthrough=true"
+      - "traefik.tcp.routers.posteio-msa.entrypoints=msa"
+      - "traefik.tcp.routers.posteio-msa.service=sposteio-msa"
+      - "traefik.tcp.services.sposteio-msa.loadbalancer.server.port=587"
+      - "traefik.tcp.services.sposteio-msa.loadbalancer.proxyProtocol.version=2"
 
 networks:
   default:
