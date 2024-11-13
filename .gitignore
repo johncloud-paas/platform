@@ -4,3 +4,6 @@ acme/
 certs/
 data/
 acme.json
+*.pem
+*.log
+
