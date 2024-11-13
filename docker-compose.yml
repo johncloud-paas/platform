@@ -13,73 +13,34 @@ services:
       - 25:25
       - 465:465
       - 993:993
+      - 587:587
     restart: unless-stopped
-    command:
-      # - --entryPoints.metrics.address=:8082
-      # - --entrypoints.smtp.address=:25  # SMTP - mostly processing incoming mails from remote mail servers
-      - --entrypoints.smtps.address=:465 # SMTPS - Legacy SMTPs port
-      - --entrypoints.msa.address=:587 # MSA - SMTP port primarily used by email clients after STARTTLS and auth
-      # - --entrypoints.pop3.address=:110 # POP3 - standard protocol for accessing mailbox, STARTTLS is required before client auth
-      # - --entrypoints.pop3s.address=:995 # POP3S - POP3 port with encryption from the start of the connection
-      # - --entrypoints.imap.address=:143 # IMAP - standard protocol for accessing mailbox, STARTTLS is required before client auth
-      - --entrypoints.imaps.address=:993 # IMAPS - alternative port for IMAP with encryption from the start of the connection
-      - --entrypoints.web.address=:80
-      # - --entrypoints.web.http.redirections.entrypoint.to=websecure
-      # - --entrypoints.web.http.redirections.entrypoint.scheme=https
-      # - --entrypoints.web.http.redirections.entrypoint.permanent=true
-      - --entrypoints.websecure.address=:443
-      - --entrypoints.websecure.http.tls.certresolver=letsencrypt
-      - --entrypoints.websecure.http.tls.domains.main=$HOST
-      - --entrypoints.websecure.http.tls.domains.sans=*.$HOST
-      - --entrypoints.websecure.http.middlewares=default@file
-      - --providers.docker=true
-      - --providers.docker.exposedByDefault=false
-      - --providers.file.directory=conf.d
-      - --providers.file.watch=true
-      - --api.dashboard=true
-      - --api.insecure=true
-      - --certificatesresolvers.letsencrypt.acme.email=$ADMIN_EMAIL
-      - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
-      - --certificatesresolvers.letsencrypt.acme.httpchallenge=true
-      - --certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./traefik:/conf.d
-      - $JOHNCLOUD_ROOT/traefik/letsencrypt:/letsencrypt
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.traefik.rule=Host(`traefik.$HOST`)"
-      - "traefik.http.routers.traefik.service=api@internal"
-      - "traefik.http.routers.traefik.entrypoints=websecure"
-      - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
+      - ./traefik:/etc/traefik
+      - ./acme:/etc/certs
 
-  certdumper:
+  traefik-certs-dumper:
+    image: ghcr.io/kereis/traefik-certs-dumper:latest
+    container_name: traefik-certs-dumper
     restart: unless-stopped
-    image: ldez/traefik-certs-dumper:v2.8.1
-    container_name: certdumper
-    entrypoint: sh -c '
-      apk add jq
-      ; while ! [ -e /traefik/acme.json ]
-      || ! [ `jq ".[] | .Certificates | length" /traefik/acme.json` != 0 ]; do
-      sleep 1
-      ; done
-      && traefik-certs-dumper file --version v2 --watch
-        --source /traefik/acme.json --dest /output
-        --domain-subdir --crt-ext=.pem --key-ext=.pem'
-    volumes:
-      - $JOHNCLOUD_ROOT/traefik/letsencrypt:/traefik:ro
-      - $JOHNCLOUD_ROOT/traefik/certs:/output
     depends_on:
       - traefik
-    labels:
-      - "traefik.enable=false"
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ./acme:/traefik:ro
+      - ./certs:/output
 
   posteio:
     image: analogic/poste.io
     restart: unless-stopped
+    hostname: mail.$HOST
     volumes:
       - $JOHNCLOUD_ROOT/posteio:/data
+    networks:
+      default:
+        ipv4_address: 172.19.0.5
     environment:
       TZ: $TZ
       HTTPS: OFF
@@ -93,53 +54,38 @@ services:
     labels:
       - "traefik.enable=true"
 
-      - "traefik.http.routers.posteio.rule=Host(`mail.$HOST`)"
-      - "traefik.http.routers.posteio.entrypoints=websecure"
-      - "traefik.http.routers.posteio.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.posteio.service=sposteio"
-      - "traefik.http.services.sposteio.loadbalancer.server.port=8534"
+      - traefik.http.routers.posteio.rule=Host(`mail.$HOST`) || Host(`autodiscover.$HOST`) || Host(`autoconfig.$HOST`) || Host(`mta-sts.$HOST`)
+      - traefik.http.routers.posteio.entrypoints=https
+      - traefik.http.routers.posteio.service=sposteio
+      - traefik.http.services.sposteio.loadbalancer.server.port=8534
 
-      - "traefik.http.routers.posteio-unsecure.rule=Host(`mail.$HOST`)"
-      - "traefik.http.routers.posteio-unsecure.entrypoints=web"
-      - "traefik.http.routers.posteio-unsecure.service=sposteio-unsecure"
-      - "traefik.http.routers.posteio-unsecure.tls=false"
-      - "traefik.http.services.sposteio-unsecure.loadbalancer.server.port=8534"
+      - traefik.tcp.routers.smtp.rule=HostSNI(`*`)
+      - traefik.tcp.routers.smtp.tls=false
+      - traefik.tcp.routers.smtp.entrypoints=smtp
+      - traefik.tcp.routers.smtp.service=smtp
+      - traefik.tcp.services.smtp.loadbalancer.server.port=25
+      - traefik.tcp.services.smtp.loadbalancer.proxyProtocol.version=2
 
-      # IMAPS (Port 993)
-      - "traefik.tcp.routers.posteio-imaps.rule=HostSNI(`*`)"
-      # - "traefik.tcp.routers.posteio-imaps.rule=HostSNI(`mail.$HOST`)"
-      - "traefik.tcp.routers.posteio-imaps.tls.passthrough=true"
-      # - "traefik.tcp.routers.posteio-imaps.tls.certresolver=letsencrypt"
-      # - "traefik.tcp.routers.posteio-imaps.tls.domains[0].main=mail.$HOST"
-      # - "traefik.tcp.routers.posteio-imaps.tls.domains[0].sans="
-      - "traefik.tcp.routers.posteio-imaps.entrypoints=imaps"
-      - "traefik.tcp.routers.posteio-imaps.service=sposteio-imaps"
-      - "traefik.tcp.services.sposteio-imaps.loadbalancer.server.port=993"
-      - "traefik.tcp.services.sposteio-imaps.loadbalancer.proxyProtocol.version=2"
+      - traefik.tcp.routers.submission.rule=HostSNI(`*`)
+      - traefik.tcp.routers.submission.tls.passthrough=true
+      - traefik.tcp.routers.submission.entrypoints=submission
+      - traefik.tcp.routers.submission.service=submission
+      - traefik.tcp.services.submission.loadbalancer.server.port=587
+      - traefik.tcp.services.submission.loadbalancer.proxyProtocol.version=2
 
-      # Submission (Port 587)
-      - "traefik.tcp.routers.posteio-msa.rule=HostSNI(`*`)"
-      # - "traefik.tcp.routers.posteio-msa.rule=HostSNI(`mail.$HOST`)"
-      - "traefik.tcp.routers.posteio-msa.tls.passthrough=true"
-      # - "traefik.tcp.routers.posteio-msa.tls.certresolver=letsencrypt"
-      # - "traefik.tcp.routers.posteio-msa.tls.domains[0].main=mail.$HOST"
-      # - "traefik.tcp.routers.posteio-msa.tls.domains[0].sans="
-      - "traefik.tcp.routers.posteio-msa.entrypoints=msa"
-      - "traefik.tcp.routers.posteio-msa.service=sposteio-msa"
-      - "traefik.tcp.services.sposteio-msa.loadbalancer.server.port=587"
-      - "traefik.tcp.services.sposteio-msa.loadbalancer.proxyProtocol.version=2"
+      - traefik.tcp.routers.submissions.rule=HostSNI(`*`)
+      - traefik.tcp.routers.submissions.tls.passthrough=true
+      - traefik.tcp.routers.submissions.entrypoints=submissions
+      - traefik.tcp.routers.submissions.service=submissions
+      - traefik.tcp.services.submissions.loadbalancer.server.port=465
+      - traefik.tcp.services.submissions.loadbalancer.proxyProtocol.version=2
 
-      # SMTPS (Port 465)
-      - "traefik.tcp.routers.posteio-smtps.rule=HostSNI(`*`)"
-      # - "traefik.tcp.routers.posteio-smtps.rule=HostSNI(`mail.$HOST`)"
-      - "traefik.tcp.routers.posteio-smtps.tls.passthrough=true"
-      # - "traefik.tcp.routers.posteio-smtps.tls.certresolver=letsencrypt"
-      # - "traefik.tcp.routers.posteio-smtps.tls.domains[0].main=mail.$HOST"
-      # - "traefik.tcp.routers.posteio-smtps.tls.domains[0].sans="
-      - "traefik.tcp.routers.posteio-smtps.entrypoints=smtps"
-      - "traefik.tcp.routers.posteio-smtps.service=sposteio-smtps"
-      - "traefik.tcp.services.sposteio-smtps.loadbalancer.server.port=465"
-      - "traefik.tcp.services.sposteio-smtps.loadbalancer.proxyProtocol.version=2"
+      - traefik.tcp.routers.imaps.rule=HostSNI(`*`)
+      - traefik.tcp.routers.imaps.tls.passthrough=true
+      - traefik.tcp.routers.imaps.entrypoints=imaps
+      - traefik.tcp.routers.imaps.service=imaps
+      - traefik.tcp.services.imaps.loadbalancer.server.port=993
+      - traefik.tcp.services.imaps.loadbalancer.proxyProtocol.version=2
 
 networks:
   default:
