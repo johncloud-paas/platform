@@ -55,6 +55,7 @@ services:
       - traefik.http.services.mailserver.loadbalancer.server.port=8080
 
       - traefik.tcp.routers.smtp.rule=HostSNI(`*`)
+      - traefik.tcp.routers.smtp.tls=false
       - traefik.tcp.routers.smtp.entrypoints=smtp
       - traefik.tcp.routers.smtp.service=smtp
       - traefik.tcp.services.smtp.loadbalancer.server.port=25
