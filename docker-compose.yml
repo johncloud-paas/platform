@@ -13,6 +13,7 @@ services:
       - 25:25
       - 465:465
       - 993:993
+      - 587:587
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - ./traefik:/etc/traefik
@@ -31,6 +32,7 @@ services:
       - ./certs:/output
 
   mailserver:
+    # swaks --to yann@johncloud.fr --from yann@johntest.ovh --server mail.johntest.ovh --auth-user yann --protocol SSMTP --port 465 --auth-password It2rhHzn3xujowBNTn
     image: stalwartlabs/mail-server:latest
     container_name: mailserver
     restart: unless-stopped
@@ -58,19 +60,26 @@ services:
       - traefik.tcp.services.smtp.loadbalancer.server.port=25
       - traefik.tcp.services.smtp.loadbalancer.proxyProtocol.version=2
 
-      - traefik.tcp.routers.jmap.rule=HostSNI(`*`)
-      - traefik.tcp.routers.jmap.tls.passthrough=true
-      - traefik.tcp.routers.jmap.entrypoints=https
-      - traefik.tcp.routers.jmap.service=jmap
-      - traefik.tcp.services.jmap.loadbalancer.server.port=443
-      - traefik.tcp.services.jmap.loadbalancer.proxyProtocol.version=2
+      # - traefik.tcp.routers.jmap.rule=HostSNI(`*`)
+      # - traefik.tcp.routers.jmap.tls.passthrough=true
+      # - traefik.tcp.routers.jmap.entrypoints=https
+      # - traefik.tcp.routers.jmap.service=jmap
+      # - traefik.tcp.services.jmap.loadbalancer.server.port=443
+      # - traefik.tcp.services.jmap.loadbalancer.proxyProtocol.version=2
 
-      - traefik.tcp.routers.smtps.rule=HostSNI(`*`)
-      - traefik.tcp.routers.smtps.tls.passthrough=true
-      - traefik.tcp.routers.smtps.entrypoints=smtps
-      - traefik.tcp.routers.smtps.service=smtps
-      - traefik.tcp.services.smtps.loadbalancer.server.port=465
-      - traefik.tcp.services.smtps.loadbalancer.proxyProtocol.version=2
+      - traefik.tcp.routers.submission.rule=HostSNI(`*`)
+      - traefik.tcp.routers.submission.tls.passthrough=true
+      - traefik.tcp.routers.submission.entrypoints=submission
+      - traefik.tcp.routers.submission.service=submission
+      - traefik.tcp.services.submission.loadbalancer.server.port=587
+      - traefik.tcp.services.submission.loadbalancer.proxyProtocol.version=2
+
+      - traefik.tcp.routers.submissions.rule=HostSNI(`*`)
+      - traefik.tcp.routers.submissions.tls.passthrough=true
+      - traefik.tcp.routers.submissions.entrypoints=submissions
+      - traefik.tcp.routers.submissions.service=submissions
+      - traefik.tcp.services.submissions.loadbalancer.server.port=465
+      - traefik.tcp.services.submissions.loadbalancer.proxyProtocol.version=2
 
       - traefik.tcp.routers.imaps.rule=HostSNI(`*`)
       - traefik.tcp.routers.imaps.tls.passthrough=true

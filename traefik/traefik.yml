@@ -1,5 +1,5 @@
 global:
-  checkNewVersion: true
+  checkNewVersion: false
   sendAnonymousUsage: false
 
 certificatesResolvers:
@@ -35,7 +35,7 @@ entryPoints:
         - 172.19.0.2
         - 172.19.0.5
 
-  smtps:
+  submissions:
     address: :465
     proxyProtocol:
       trustedIPs:
@@ -44,6 +44,13 @@ entryPoints:
 
   imaps:
     address: :993
+    proxyProtocol:
+      trustedIPs:
+        - 172.19.0.2
+        - 172.19.0.5
+
+  submission:
+    address: :587
     proxyProtocol:
       trustedIPs:
         - 172.19.0.2
