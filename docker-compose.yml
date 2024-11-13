@@ -1,7 +1,7 @@
 services:
   # https://github.com/stalwartlabs/mail-server/discussions/206#discussioncomment-8438477
   traefik:
-    image: traefik:v3.0
+    image: traefik:latest
     container_name: traefik
     restart: always
     networks:
@@ -14,11 +14,49 @@ services:
       - 465:465
       - 993:993
       - 587:587
+    command:
+      - --entrypoints.smtp.address=:25/tcp
+      - --entrypoints.smtp.proxyProtocol.trustedIPs=172.19.0.2,172.19.0.5
+      - --entrypoints.submissions.address=:465/tcp
+      - --entrypoints.submissions.proxyProtocol.trustedIPs=172.19.0.2,172.19.0.5
+      - --entrypoints.imaps.address=:993/tcp
+      - --entrypoints.imaps.proxyProtocol.trustedIPs=172.19.0.2,172.19.0.5
+      - --entrypoints.submission.address=:587/tcp
+      - --entrypoints.submission.proxyProtocol.trustedIPs=172.19.0.2,172.19.0.5
+      - --entrypoints.web.address=:80
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      - --entrypoints.web.http.redirections.entrypoint.permanent=true
+      - --entrypoints.websecure.address=:443
+      - --entrypoints.websecure.http.tls.certresolver=letsencrypt
+      - --entrypoints.websecure.http.tls.domains.main=$HOST
+      - --entrypoints.websecure.http.tls.domains.sans=*.$HOST
+      # - --entrypoints.websecure.http.middlewares=default@file
+      - --providers.docker=true
+      - --providers.docker.exposedByDefault=false
+      - --api.dashboard=true
+      - --api.insecure=true
+      - --accesslog=true
+      - --accesslog.filepath=/var/logs/access.log
+      - --accesslog.fields.defaultMode=keep
+      - --accesslog.fields.names.StartUTC=drop
+      - --accesslog.format=json
+      - --certificatesresolvers.letsencrypt.acme.email=$ADMIN_EMAIL
+      - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
+      - --certificatesresolvers.letsencrypt.acme.httpchallenge=true
+      - --certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - ./traefik:/etc/traefik
-      - ./acme:/etc/certs
+      - $JOHNCLOUD_ROOT/traefik:/etc/traefik
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - $JOHNCLOUD_ROOT/traefik/logs:/var/logs
+      - $JOHNCLOUD_ROOT/traefik/letsencrypt:/letsencrypt
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.traefik.rule=Host(`traefik.$HOST`)
+      - traefik.http.routers.traefik.service=api@internal
+      - traefik.http.routers.traefik.entrypoints=websecure
+      - traefik.http.routers.traefik.tls.certresolver=letsencrypt
 
   traefik-certs-dumper:
     image: ghcr.io/kereis/traefik-certs-dumper:latest
@@ -28,8 +66,8 @@ services:
       - traefik
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - ./acme:/traefik:ro
-      - ./certs:/output
+      - $JOHNCLOUD_ROOT/traefik/letsencrypt:/traefik:ro
+      - $JOHNCLOUD_ROOT/traefik/certs:/output
 
   mailserver:
     # swaks --to test-xxxxxxx@srv1.mail-tester.com --from admin@$HOST --server mail.$HOST --auth-user admin --protocol SSMTP --port 465 --auth-password xxx
@@ -44,13 +82,13 @@ services:
         ipv4_address: 172.19.0.5
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - ./data:/opt/stalwart-mail
-      - ./certs:/data/certs:ro
+      - $JOHNCLOUD_ROOT/stalwart/data:/opt/stalwart-mail
+      - $JOHNCLOUD_ROOT/traefik/certs:/data/certs:ro
     labels:
       - traefik.enable=true
 
       - traefik.http.routers.mailserver.rule=Host(`mail.$HOST`) || Host(`autodiscover.$HOST`) || Host(`autoconfig.$HOST`) || Host(`mta-sts.$HOST`)
-      - traefik.http.routers.mailserver.entrypoints=https
+      - traefik.http.routers.mailserver.entrypoints=websecure
       - traefik.http.routers.mailserver.service=mailserver
       - traefik.http.services.mailserver.loadbalancer.server.port=8080
 
@@ -60,13 +98,6 @@ services:
       - traefik.tcp.routers.smtp.service=smtp
       - traefik.tcp.services.smtp.loadbalancer.server.port=25
       - traefik.tcp.services.smtp.loadbalancer.proxyProtocol.version=2
-
-      # - traefik.tcp.routers.jmap.rule=HostSNI(`*`)
-      # - traefik.tcp.routers.jmap.tls.passthrough=true
-      # - traefik.tcp.routers.jmap.entrypoints=https
-      # - traefik.tcp.routers.jmap.service=jmap
-      # - traefik.tcp.services.jmap.loadbalancer.server.port=443
-      # - traefik.tcp.services.jmap.loadbalancer.proxyProtocol.version=2
 
       - traefik.tcp.routers.submission.rule=HostSNI(`*`)
       - traefik.tcp.routers.submission.tls.passthrough=true
