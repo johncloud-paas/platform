@@ -32,7 +32,7 @@ services:
       - ./certs:/output
 
   mailserver:
-    # swaks --to yann@johncloud.fr --from yann@johntest.ovh --server mail.johntest.ovh --auth-user yann --protocol SSMTP --port 465 --auth-password It2rhHzn3xujowBNTn
+    # swaks --to test-xxxxxxx@srv1.mail-tester.com --from admin@$HOST --server mail.$HOST --auth-user admin --protocol SSMTP --port 465 --auth-password xxx
     image: stalwartlabs/mail-server:latest
     container_name: mailserver
     restart: unless-stopped
