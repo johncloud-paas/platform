@@ -15,17 +15,17 @@ services:
       - 587:587
     command:
       - --entrypoints.smtp.address=:25/tcp
-      - --entrypoints.smtp.proxyProtocol.trustedIPs=172.19.0.2,172.19.0.5
+      - --entrypoints.smtp.proxyProtocol.trustedIPs=172.19.0.0/24
       - --entrypoints.submissions.address=:465/tcp
-      - --entrypoints.submissions.proxyProtocol.trustedIPs=172.19.0.2,172.19.0.5
+      - --entrypoints.submissions.proxyProtocol.trustedIPs=172.19.0.0/24
       - --entrypoints.imaps.address=:993/tcp
-      - --entrypoints.imaps.proxyProtocol.trustedIPs=172.19.0.2,172.19.0.5
+      - --entrypoints.imaps.proxyProtocol.trustedIPs=172.19.0.0/24
       - --entrypoints.submission.address=:587/tcp
-      - --entrypoints.submission.proxyProtocol.trustedIPs=172.19.0.2,172.19.0.5
+      - --entrypoints.submission.proxyProtocol.trustedIPs=172.19.0.0/24
       - --entrypoints.web.address=:80
-      # - --entrypoints.web.http.redirections.entrypoint.to=websecure
-      # - --entrypoints.web.http.redirections.entrypoint.scheme=https
-      # - --entrypoints.web.http.redirections.entrypoint.permanent=true
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      - --entrypoints.web.http.redirections.entrypoint.permanent=true
       - --entrypoints.websecure.address=:443
       - --entrypoints.websecure.http.tls.certresolver=letsencrypt
       - --entrypoints.websecure.http.tls.domains.main=$HOST
