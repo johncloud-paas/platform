@@ -91,6 +91,13 @@ services:
       - traefik.http.routers.mailserver.entrypoints=websecure
       - traefik.http.routers.mailserver.service=mailserver
       - traefik.http.services.mailserver.loadbalancer.server.port=8080
+      
+      - traefik.tcp.routers.jmap.rule=HostSNI(`*`)
+      - traefik.tcp.routers.jmap.tls.passthrough=true
+      - traefik.tcp.routers.jmap.entrypoints=websecure
+      - traefik.tcp.routers.jmap.service=jmap
+      - traefik.tcp.services.jmap.loadbalancer.server.port=443
+      - traefik.tcp.services.jmap.loadbalancer.proxyProtocol.version=2
 
       - traefik.tcp.routers.smtp.rule=HostSNI(`*`)
       - traefik.tcp.routers.smtp.tls=false
