@@ -1,8 +1,3 @@
-# https://blog.filador.fr/je-supervise-mon-traefik-avec-prometheus-et-grafana/
-# https://github.com/loganmarchione/homelab-svg-assets/blob/main/ICONS.md
-# https://joeeey.com/blog/selfhosting-sso-with-traefik-keycloak-part-1/#setting-up-keycloak
-# https://goauthentik.io/docs/providers/proxy/server_traefik
-
 services:
   traefik:
     image: traefik:latest
@@ -11,6 +6,10 @@ services:
       - "80:80"
       - "443:443"
       - "3567:3567"
+      - "25:25"
+      - "465:465"
+      - "993:993"
+      - "587:587"
     restart: unless-stopped
     environment:
     # https://www.ovh.com/auth/api/createToken
@@ -21,23 +20,28 @@ services:
       - "OVH_CONSUMER_KEY=$OVH_CONSUMER_KEY"
       - "TZ=$TZ"
     command:
-      # - --entryPoints.metrics.address=:8082
+      - --entrypoints.smtp.address=:25/tcp
+      - --entrypoints.smtp.proxyProtocol.trustedIPs=172.19.0.0/24
+      - --entrypoints.submissions.address=:465/tcp
+      - --entrypoints.submissions.proxyProtocol.trustedIPs=172.19.0.0/24
+      - --entrypoints.imaps.address=:993/tcp
+      - --entrypoints.imaps.proxyProtocol.trustedIPs=172.19.0.0/24
+      - --entrypoints.submission.address=:587/tcp
+      - --entrypoints.submission.proxyProtocol.trustedIPs=172.19.0.0/24
       - --entrypoints.tcp_ping.address=:3567/tcp
-      # - --entrypoints.imap.address=:993/tcp
-      # - --entrypoints.smtp.address=:587/tcp
       - --entrypoints.web.address=:80
       - --entrypoints.web.http.redirections.entrypoint.to=websecure
       - --entrypoints.web.http.redirections.entrypoint.scheme=https
       - --entrypoints.web.http.redirections.entrypoint.permanent=true
       - --entrypoints.websecure.address=:443
-      - --entrypoints.websecure.http.tls.certresolver=letsencrypt
-      - --entrypoints.websecure.http.tls.domains.main=$HOST
-      - --entrypoints.websecure.http.tls.domains.sans=*.$HOST
-      - --entrypoints.websecure.http.middlewares=default@file
+      # - --entrypoints.websecure.http.tls.certresolver=letsencrypt
+      # - --entrypoints.websecure.http.tls.domains.main=$HOST
+      # - --entrypoints.websecure.http.tls.domains.sans=*.$HOST
+      # - --entrypoints.websecure.http.middlewares=default@file
       - --providers.docker=true
       - --providers.docker.exposedByDefault=false
-      - --providers.file.directory=conf.d
-      - --providers.file.watch=true
+      # - --providers.file.directory=conf.d
+      # - --providers.file.watch=true
       - --api.dashboard=true
       - --api.insecure=true
       # - --metrics.addinternals
@@ -302,25 +306,15 @@ services:
       - "traefik.http.middlewares.forward-auth-verify.forwardauth.authResponseHeaders=X-Forwarded-User"
 
   certdumper:
+    image: ghcr.io/kereis/traefik-certs-dumper:latest
     restart: unless-stopped
-    image: ldez/traefik-certs-dumper:v2.8.1
     container_name: certdumper
-    entrypoint: sh -c '
-      apk add jq
-      ; while ! [ -e /traefik/acme.json ]
-      || ! [ `jq ".[] | .Certificates | length" /traefik/acme.json` != 0 ]; do
-      sleep 1
-      ; done
-      && traefik-certs-dumper file --version v2 --watch
-        --source /traefik/acme.json --dest /output
-        --domain-subdir --crt-ext=.pem --key-ext=.pem'
     volumes:
+      - /etc/localtime:/etc/localtime:ro
       - $JOHNCLOUD_ROOT/traefik/letsencrypt:/traefik:ro
       - $JOHNCLOUD_ROOT/traefik/certs:/output
     depends_on:
       - traefik
-    labels:
-      - "traefik.enable=false"
 
   portainer:
     image: portainer/portainer-ee:latest
