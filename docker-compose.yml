@@ -77,7 +77,7 @@ services:
       # - prometheus
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./traefik:/conf.d
+      # - ./traefik:/conf.d
       - $JOHNCLOUD_ROOT/traefik/logs:/var/logs
       - $JOHNCLOUD_ROOT/traefik/letsencrypt:/letsencrypt
     labels:
