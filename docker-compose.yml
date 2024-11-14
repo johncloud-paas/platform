@@ -27,9 +27,9 @@ services:
       - --entrypoints.web.http.redirections.entrypoint.scheme=https
       - --entrypoints.web.http.redirections.entrypoint.permanent=true
       - --entrypoints.websecure.address=:443
-      - --entrypoints.websecure.http.tls.certresolver=letsencrypt
-      - --entrypoints.websecure.http.tls.domains.main=$HOST
-      - --entrypoints.websecure.http.tls.domains.sans=*.$HOST
+      # - --entrypoints.websecure.http.tls.certresolver=letsencrypt
+      # - --entrypoints.websecure.http.tls.domains.main=$HOST
+      # - --entrypoints.websecure.http.tls.domains.sans=*.$HOST
       # - --entrypoints.websecure.http.middlewares=default@file
       - --providers.docker=true
       - --providers.docker.exposedByDefault=false
@@ -129,29 +129,6 @@ services:
       - traefik.tcp.services.imaps.loadbalancer.server.port=993
       - traefik.tcp.services.imaps.loadbalancer.proxyProtocol.version=2
 
-  # roundcube:
-  #   image: roundcube/roundcubemail:latest
-  #   restart: unless-stopped
-  #   depends_on:
-  #     - mailserver
-  #   networks:
-  #     default:
-  #       ipv4_address: 172.19.0.6
-  #   volumes:
-  #     - $JOHNCLOUD_ROOT/roundcube/www:/var/www/html
-  #     - $JOHNCLOUD_ROOT/roundcube/db/sqlite:/var/roundcube/db
-  #   environment:
-  #     - ROUNDCUBEMAIL_DB_TYPE=sqlite
-  #     - ROUNDCUBEMAIL_SKIN=elastic
-  #     - ROUNDCUBEMAIL_DEFAULT_HOST=ssl://mail.$HOST
-  #     - ROUNDCUBEMAIL_SMTP_SERVER=tls://mail.$HOST
-  #     - ROUNDCUBEMAIL_SMTP_PORT=587
-  #   labels:
-  #     - traefik.enable=true
-  #     - traefik.http.routers.roundcube.rule=Host(`webmail.$HOST`)
-  #     - traefik.http.routers.roundcube.entrypoints=websecure
-  #     - traefik.http.routers.roundcube.tls.certresolver=letsencrypt
-      
 networks:
   default:
     external: true
