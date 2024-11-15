@@ -13,6 +13,7 @@ services:
       - "465:465"
       - "993:993"
       - "587:587"
+      - "32400:32400"
     restart: unless-stopped
     environment:
     # https://www.ovh.com/auth/api/createToken
@@ -23,6 +24,8 @@ services:
       - "OVH_CONSUMER_KEY=$OVH_CONSUMER_KEY"
       - "TZ=$TZ"
     command:
+      - --entrypoints.plex.address=:32400/tcp
+      - --entrypoints.plex.proxyProtocol.trustedIPs=172.19.0.0/24
       - --entrypoints.smtp.address=:25/tcp
       - --entrypoints.smtp.proxyProtocol.trustedIPs=172.19.0.0/24
       - --entrypoints.submissions.address=:465/tcp
