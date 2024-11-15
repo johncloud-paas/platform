@@ -8,7 +8,6 @@ services:
     ports:
       - "80:80"
       - "443:443"
-      - "3567:3567"
       - "25:25"
       - "465:465"
       - "993:993"
@@ -34,7 +33,6 @@ services:
       - --entrypoints.imaps.proxyProtocol.trustedIPs=172.19.0.0/24
       - --entrypoints.submission.address=:587/tcp
       - --entrypoints.submission.proxyProtocol.trustedIPs=172.19.0.0/24
-      - --entrypoints.tcp_ping.address=:3567/tcp
       - --entrypoints.web.address=:80
       - --entrypoints.web.http.redirections.entrypoint.to=websecure
       - --entrypoints.web.http.redirections.entrypoint.scheme=https
@@ -265,22 +263,22 @@ services:
   #     - "homepage.href=https://influxdb.$HOST"
   #     - "homepage.description=Time Series Data Platform"
 
-  tcp_ping:
-    # ncat --ssl ping.johncloud.fr 3567
-    image: ydethe/tcp_ping
-    container_name: tcp_ping
-    restart: unless-stopped
-    depends_on:
-      - traefik
-    environment:
-      - PORT=3567
-    labels:
-      - "traefik.enable=true"
-      - "traefik.tcp.routers.ping.rule=HostSNI(`ping.$HOST`)"
-      - "traefik.tcp.routers.ping.service=ping_service"
-      - "traefik.tcp.routers.ping.entrypoints=tcp_ping"
-      - "traefik.tcp.routers.ping.tls.certresolver=letsencrypt"
-      - "traefik.tcp.services.ping_service.loadbalancer.server.port=3567"
+  # tcp_ping:
+  #   # ncat --ssl ping.johncloud.fr 3567
+  #   image: ydethe/tcp_ping
+  #   container_name: tcp_ping
+  #   restart: unless-stopped
+  #   depends_on:
+  #     - traefik
+  #   environment:
+  #     - PORT=3567
+  #   labels:
+  #     - "traefik.enable=true"
+  #     - "traefik.tcp.routers.ping.rule=HostSNI(`ping.$HOST`)"
+  #     - "traefik.tcp.routers.ping.service=ping_service"
+  #     - "traefik.tcp.routers.ping.entrypoints=tcp_ping"
+  #     - "traefik.tcp.routers.ping.tls.certresolver=letsencrypt"
+  #     - "traefik.tcp.services.ping_service.loadbalancer.server.port=3567"
 
   oauth:
     image: thomseddon/traefik-forward-auth:latest
