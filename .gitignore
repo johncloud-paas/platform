@@ -1,2 +1,7 @@
 .env
 *.ovpn
+.venv
+roundcube/
+stalwart/
+traefik/
+*.new.yml
