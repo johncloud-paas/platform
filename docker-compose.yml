@@ -232,18 +232,6 @@ services:
       - "--web.enable-lifecycle"
     environment:
       - TZ=$TZ
-    # labels:
-    #   - "traefik.enable=true"
-    #   - "traefik.http.routers.prom.rule=Host(`prom.$HOST`)"
-    #   - "traefik.http.routers.prom.entrypoints=websecure"
-    #   - "traefik.http.routers.prom.tls.certresolver=letsencrypt"
-    #   - "traefik.http.services.prom.loadbalancer.server.port=9090"
-    #   - "traefik.http.routers.prom.middlewares=forward-auth-verify"
-    #   - "homepage.group=Platform"
-    #   - "homepage.name=Prometheus"
-    #   - "homepage.icon=prometheus.svg"
-    #   - "homepage.href=https://prometheus.$HOST"
-    #   - "homepage.description=From metrics to insight"
   
   # influxdb:
   #   image: influxdb:2
