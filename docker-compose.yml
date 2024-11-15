@@ -24,15 +24,15 @@ services:
       - "TZ=$TZ"
     command:
       - --entrypoints.plex.address=:32400/tcp
-      - --entrypoints.plex.proxyProtocol.trustedIPs=172.19.0.0/24
+      - --entrypoints.plex.proxyProtocol.trustedIPs=192.168.203.0/24
       - --entrypoints.smtp.address=:25/tcp
-      - --entrypoints.smtp.proxyProtocol.trustedIPs=172.19.0.0/24
+      - --entrypoints.smtp.proxyProtocol.trustedIPs=192.168.203.0/24
       - --entrypoints.submissions.address=:465/tcp
-      - --entrypoints.submissions.proxyProtocol.trustedIPs=172.19.0.0/24
+      - --entrypoints.submissions.proxyProtocol.trustedIPs=192.168.203.0/24
       - --entrypoints.imaps.address=:993/tcp
-      - --entrypoints.imaps.proxyProtocol.trustedIPs=172.19.0.0/24
+      - --entrypoints.imaps.proxyProtocol.trustedIPs=192.168.203.0/24
       - --entrypoints.submission.address=:587/tcp
-      - --entrypoints.submission.proxyProtocol.trustedIPs=172.19.0.0/24
+      - --entrypoints.submission.proxyProtocol.trustedIPs=192.168.203.0/24
       - --entrypoints.web.address=:80
       - --entrypoints.web.http.redirections.entrypoint.to=websecure
       - --entrypoints.web.http.redirections.entrypoint.scheme=https
@@ -44,8 +44,8 @@ services:
       # - --entrypoints.websecure.http.middlewares=default@file
       - --providers.docker=true
       - --providers.docker.exposedByDefault=false
-      # - --providers.file.directory=conf.d
-      # - --providers.file.watch=true
+      - --providers.file.directory=conf.d
+      - --providers.file.watch=true
       - --api.dashboard=true
       - --api.insecure=true
       # - --metrics.addinternals
@@ -64,10 +64,10 @@ services:
       - --accesslog.fields.defaultMode=keep
       - --accesslog.fields.names.StartUTC=drop
       - --accesslog.format=json
-      - --experimental.plugins.wafrisPlugin.moduleName=github.com/Wafris/wafris-traefik
-      - --experimental.plugins.wafrisPlugin.version=v0.0.3
-      - --experimental.plugins.google-oidc-auth-middleware.modulename=github.com/andrewkroh/google-oidc-auth-middleware
-      - --experimental.plugins.google-oidc-auth-middleware.version=v0.1.0
+      # - --experimental.plugins.wafrisPlugin.moduleName=github.com/Wafris/wafris-traefik
+      # - --experimental.plugins.wafrisPlugin.version=v0.0.3
+      # - --experimental.plugins.google-oidc-auth-middleware.modulename=github.com/andrewkroh/google-oidc-auth-middleware
+      # - --experimental.plugins.google-oidc-auth-middleware.version=v0.1.0
       - --certificatesresolvers.letsencrypt.acme.email=$ADMIN_EMAIL
       - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
       - --certificatesresolvers.letsencrypt.acme.httpchallenge=true
@@ -76,7 +76,7 @@ services:
       # - --certificatesresolvers.letsencrypt.acme.dnschallenge.provider=ovh
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      # - ./traefik:/conf.d
+      - ./traefik:/conf.d
       - $JOHNCLOUD_ROOT/traefik/logs:/var/logs
       - $JOHNCLOUD_ROOT/traefik/letsencrypt:/letsencrypt
     labels:
@@ -87,13 +87,13 @@ services:
       - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
       - "traefik.http.routers.traefik.middlewares=forward-auth-verify"
       # - "traefik.http.routers.traefik.middlewares=oidc-auth@docker"
-      - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.oidc.clientID=$PROVIDERS_GOOGLE_CLIENT_ID"
-      - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.oidc.clientSecret=$PROVIDERS_GOOGLE_CLIENT_SECRET"
+      # - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.oidc.clientID=$PROVIDERS_GOOGLE_CLIENT_ID"
+      # - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.oidc.clientSecret=$PROVIDERS_GOOGLE_CLIENT_SECRET"
       # - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.oidc.callbackPath=/"
-      - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.cookie.secret=$SECRET"
-      - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.cookie.insecure=$INSECURE_COOKIE"
-      - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.authorized.emails=$WHITELIST"
-      - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.authorized.domains=$COOKIE_DOMAIN"
+      # - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.cookie.secret=$SECRET"
+      # - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.cookie.insecure=$INSECURE_COOKIE"
+      # - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.authorized.emails=$WHITELIST"
+      # - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.authorized.domains=$COOKIE_DOMAIN"
       - "homepage.group=Platform"
       - "homepage.name=Traefik"
       - "homepage.icon=traefik.svg"
