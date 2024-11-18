@@ -5,3 +5,4 @@ roundcube/
 stalwart/
 traefik/
 *.new.yml
+*.ref.yml
