@@ -23,3 +23,7 @@ Give to the user `alloy` the ownership on `/etc/alloy` and `/var/lib/alloy`, and
 
 Observability is done with Sumo Logic. It is run at host level with otelcol-sumo.service
 
+Edit the `/etc/systemd/resolved.conf` and uncomment DNSStubListener and change it to no, so it looks like this:
+    
+    DNSStubListener=no
+    
