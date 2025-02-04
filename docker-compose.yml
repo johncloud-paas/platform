@@ -15,6 +15,7 @@ services:
       - "32400:32400"
       # - "53:53"
       # - "853:853"
+      - "3128:3128"
     restart: unless-stopped
     environment:
     # https://www.ovh.com/auth/api/createToken
@@ -39,10 +40,11 @@ services:
       - --entrypoints.imaps.proxyProtocol.trustedIPs=192.168.203.0/24
       - --entrypoints.submission.address=:587/tcp
       - --entrypoints.submission.proxyProtocol.trustedIPs=192.168.203.0/24
+      - --entrypoints.proxy.address=:3128
       - --entrypoints.web.address=:80
-      - --entrypoints.web.http.redirections.entrypoint.to=websecure
-      - --entrypoints.web.http.redirections.entrypoint.scheme=https
-      - --entrypoints.web.http.redirections.entrypoint.permanent=true
+      # - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      # - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      # - --entrypoints.web.http.redirections.entrypoint.permanent=true
       - --entrypoints.websecure.address=:443
       # - --entrypoints.websecure.http.tls.certresolver=letsencrypt
       # - --entrypoints.websecure.http.tls.domains.main=$HOST
