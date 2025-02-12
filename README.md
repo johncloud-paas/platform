@@ -29,3 +29,6 @@ Edit the `/etc/systemd/resolved.conf` and uncomment DNSStubListener and change i
     
 For proxies:
 https://www.reddit.com/r/selfhosted/comments/17wub9j/comment/lxvvmvy
+
+Crowdsec configuration
+https://blog.lrvt.de/configuring-crowdsec-with-traefik/
