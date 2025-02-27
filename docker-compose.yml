@@ -13,7 +13,7 @@ services:
       - "993:993"
       - "587:587"
       - "32400:32400"
-      # - "53:53"
+      - "53:53"
       # - "853:853"
       # - "3128:3128"
     restart: unless-stopped
@@ -28,8 +28,8 @@ services:
     command:
       # - --entrypoints.dot.address=:853
       # - --entrypoints.dot.proxyProtocol.trustedIPs=192.168.203.0/24
-      # - --entrypoints.dns.address=:53
-      # - --entrypoints.dns.proxyProtocol.trustedIPs=192.168.203.0/24
+      - --entrypoints.dns.address=:53
+      - --entrypoints.dns.proxyProtocol.trustedIPs=192.168.203.0/24
       - --entrypoints.plex.address=:32400/tcp
       - --entrypoints.plex.proxyProtocol.trustedIPs=192.168.203.0/24
       - --entrypoints.smtp.address=:25/tcp
@@ -366,7 +366,7 @@ services:
       - $JOHNCLOUD_ROOT/portainer/data:/data
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.portainer.rule=Host(`portainer.$HOST`)"   
+      - "traefik.http.routers.portainer.rule=Host(`portainer.$HOST/#!/2/docker/stacks`)"   
       - "traefik.http.routers.portainer.entrypoints=websecure"
       - "traefik.http.routers.portainer.tls.certresolver=letsencrypt"
       - "traefik.http.services.portainer.loadbalancer.server.port=9000"
