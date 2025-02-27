@@ -366,14 +366,14 @@ services:
       - $JOHNCLOUD_ROOT/portainer/data:/data
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.portainer.rule=Host(`portainer.$HOST/#!/2/docker/stacks`)"   
+      - "traefik.http.routers.portainer.rule=Host(`portainer.$HOST`)"   
       - "traefik.http.routers.portainer.entrypoints=websecure"
       - "traefik.http.routers.portainer.tls.certresolver=letsencrypt"
       - "traefik.http.services.portainer.loadbalancer.server.port=9000"
       - "homepage.group=Platform"
       - "homepage.name=Portainer"
       - "homepage.icon=portainer.svg"
-      - "homepage.href=https://portainer.$HOST"
+      - "homepage.href=https://portainer.$HOST/#!/2/docker/stacks"
       - "homepage.description=Container Management Software"
 
   redis:
