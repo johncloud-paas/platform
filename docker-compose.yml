@@ -1,445 +1,116 @@
+x-bw-env: &bw-env  # We use an anchor to avoid repeating the same settings for both containers
+  API_WHITELIST_IP: "127.0.0.0/24 10.20.30.0/24"
+  DATABASE_URI: "mariadb+pymysql://bunkerweb:$DB_PASSWORD@bw-db:3306/db"
+  USE_MODSECURITY_GLOBAL_CRS: "yes"
+  AUTOCONF_MODE: "yes"
+  TZ: $TZ
+
+
 services:
-  traefik:
-    image: traefik:latest
-    container_name: traefik
-    networks:
-      default:
-        ipv4_address: $TRAEFIK_IP_ADDRESS
+  bunkerweb:
+    # This is the name that will be used to identify the instance in the Scheduler
+    image: bunkerity/bunkerweb:1.6.0
     ports:
-      - "80:80"
-      - "443:443"
-      - "25:25"
-      - "465:465"
-      - "993:993"
-      - "587:587"
-      - "32400:32400"
-      - "53:53"
-      # - "853:853"
-      # - "3128:3128"
-    restart: unless-stopped
+      - "80:8080/tcp"
+      - "443:8443/tcp"
+      - "443:8443/udp" # For QUIC / HTTP3 support
     environment:
-    # https://www.ovh.com/auth/api/createToken
-    # https://eu.api.ovh.com/console/?section=%2Fme&branch=v1#delete-/me/api/application/-applicationId-
-      - "OVH_ENDPOINT=$OVH_ENDPOINT"
-      - "OVH_APPLICATION_KEY=$OVH_APPLICATION_KEY"
-      - "OVH_APPLICATION_SECRET=$OVH_APPLICATION_SECRET"
-      - "OVH_CONSUMER_KEY=$OVH_CONSUMER_KEY"
-      - "TZ=$TZ"
-    command:
-      # - --entrypoints.dot.address=:853
-      # - --entrypoints.dot.proxyProtocol.trustedIPs=192.168.203.0/24
-      - --entrypoints.dns.address=:53
-      - --entrypoints.dns.proxyProtocol.trustedIPs=192.168.203.0/24
-      - --entrypoints.plex.address=:32400/tcp
-      - --entrypoints.plex.proxyProtocol.trustedIPs=192.168.203.0/24
-      - --entrypoints.smtp.address=:25/tcp
-      - --entrypoints.smtp.proxyProtocol.trustedIPs=192.168.203.0/24
-      - --entrypoints.submissions.address=:465/tcp
-      - --entrypoints.submissions.proxyProtocol.trustedIPs=192.168.203.0/24
-      - --entrypoints.imaps.address=:993/tcp
-      - --entrypoints.imaps.proxyProtocol.trustedIPs=192.168.203.0/24
-      - --entrypoints.submission.address=:587/tcp
-      - --entrypoints.submission.proxyProtocol.trustedIPs=192.168.203.0/24
-      # - --entrypoints.proxy.address=:3128
-      - --entrypoints.web.address=:80
-      - --entrypoints.web.http.redirections.entrypoint.to=websecure
-      - --entrypoints.web.http.redirections.entrypoint.scheme=https
-      - --entrypoints.web.http.redirections.entrypoint.permanent=true
-      - --entrypoints.websecure.address=:443
-      - --entrypoints.websecure.http3.advertisedPort=443
-      - --entrypoints.websecure.http.tls.certresolver=letsencrypt
-      - --entrypoints.websecure.http.tls.domains.main=$HOST
-      - --entrypoints.websecure.http.tls.domains.sans=*.$HOST
-      - --entrypoints.websecure.http.middlewares=default@file
-      - --providers.docker=true
-      - --providers.docker.exposedByDefault=false
-      - --providers.file.directory=conf.d
-      - --providers.file.watch=true
-      - --api.dashboard=true
-      - --api.insecure=true
-      # - --metrics.addinternals
-      # - --metrics.influxdb2=true
-      # - --metrics.influxdb2.address=http://influxdb:8086
-      # - --metrics.influxdb2.org=$INFLUXDB_INIT_ORG
-      # - --metrics.influxdb2.bucket=$INFLUXDB_INIT_BUCKET
-      # - --metrics.influxdb2.token=$INFLUXDB_INIT_ADMIN_TOKEN
-      # - --metrics.influxdb2.addServicesLabels=true
-      # - --metrics.influxdb2.addEntryPointsLabels=true
-      # - --metrics.influxdb2.addrouterslabels=true
-      # - --metrics.influxdb2.pushInterval=10s
-      # - --tracing.otlp.http.endpoint=http://jaeger:4318/v1/traces
-      - --accesslog=true
-      - --accesslog.filepath=/logs/traefik.log
-      - --accesslog.format=json
-      - --accesslog.filters.statusCodes=200-299,400-599
-      - --accesslog.bufferingSize=0
-      - --accesslog.fields.defaultMode=drop
-      - --accesslog.fields.names.User-Agent=keep
-      - --experimental.plugins.bouncer.moduleName=github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin
-      - --experimental.plugins.bouncer.version=v1.4.1
-      # - --experimental.plugins.wafrisPlugin.moduleName=github.com/Wafris/wafris-traefik
-      # - --experimental.plugins.wafrisPlugin.version=v0.0.3
-      # - --experimental.plugins.google-oidc-auth-middleware.modulename=github.com/andrewkroh/google-oidc-auth-middleware
-      # - --experimental.plugins.google-oidc-auth-middleware.version=v0.1.0
-      - --certificatesresolvers.letsencrypt.acme.email=$ADMIN_EMAIL
-      - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
-      - --certificatesresolvers.letsencrypt.acme.httpchallenge=true
-      - --certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web
-      # - --certificatesresolvers.letsencrypt.acme.dnschallenge=true
-      # - --certificatesresolvers.letsencrypt.acme.dnschallenge.provider=ovh
+      <<: *bw-env # We use the anchor to avoid repeating the same settings for all services
+    restart: "unless-stopped"
+    labels:
+      - "bunkerweb.INSTANCE=yes" # Mandatory label for the autoconf service to identify the BunkerWeb instance
+    networks:
+      - bw-universe
+      - bw-services
+
+  bw-scheduler:
+    image: bunkerity/bunkerweb-scheduler:1.6.0
+    environment:
+      <<: *bw-env
+      BUNKERWEB_INSTANCES: "" # We don't need to specify the BunkerWeb instance here as they are automatically detected by the autoconf service
+      SERVER_NAME: ""
+      DISABLE_DEFAULT_SERVER: "yes"
+      MULTISITE: "yes"
+      UI_HOST: "http://bw-ui:7000" # Change it if needed
+      SERVE_FILES: "no"
+      USE_CLIENT_CACHE: "yes"
+      USE_GZIP: "yes"
+      USE_REVERSE_PROXY: "yes"
+      AUTO_LETS_ENCRYPT: yes
+      EMAIL_LETS_ENCRYPT: $EMAIL_LETS_ENCRYPT
+      LETS_ENCRYPT_CHALLENGE: "$LETS_ENCRYPT_CHALLENGE"
+      LETS_ENCRYPT_DNS_PROVIDER: "ovh"
+      LETS_ENCRYPT_DNS_PROPAGATION: "default" # change this to a number of seconds if you have a slow DNS provider (It's recommended to use the default value)
+      LETS_ENCRYPT_DNS_CREDENTIAL_ITEM: "$LETS_ENCRYPT_DNS_CREDENTIAL_ITEM"
+      LETS_ENCRYPT_DNS_CREDENTIAL_ITEM_1: "$LETS_ENCRYPT_DNS_CREDENTIAL_ITEM_1"
+      LETS_ENCRYPT_DNS_CREDENTIAL_ITEM_2: "$LETS_ENCRYPT_DNS_CREDENTIAL_ITEM_2"
+      USE_LETS_ENCRYPT_WILDCARD: yes
+      LETS_ENCRYPT_CLEAR_OLD_CERTS: yes
+    volumes:
+      - $JOHNCLOUD_ROOT/bunkerweb/storage:/data # This is used to persist the cache and other data like the backups
+    restart: "unless-stopped"
+    networks:
+      - bw-universe
+      - bw-db
+
+  bw-autoconf:
+    image: bunkerity/bunkerweb-autoconf:1.6.0
+    depends_on:
+      - bunkerweb
+      - bw-docker
+    environment:
+      AUTOCONF_MODE: "yes"
+      DATABASE_URI: "mariadb+pymysql://bunkerweb:$DB_PASSWORD@bw-db:3306/db"
+      DOCKER_HOST: "tcp://bw-docker:2375" # The Docker socket
+    restart: "unless-stopped"
+    networks:
+      - bw-universe
+      - bw-docker
+      - bw-db
+
+  bw-docker:
+    image: tecnativa/docker-socket-proxy:nightly
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./traefik:/conf.d
-      - $JOHNCLOUD_ROOT/traefik/logs:/logs
-      - $JOHNCLOUD_ROOT/traefik/letsencrypt:/letsencrypt
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.traefik.rule=Host(`traefik.$HOST`)"
-      - "traefik.http.routers.traefik.service=api@internal"
-      - "traefik.http.routers.traefik.entrypoints=websecure"
-      - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.traefik.middlewares=forward-auth-verify"
-      # - "traefik.http.routers.traefik.middlewares=oidc-auth@docker"
-      # - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.oidc.clientID=$PROVIDERS_GOOGLE_CLIENT_ID"
-      # - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.oidc.clientSecret=$PROVIDERS_GOOGLE_CLIENT_SECRET"
-      # - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.oidc.callbackPath=/"
-      # - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.cookie.secret=$SECRET"
-      # - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.cookie.insecure=$INSECURE_COOKIE"
-      # - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.authorized.emails=$WHITELIST"
-      # - "traefik.http.middlewares.oidc-auth.plugin.google-oidc-auth-middleware.authorized.domains=$COOKIE_DOMAIN"
-      - "homepage.group=Platform"
-      - "homepage.name=Traefik"
-      - "homepage.icon=traefik.svg"
-      - "homepage.href=https://traefik.$HOST"
-      - "homepage.description=Traefik reverse proxy"
-
-  # crowdsec:
-  #   image: crowdsecurity/crowdsec
-  #   container_name: crowdsec
-  #   restart: unless-stopped
-  #   depends_on:
-  #   - traefik
-  #   ports:
-  #     - 127.0.0.1:9876:8080 # port mapping for local firewall bouncers
-  #   expose:
-  #     - 8080 # http api for bouncers
-  #     - 6060 # metrics endpoint for prometheus
-  #     - 7422 # appsec waf endpoint
-  #   volumes:
-  #     # crowdsec container data
-  #     - $JOHNCLOUD_ROOT/crowdsec/data:/var/lib/crowdsec/data
-  #     - $JOHNCLOUD_ROOT/crowdsec/etc:/etc/crowdsec
-  #     # log bind mounts into crowdsec
-  #     - /var/log/auth.log:/var/log/auth.log:ro
-  #     - /var/log/syslog:/var/log/syslog:ro
-  #     - $JOHNCLOUD_ROOT/traefik/logs:/var/log/traefik:ro
-  #   environment:
-  #     - GID=1000
-  #     - TZ=$TZ
-  #     - COLLECTIONS=crowdsecurity/traefik crowdsecurity/http-cve crowdsecurity/base-http-scenarios crowdsecurity/sshd crowdsecurity/linux crowdsecurity/appsec-generic-rules crowdsecurity/appsec-virtual-patching crowdsecurity/appsec-crs
-      #- CUSTOM_HOSTNAME=my-crowdsec-host123
-
-  node_exporter:
-    image: quay.io/prometheus/node-exporter:latest
-    restart: unless-stopped
-    container_name: node_exporter
-    command:
-      - '--path.rootfs=/host'
-    pid: host
-    volumes:
-      - /:/host:ro,rslave
     environment:
-      - TZ=$TZ
-    depends_on:
-      - traefik
-      - redis
-      - prometheus
-    labels:
-      - "traefik.enable=false"
+      CONTAINERS: "1"
+      LOG_LEVEL: "warning"
+    restart: "unless-stopped"
+    networks:
+      - bw-docker
 
-  cadvisor:
-    image: gcr.io/cadvisor/cadvisor:latest
-    container_name: cadvisor
-    volumes:
-      - /:/rootfs:ro
-      - /var/run:/var/run:ro
-      - /sys:/sys:ro
-      - /var/lib/docker/:/var/lib/docker:ro
-    command: -max_procs=2 -docker_only=true
-    # command: -max_procs=2 -docker_only=true -storage_driver=influxdb -storage_driver_db=cadvisor -storage_driver_host=influxdb:8086 -storage_driver_user=$INFLUXDB_INIT_USERNAME -storage_driver_password=$INFLUXDB_INIT_ADMIN_TOKEN
+  bw-ui:
+    image: bunkerity/bunkerweb-ui:1.6.0
     environment:
-      - TZ=$TZ
-    depends_on:
-      - traefik
-      - redis
-      - prometheus
-    labels:
-      - "traefik.enable=false"
-  
-  pdc:
-    # https://grafana.com/docs/grafana-cloud/connect-externally-hosted/private-data-source-connect/#private-data-source-connect-pdc-concepts
-    image: grafana/pdc-agent:latest
-    container_name: pdc
-    restart: unless-stopped
-    depends_on:
-      - traefik
-      - prometheus
-      - influxdb
-      - loki
-    command: ["-token","$GRAFANA_PDC_TOKEN","-cluster","$GRAFANA_PDC_CLUSTER","-gcloud-hosted-grafana-id","$GRAFANA_PDC_GCP_ID"]
-    labels:
-      - "traefik.enable=false"
+      <<: *bw-env
+    restart: "unless-stopped"
+    networks:
+      - bw-universe
+      - bw-db
 
-  loki:
-    image: grafana/loki:latest
-    container_name: loki
-    user: "0:0"
-    # ports:
-    #   - 3100:3100
-    depends_on:
-      - traefik
-      - promtail
-    volumes:
-      - $JOHNCLOUD_ROOT/monitoring/loki:/loki
-      - ./loki/config.yml:/etc/loki/loki-config.yaml
-    command: -config.file=/etc/loki/loki-config.yaml
+  bw-db:
+    image: mariadb:11
     environment:
-      - TZ=$TZ
-    labels:
-      - "traefik.enable=false"
-        
-  promtail:
-    image:  grafana/promtail:latest
-    container_name: promtail
-    depends_on:
-      - traefik
+      MYSQL_RANDOM_ROOT_PASSWORD: "yes"
+      MYSQL_DATABASE: "db"
+      MYSQL_USER: "bunkerweb"
+      MYSQL_PASSWORD: "$DB_PASSWORD" # Remember to set a stronger password for the database
     volumes:
-      - ./promtail/config.yml:/etc/promtail/docker-config.yaml
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - $JOHNCLOUD_ROOT/traefik/logs:/var/logs/traefik:ro
-    command: -config.file=/etc/promtail/docker-config.yaml
-    environment:
-      - TZ=$TZ
-    labels:
-      - "traefik.enable=false"
-
-  # jaeger:
-  #   image: jaegertracing/all-in-one:1.62.0
-  #   container_name: jaeger
-  #   restart: unless-stopped
-  #   environment:
-  #     - TZ=$TZ
-  #     - COLLECTOR_OTLP_ENABLED=true
-  #     - METRICS_STORAGE_TYPE=prometheus
-  #     - PROMETHEUS_SERVER_URL=http://prometheus:9090
-    #   - SPAN_STORAGE_TYPE=badger
-    #   - BADGER_EPHEMERAL=false
-    #   - BADGER_DIRECTORY_VALUE=/badger/data
-    #   - BADGER_DIRECTORY_KEY=/badger/key
-    # volumes:
-    #   - $JOHNCLOUD_ROOT/jaeger/data:/badger
-    # labels:
-    #   - "traefik.enable=false"
-      # - "traefik.http.routers.jaeger.rule=Host(`jaeger.$HOST`)"
-      # - "traefik.http.routers.jaeger.entrypoints=websecure"
-      # - "traefik.http.routers.jaeger.tls.certresolver=letsencrypt"
-      # - "traefik.http.services.jaeger.loadbalancer.server.port=16686"
-      # - "traefik.http.routers.jaeger.middlewares=forward-auth-verify"
-      # - "homepage.group=Platform"
-      # - "homepage.name=Jaeger"
-      # - "homepage.icon=jaeger.svg"
-      # - "homepage.href=https://jaeger.$HOST"
-      # - "homepage.description=Open source, distributed tracing platform"
-        
-  prometheus:
-    image: prom/prometheus:main
-    container_name: prometheus
-    user: "0:0"
-    restart: unless-stopped
-    depends_on:
-      - traefik
-    volumes:
-      - ./prometheus/:/etc/prometheus/
-      - $JOHNCLOUD_ROOT/monitoring/prometheus/db:/prometheus
-      - /etc/timezone:/etc/timezone:ro
-      - /etc/localtime:/etc/localtime:ro
-    command:
-      - "--web.route-prefix=/"
-      - "--config.file=/etc/prometheus/prometheus.yml"
-      - "--storage.tsdb.path=/prometheus"
-      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
-      - "--web.console.templates=/usr/share/prometheus/consoles"
-      - "--web.enable-lifecycle"
-    environment:
-      - TZ=$TZ
-  
-  influxdb:
-    image: influxdb:2
-    container_name: influxdb
-    restart: unless-stopped
-    environment:
-      - DOCKER_INFLUXDB_INIT_MODE=setup
-      - DOCKER_INFLUXDB_INIT_USERNAME=$INFLUXDB_INIT_USERNAME
-      - DOCKER_INFLUXDB_INIT_PASSWORD=$INFLUXDB_INIT_PASSWORD
-      - DOCKER_INFLUXDB_INIT_ORG=$INFLUXDB_INIT_ORG
-      - DOCKER_INFLUXDB_INIT_BUCKET=$INFLUXDB_INIT_BUCKET
-      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=$INFLUXDB_INIT_ADMIN_TOKEN
-      - TZ=$TZ
-    volumes:
-      - "$JOHNCLOUD_ROOT/influxdb/data:/var/lib/influxdb2"
-      - "$JOHNCLOUD_ROOT/influxdb/config:/etc/influxdb2"
-      - /etc/timezone:/etc/timezone:ro
-      - /etc/localtime:/etc/localtime:ro
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.influxdb.rule=Host(`influxdb.$HOST`)"
-      - "traefik.http.routers.influxdb.entrypoints=websecure"
-      - "traefik.http.routers.influxdb.tls.certresolver=letsencrypt"
-      - "traefik.http.services.influxdb.loadbalancer.server.port=8086"
-      - "homepage.group=Platform"
-      - "homepage.name=InfluxDB"
-      - "homepage.icon=influxdb.svg"
-      - "homepage.href=https://influxdb.$HOST"
-      - "homepage.description=Time Series Data Platform"
-
-  # tcp_ping:
-  #   # ncat --ssl ping.johncloud.fr 3567
-  #   image: ydethe/tcp_ping
-  #   container_name: tcp_ping
-  #   restart: unless-stopped
-  #   depends_on:
-  #     - traefik
-  #   environment:
-  #     - PORT=3567
-  #   labels:
-  #     - "traefik.enable=true"
-  #     - "traefik.tcp.routers.ping.rule=HostSNI(`ping.$HOST`)"
-  #     - "traefik.tcp.routers.ping.service=ping_service"
-  #     - "traefik.tcp.routers.ping.entrypoints=tcp_ping"
-  #     - "traefik.tcp.routers.ping.tls.certresolver=letsencrypt"
-  #     - "traefik.tcp.services.ping_service.loadbalancer.server.port=3567"
-
-  oauth:
-    image: thomseddon/traefik-forward-auth:latest
-    container_name: oauth
-    environment:
-      - TZ=$TZ
-      - PROVIDERS_GOOGLE_CLIENT_ID=$PROVIDERS_GOOGLE_CLIENT_ID
-      - PROVIDERS_GOOGLE_CLIENT_SECRET=$PROVIDERS_GOOGLE_CLIENT_SECRET
-      - SECRET=$SECRET
-      - AUTH_HOST=oauth.$HOST
-      - COOKIE_DOMAIN=$COOKIE_DOMAIN
-      - WHITELIST=$WHITELIST
-      - INSECURE_COOKIE=$INSECURE_COOKIE
-    depends_on:
-      - traefik
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.forward.rule=Host(`oauth.$HOST`)"
-      - "traefik.http.routers.forward.entrypoints=websecure"
-      - "traefik.http.routers.forward.tls.certresolver=letsencrypt"
-      - "traefik.http.services.forward.loadbalancer.server.port=4181"
-      - "traefik.http.middlewares.forward-auth-verify.forwardauth.address=http://oauth:4181"      
-      - "traefik.http.middlewares.forward-auth-verify.forwardauth.authResponseHeaders=X-Forwarded-User"
-
-  certdumper:
-    image: ghcr.io/kereis/traefik-certs-dumper:latest
-    restart: unless-stopped
-    container_name: certdumper
-    depends_on:
-      - traefik
-    volumes:
-      - /etc/localtime:/etc/localtime:ro
-      - $JOHNCLOUD_ROOT/traefik/letsencrypt:/traefik:ro
-      - $JOHNCLOUD_ROOT/traefik/certs:/output
-
-  portainer:
-    image: portainer/portainer-ee:latest
-    container_name: portainer
-    restart: unless-stopped
-    depends_on:
-      - traefik
-    volumes:
-      - /etc/timezone:/etc/timezone:ro
-      - /etc/localtime:/etc/localtime:ro
-      - /var/run/docker.sock:/var/run/docker.sock
-      - $JOHNCLOUD_ROOT/portainer/data:/data
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.portainer.rule=Host(`portainer.$HOST`)"   
-      - "traefik.http.routers.portainer.entrypoints=websecure"
-      - "traefik.http.routers.portainer.tls.certresolver=letsencrypt"
-      - "traefik.http.services.portainer.loadbalancer.server.port=9000"
-      - "homepage.group=Platform"
-      - "homepage.name=Portainer"
-      - "homepage.icon=portainer.svg"
-      - "homepage.href=https://portainer.$HOST/#!/2/docker/stacks"
-      - "homepage.description=Container Management Software"
-      - "homepage.widget.type=portainer"
-      - "homepage.widget.url=https://portainer.$HOST"
-      - "homepage.widget.env=2"
-      - "homepage.widget.key=$PORTAINER_ACCESS_TOKEN"
-
-  redis:
-    image: redis:7.2.0
-    container_name: redis
-    depends_on:
-      - traefik
-    environment:
-      - TZ=$TZ
-      - ENABLE_OVERCOMMIT_MEMORY=true
-    labels:
-      - "traefik.enable=false"
-
-  homepage:
-    image: ghcr.io/gethomepage/homepage:latest
-    container_name: homepage
-    restart: unless-stopped
-    depends_on:
-      - traefik
-      - oauth
-      - tailscale
-    volumes:
-      - $JOHNCLOUD_ROOT/home/config:/app/config # Make sure your local config directory exists
-      - /var/run/docker.sock:/var/run/docker.sock:ro # (optional) For docker integrations
-    labels:
-        - "traefik.enable=true"
-        - "traefik.http.routers.homepage.rule=Host(`home.$HOST`)"
-        - "traefik.http.routers.homepage.entrypoints=websecure"
-        - "traefik.http.routers.homepage.tls.certresolver=letsencrypt"
-        - "traefik.http.routers.homepage.middlewares=forward-auth-verify"
- 
-  tailscale:
-    image: ghcr.io/tailscale/tailscale:latest
-    container_name: tailscale
-    restart: unless-stopped
-    cap_add:
-      - NET_ADMIN
-      - NET_RAW
-    depends_on:
-      - traefik
-    environment:
-      - VIRTUAL_HOST=tailscale.${HOST}
-      - TS_ACCEPT_DNS=$TS_ACCEPT_DNS
-      - TS_AUTH_ONCE=$TS_AUTH_ONCE
-      - TS_AUTHKEY=$TS_AUTHKEY
-      - TS_DEST_IP=$TS_DEST_IP
-      - TS_HOSTNAME=$TS_HOSTNAME
-      - TS_OUTBOUND_HTTP_PROXY_LISTEN=$TS_OUTBOUND_HTTP_PROXY_LISTEN
-      - TS_ROUTES=$TS_ROUTES
-      - TS_SOCKET=$TS_SOCKET
-      - TS_SOCKS5_SERVER=$TS_SOCKS5_SERVER
-      - TS_USERSPACE=$TS_USERSPACE
-      - TS_STATE_DIR=$TS_STATE_DIR
-    volumes:
-      - /var/lib:/var/lib
-      - /dev/net/tun:/dev/net/tun
-    labels:
-      - "traefik.enable=false"
+      - $JOHNCLOUD_ROOT/bunkerweb/data:/var/lib/mysql
+    restart: "unless-stopped"
+    networks:
+      - bw-db
 
 networks:
-  default:
-    external: true
-    name: $TRAEFIK_NETWORK
-    
+  bw-universe:
+    name: bw-universe
+    ipam:
+      driver: default
+      config:
+        - subnet: 10.20.30.0/24 # Make sure to set the correct IP range so the scheduler can send the configuration to the instance
+  bw-services:
+    name: bw-services
+  bw-db:
+    name: bw-db
+  bw-docker:
+    name: bw-docker

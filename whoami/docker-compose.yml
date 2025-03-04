@@ -1,0 +1,17 @@
+services:
+  myapp:
+    image: traefik/whoami:latest
+    restart: unless-stopped
+    networks:
+      - bw-services
+    labels:
+        - "bunkerweb.SERVER_NAME=$HOST"
+        - "bunkerweb.USE_REVERSE_PROXY=yes"
+        - "bunkerweb.REVERSE_PROXY_URL=/"
+        - "bunkerweb.REVERSE_PROXY_HOST=http://myapp:80"
+
+networks:
+  bw-services:
+    external: true
+    name: bw-services
+    
