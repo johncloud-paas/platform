@@ -6,3 +6,7 @@ stalwart/
 traefik/
 *.new.yml
 *.ref.yml
+bw-data/
+bw-logs/
+bw-storage/
+

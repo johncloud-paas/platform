@@ -1,9 +1,6 @@
-Google OAuth setup: https://www.libe.net/en-traefik-auth
-
 First create the network:
 
-    sudo docker network create -d bridge --subnet=192.168.203.0/24 traefik-proxy 
-    sudo docker network create -d bridge --subnet=192.168.205.0/24 platform-network
+    sudo docker network create -d bridge --subnet=10.20.30.0/24 bw-universe
 
 Define the root data folder in a .env file, 
 
@@ -32,3 +29,7 @@ https://www.reddit.com/r/selfhosted/comments/17wub9j/comment/lxvvmvy
 
 Crowdsec configuration
 https://blog.lrvt.de/configuring-crowdsec-with-traefik/
+
+To unban an IP address:
+
+    sudo docker compose exec bunkerweb bwcli unban 1.2.3.4

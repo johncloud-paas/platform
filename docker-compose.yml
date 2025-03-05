@@ -1,15 +1,23 @@
 x-bw-env: &bw-env  # We use an anchor to avoid repeating the same settings for both containers
-  API_WHITELIST_IP: "127.0.0.0/24 10.20.30.0/24"
+  API_WHITELIST_IP: "127.0.0.0/24 $UNIVERSE_NET.0/24"
   DATABASE_URI: "mariadb+pymysql://bunkerweb:$DB_PASSWORD@bw-db:3306/db"
   USE_MODSECURITY_GLOBAL_CRS: "yes"
   AUTOCONF_MODE: "yes"
-  TZ: $TZ
+  USE_REDIS: yes
+  REDIS_HOST: redis
+  REDIS_PORT: 6379
+  REDIS_DATABASE: 0
 
 
 services:
   bunkerweb:
     # This is the name that will be used to identify the instance in the Scheduler
     image: bunkerity/bunkerweb:1.6.0
+    depends_on:
+      redis:
+        condition: service_healthy
+      bw-db:
+        condition: service_healthy
     ports:
       - "80:8080/tcp"
       - "443:8443/tcp"
@@ -22,9 +30,19 @@ services:
     networks:
       - bw-universe
       - bw-services
+    logging:
+      driver: syslog
+      options:
+        tag: "bunkerweb" # This will be the tag used by syslog-ng to create the log file
+        syslog-address: "udp://$UNIVERSE_NET.254:514" # This is the syslog-ng container address
 
   bw-scheduler:
     image: bunkerity/bunkerweb-scheduler:1.6.0
+    depends_on:
+      redis:
+        condition: service_healthy
+      bw-db:
+        condition: service_healthy
     environment:
       <<: *bw-env
       BUNKERWEB_INSTANCES: "" # We don't need to specify the BunkerWeb instance here as they are automatically detected by the autoconf service
@@ -38,26 +56,32 @@ services:
       USE_REVERSE_PROXY: "yes"
       AUTO_LETS_ENCRYPT: yes
       EMAIL_LETS_ENCRYPT: $EMAIL_LETS_ENCRYPT
-      LETS_ENCRYPT_CHALLENGE: "$LETS_ENCRYPT_CHALLENGE"
-      LETS_ENCRYPT_DNS_PROVIDER: "ovh"
-      LETS_ENCRYPT_DNS_PROPAGATION: "default" # change this to a number of seconds if you have a slow DNS provider (It's recommended to use the default value)
-      LETS_ENCRYPT_DNS_CREDENTIAL_ITEM: "$LETS_ENCRYPT_DNS_CREDENTIAL_ITEM"
-      LETS_ENCRYPT_DNS_CREDENTIAL_ITEM_1: "$LETS_ENCRYPT_DNS_CREDENTIAL_ITEM_1"
-      LETS_ENCRYPT_DNS_CREDENTIAL_ITEM_2: "$LETS_ENCRYPT_DNS_CREDENTIAL_ITEM_2"
-      USE_LETS_ENCRYPT_WILDCARD: yes
+      LETS_ENCRYPT_CHALLENGE: "http"
+      USE_LETS_ENCRYPT_WILDCARD: no
       LETS_ENCRYPT_CLEAR_OLD_CERTS: yes
     volumes:
-      - $JOHNCLOUD_ROOT/bunkerweb/storage:/data # This is used to persist the cache and other data like the backups
+      - ./bw-storage:/data # This is used to persist the cache and other data like the backups
     restart: "unless-stopped"
     networks:
       - bw-universe
       - bw-db
+    logging:
+      driver: syslog
+      options:
+        tag: "bw-scheduler" # This will be the tag used by syslog-ng to create the log file
+        syslog-address: "udp://$UNIVERSE_NET.254:514" # This is the syslog-ng container address
 
   bw-autoconf:
     image: bunkerity/bunkerweb-autoconf:1.6.0
     depends_on:
-      - bunkerweb
-      - bw-docker
+      bunkerweb:
+        condition: service_started
+      bw-docker:
+        condition: service_started
+      redis:
+        condition: service_healthy
+      bw-db:
+        condition: service_healthy
     environment:
       AUTOCONF_MODE: "yes"
       DATABASE_URI: "mariadb+pymysql://bunkerweb:$DB_PASSWORD@bw-db:3306/db"
@@ -67,11 +91,21 @@ services:
       - bw-universe
       - bw-docker
       - bw-db
+    logging:
+      driver: syslog
+      options:
+        tag: "bw-autoconf" # This will be the tag used by syslog-ng to create the log file
+        syslog-address: "udp://$UNIVERSE_NET.254:514" # This is the syslog-ng container address
 
   bw-docker:
     image: tecnativa/docker-socket-proxy:nightly
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+      bw-db:
+        condition: service_healthy
     environment:
       CONTAINERS: "1"
       LOG_LEVEL: "warning"
@@ -81,12 +115,31 @@ services:
 
   bw-ui:
     image: bunkerity/bunkerweb-ui:1.6.0
+    depends_on:
+      redis:
+        condition: service_healthy
+      bw-db:
+        condition: service_healthy
     environment:
       <<: *bw-env
+      ADMIN_USERNAME: $ADMIN_USERNAME
+      ADMIN_PASSWORD: $ADMIN_PASSWORD
+      TOTP_SECRETS: $TOTP_SECRETS
     restart: "unless-stopped"
+    labels:
+      - "bunkerweb.SERVER_NAME=waf.$HOST"
+      - "bunkerweb.USE_TEMPLATE=ui"
+      - "bunkerweb.USE_REVERSE_PROXY=yes"
+      - "bunkerweb.REVERSE_PROXY_URL=/"
+      - "bunkerweb.REVERSE_PROXY_HOST=http://bw-ui:7000"
     networks:
       - bw-universe
       - bw-db
+    logging:
+      driver: syslog
+      options:
+        tag: "bw-ui" # This will be the tag used by syslog-ng to create the log file
+        syslog-address: "udp://$UNIVERSE_NET.254:514" # This is the syslog-ng container address
 
   bw-db:
     image: mariadb:11
@@ -95,19 +148,60 @@ services:
       MYSQL_DATABASE: "db"
       MYSQL_USER: "bunkerweb"
       MYSQL_PASSWORD: "$DB_PASSWORD" # Remember to set a stronger password for the database
+    healthcheck:
+        test: [ "CMD", "healthcheck.sh", "--su-mysql", "--connect", "--innodb_initialized" ]
+        start_period: 1m
+        start_interval: 10s
+        interval: 1m
+        timeout: 5s
+        retries: 3
     volumes:
-      - $JOHNCLOUD_ROOT/bunkerweb/data:/var/lib/mysql
+      - ./bw-data:/var/lib/mysql
     restart: "unless-stopped"
     networks:
       - bw-db
 
+  bw-syslog:
+    image: balabit/syslog-ng:4.8.0
+    restart: "unless-stopped"
+    depends_on:
+      redis:
+        condition: service_healthy
+      bw-db:
+        condition: service_healthy
+    cap_add:
+      - NET_BIND_SERVICE  # Bind to low ports
+      - NET_BROADCAST  # Send broadcasts
+      - NET_RAW  # Use raw sockets
+      - DAC_READ_SEARCH  # Read files bypassing permissions
+      - DAC_OVERRIDE  # Override file permissions
+      - CHOWN  # Change ownership
+      - SYSLOG  # Write to system logs
+    volumes:
+      - ./bw-logs:/var/log/bunkerweb # This is the volume used to store the logs
+      - ./syslog-ng.conf:/etc/syslog-ng/syslog-ng.conf # This is the syslog-ng configuration file
+    networks:
+      bw-universe:
+        ipv4_address: $UNIVERSE_NET.254 # Make sure to set the correct IP address
+
+  redis:
+    image: redis:7.2.0
+    restart: "unless-stopped"
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      interval: 1s
+      timeout: 3s
+      retries: 5
+    environment:
+      - TZ=$TZ
+      - ENABLE_OVERCOMMIT_MEMORY=true
+    networks:
+      - bw-services
+
 networks:
   bw-universe:
+    external: true
     name: bw-universe
-    ipam:
-      driver: default
-      config:
-        - subnet: 10.20.30.0/24 # Make sure to set the correct IP range so the scheduler can send the configuration to the instance
   bw-services:
     name: bw-services
   bw-db:
