@@ -2,6 +2,9 @@ First create the network:
 
     sudo docker network create -d bridge --subnet=10.20.30.0/24 bw-universe
 
+    sudo chown -R root:101 $JOHNCLOUD_ROOT/bunkerweb/bw-storage
+    sudo chmod -R 770 $JOHNCLOUD_ROOT/bunkerweb/bw-storage
+
 Define the root data folder in a .env file, 
 
     git clone https://github.com/johncloud-paas/platform.git

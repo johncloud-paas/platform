@@ -60,7 +60,7 @@ services:
       USE_LETS_ENCRYPT_WILDCARD: no
       LETS_ENCRYPT_CLEAR_OLD_CERTS: yes
     volumes:
-      - ./bw-storage:/data # This is used to persist the cache and other data like the backups
+      - $JOHNCLOUD_ROOT/bunkerweb/bw-storage:/data # This is used to persist the cache and other data like the backups
     restart: "unless-stopped"
     networks:
       - bw-universe
@@ -135,6 +135,7 @@ services:
     networks:
       - bw-universe
       - bw-db
+      - bw-services
     logging:
       driver: syslog
       options:
@@ -156,7 +157,7 @@ services:
         timeout: 5s
         retries: 3
     volumes:
-      - ./bw-data:/var/lib/mysql
+      - $JOHNCLOUD_ROOT/bunkerweb/bw-data:/var/lib/mysql
     restart: "unless-stopped"
     networks:
       - bw-db
@@ -178,11 +179,54 @@ services:
       - CHOWN  # Change ownership
       - SYSLOG  # Write to system logs
     volumes:
-      - ./bw-logs:/var/log/bunkerweb # This is the volume used to store the logs
-      - ./syslog-ng.conf:/etc/syslog-ng/syslog-ng.conf # This is the syslog-ng configuration file
+      - $JOHNCLOUD_ROOT/bunkerweb/bw-logs:/var/log/bunkerweb # This is the volume used to store the logs
+      - $JOHNCLOUD_ROOT/bunkerweb/syslog-ng.conf:/etc/syslog-ng/syslog-ng.conf # This is the syslog-ng configuration file
     networks:
       bw-universe:
         ipv4_address: $UNIVERSE_NET.254 # Make sure to set the correct IP address
+
+  homepage:
+    image: ghcr.io/gethomepage/homepage:latest
+    restart: unless-stopped
+    networks:
+      - bw-services
+    volumes:
+      - $JOHNCLOUD_ROOT/home/config:/app/config # Make sure your local config directory exists
+      - /var/run/docker.sock:/var/run/docker.sock:ro # (optional) For docker integrations
+    labels:
+        - "bunkerweb.SERVER_NAME=home.$HOST"
+        - "bunkerweb.USE_REVERSE_PROXY=yes"
+        - "bunkerweb.REVERSE_PROXY_URL=/"
+        - "bunkerweb.REVERSE_PROXY_HOST=http://homepage:3000"
+        - "bunkerweb.USE_AUTH_BASIC=yes"
+        - "bunkerweb.AUTH_BASIC_USER=$ADMIN_USERNAME"
+        - "bunkerweb.AUTH_BASIC_PASSWORD=$ADMIN_PASSWORD"
+ 
+  portainer:
+    image: portainer/portainer-ee:latest
+    restart: unless-stopped
+    networks:
+      - bw-services
+      # - bw-docker
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      - $JOHNCLOUD_ROOT/portainer/data:/data
+    labels:
+      - "bunkerweb.SERVER_NAME=portainer.$HOST"
+      - "bunkerweb.USE_REVERSE_PROXY=yes"
+      - "bunkerweb.REVERSE_PROXY_URL=/"
+      - "bunkerweb.REVERSE_PROXY_HOST=http://portainer:9000"
+      - "homepage.group=Platform"
+      - "homepage.name=Portainer"
+      - "homepage.icon=portainer.svg"
+      - "homepage.href=https://portainer.$HOST/#!/2/docker/stacks"
+      - "homepage.description=Container Management Software"
+      - "homepage.widget.type=portainer"
+      - "homepage.widget.url=https://portainer.$HOST"
+      - "homepage.widget.env=2"
+      - "homepage.widget.key=$PORTAINER_ACCESS_TOKEN"
 
   redis:
     image: redis:7.2.0
