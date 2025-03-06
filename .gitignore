@@ -6,6 +6,7 @@ stalwart/
 traefik/
 *.new.yml
 *.ref.yml
+docker-compose.traefik.yml
 bw-data/
 bw-logs/
 bw-storage/
