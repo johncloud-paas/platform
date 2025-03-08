@@ -1,12 +1,12 @@
 x-bw-env: &bw-env  # We use an anchor to avoid repeating the same settings for both containers
   API_WHITELIST_IP: "127.0.0.0/24 $UNIVERSE_NET.0/24"
   DATABASE_URI: "mariadb+pymysql://bunkerweb:$DB_PASSWORD@bw-db:3306/db"
-  USE_MODSECURITY_GLOBAL_CRS: "yes"
+  USE_MODSECURITY_GLOBAL_CRS: "no"
   AUTOCONF_MODE: "yes"
-  USE_REDIS: yes
-  REDIS_HOST: redis
-  REDIS_PORT: 6379
-  REDIS_DATABASE: 0
+  USE_REDIS: no
+  # REDIS_HOST: redis
+  # REDIS_PORT: 6379
+  # REDIS_DATABASE: 0
 
 
 services:
@@ -14,8 +14,8 @@ services:
     # This is the name that will be used to identify the instance in the Scheduler
     image: bunkerity/bunkerweb:1.6.0
     depends_on:
-      redis:
-        condition: service_healthy
+      # redis:
+      #   condition: service_healthy
       bw-db:
         condition: service_healthy
     ports:
@@ -30,23 +30,23 @@ services:
     networks:
       - bw-universe
       - bw-services
-    logging:
-      driver: syslog
-      options:
-        tag: "bunkerweb" # This will be the tag used by syslog-ng to create the log file
-        syslog-address: "udp://$UNIVERSE_NET.254:514" # This is the syslog-ng container address
+    # logging:
+    #   driver: syslog
+    #   options:
+    #     tag: "bunkerweb" # This will be the tag used by syslog-ng to create the log file
+    #     syslog-address: "udp://$UNIVERSE_NET.254:514" # This is the syslog-ng container address
 
   bw-scheduler:
     image: bunkerity/bunkerweb-scheduler:1.6.0
     depends_on:
-      redis:
-        condition: service_healthy
+      # redis:
+      #   condition: service_healthy
       bw-db:
         condition: service_healthy
     environment:
       <<: *bw-env
       BUNKERWEB_INSTANCES: "" # We don't need to specify the BunkerWeb instance here as they are automatically detected by the autoconf service
-      SERVER_NAME: ""
+      SERVER_NAME: "waf.$HOST"
       DISABLE_DEFAULT_SERVER: "yes"
       MULTISITE: "yes"
       UI_HOST: "http://bw-ui:7000" # Change it if needed
@@ -58,18 +58,18 @@ services:
       EMAIL_LETS_ENCRYPT: $EMAIL_LETS_ENCRYPT
       LETS_ENCRYPT_CHALLENGE: "http"
       USE_LETS_ENCRYPT_WILDCARD: no
-      LETS_ENCRYPT_CLEAR_OLD_CERTS: yes
+      LETS_ENCRYPT_CLEAR_OLD_CERTS: no
     volumes:
       - $JOHNCLOUD_ROOT/bunkerweb/bw-storage:/data # This is used to persist the cache and other data like the backups
     restart: "unless-stopped"
     networks:
       - bw-universe
       - bw-db
-    logging:
-      driver: syslog
-      options:
-        tag: "bw-scheduler" # This will be the tag used by syslog-ng to create the log file
-        syslog-address: "udp://$UNIVERSE_NET.254:514" # This is the syslog-ng container address
+    # logging:
+    #   driver: syslog
+    #   options:
+    #     tag: "bw-scheduler" # This will be the tag used by syslog-ng to create the log file
+    #     syslog-address: "udp://$UNIVERSE_NET.254:514" # This is the syslog-ng container address
 
   bw-autoconf:
     image: bunkerity/bunkerweb-autoconf:1.6.0
@@ -78,8 +78,8 @@ services:
         condition: service_started
       bw-docker:
         condition: service_started
-      redis:
-        condition: service_healthy
+      # redis:
+      #   condition: service_healthy
       bw-db:
         condition: service_healthy
     environment:
@@ -91,19 +91,19 @@ services:
       - bw-universe
       - bw-docker
       - bw-db
-    logging:
-      driver: syslog
-      options:
-        tag: "bw-autoconf" # This will be the tag used by syslog-ng to create the log file
-        syslog-address: "udp://$UNIVERSE_NET.254:514" # This is the syslog-ng container address
+    # logging:
+    #   driver: syslog
+    #   options:
+    #     tag: "bw-autoconf" # This will be the tag used by syslog-ng to create the log file
+    #     syslog-address: "udp://$UNIVERSE_NET.254:514" # This is the syslog-ng container address
 
   bw-docker:
     image: tecnativa/docker-socket-proxy:nightly
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     depends_on:
-      redis:
-        condition: service_healthy
+      # redis:
+      #   condition: service_healthy
       bw-db:
         condition: service_healthy
     environment:
@@ -116,8 +116,8 @@ services:
   bw-ui:
     image: bunkerity/bunkerweb-ui:1.6.0
     depends_on:
-      redis:
-        condition: service_healthy
+      # redis:
+      #   condition: service_healthy
       bw-db:
         condition: service_healthy
     environment:
@@ -136,11 +136,11 @@ services:
       - bw-universe
       - bw-db
       - bw-services
-    logging:
-      driver: syslog
-      options:
-        tag: "bw-ui" # This will be the tag used by syslog-ng to create the log file
-        syslog-address: "udp://$UNIVERSE_NET.254:514" # This is the syslog-ng container address
+    # logging:
+    #   driver: syslog
+    #   options:
+    #     tag: "bw-ui" # This will be the tag used by syslog-ng to create the log file
+    #     syslog-address: "udp://$UNIVERSE_NET.254:514" # This is the syslog-ng container address
 
   bw-db:
     image: mariadb:11
@@ -162,28 +162,28 @@ services:
     networks:
       - bw-db
 
-  bw-syslog:
-    image: balabit/syslog-ng:4.8.0
-    restart: "unless-stopped"
-    depends_on:
-      redis:
-        condition: service_healthy
-      bw-db:
-        condition: service_healthy
-    cap_add:
-      - NET_BIND_SERVICE  # Bind to low ports
-      - NET_BROADCAST  # Send broadcasts
-      - NET_RAW  # Use raw sockets
-      - DAC_READ_SEARCH  # Read files bypassing permissions
-      - DAC_OVERRIDE  # Override file permissions
-      - CHOWN  # Change ownership
-      - SYSLOG  # Write to system logs
-    volumes:
-      - $JOHNCLOUD_ROOT/bunkerweb/bw-logs:/var/log/bunkerweb # This is the volume used to store the logs
-      - $JOHNCLOUD_ROOT/bunkerweb/syslog-ng.conf:/etc/syslog-ng/syslog-ng.conf # This is the syslog-ng configuration file
-    networks:
-      bw-universe:
-        ipv4_address: $UNIVERSE_NET.254 # Make sure to set the correct IP address
+  # bw-syslog:
+  #   image: balabit/syslog-ng:4.8.0
+  #   restart: "unless-stopped"
+  #   depends_on:
+  #     redis:
+  #       condition: service_healthy
+  #     bw-db:
+  #       condition: service_healthy
+  #   cap_add:
+  #     - NET_BIND_SERVICE  # Bind to low ports
+  #     - NET_BROADCAST  # Send broadcasts
+  #     - NET_RAW  # Use raw sockets
+  #     - DAC_READ_SEARCH  # Read files bypassing permissions
+  #     - DAC_OVERRIDE  # Override file permissions
+  #     - CHOWN  # Change ownership
+  #     - SYSLOG  # Write to system logs
+  #   volumes:
+  #     - $JOHNCLOUD_ROOT/bunkerweb/bw-logs:/var/log/bunkerweb # This is the volume used to store the logs
+  #     - $JOHNCLOUD_ROOT/bunkerweb/syslog-ng.conf:/etc/syslog-ng/syslog-ng.conf # This is the syslog-ng configuration file
+  #   networks:
+  #     bw-universe:
+  #       ipv4_address: $UNIVERSE_NET.254 # Make sure to set the correct IP address
 
   homepage:
     image: ghcr.io/gethomepage/homepage:latest
@@ -191,7 +191,7 @@ services:
     networks:
       - bw-services
     volumes:
-      - $JOHNCLOUD_ROOT/home/config:/app/config # Make sure your local config directory exists
+      - $JOHNCLOUD_ROOT/bunkerweb/home:/app/config # Make sure your local config directory exists
       - /var/run/docker.sock:/var/run/docker.sock:ro # (optional) For docker integrations
     labels:
         - "bunkerweb.SERVER_NAME=home.$HOST"
@@ -212,7 +212,7 @@ services:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
       - /var/run/docker.sock:/var/run/docker.sock
-      - $JOHNCLOUD_ROOT/portainer/data:/data
+      - $JOHNCLOUD_ROOT/bunkerweb/portainer:/data
     labels:
       - "bunkerweb.SERVER_NAME=portainer.$HOST"
       - "bunkerweb.USE_REVERSE_PROXY=yes"
@@ -228,19 +228,21 @@ services:
       - "homepage.widget.env=2"
       - "homepage.widget.key=$PORTAINER_ACCESS_TOKEN"
 
-  redis:
-    image: redis:7.2.0
-    restart: "unless-stopped"
-    healthcheck:
-      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
-      interval: 1s
-      timeout: 3s
-      retries: 5
-    environment:
-      - TZ=$TZ
-      - ENABLE_OVERCOMMIT_MEMORY=true
-    networks:
-      - bw-services
+  # redis:
+  #   image: redis:7.2.0
+  #   restart: "unless-stopped"
+  #   volumes:
+  #     - $JOHNCLOUD_ROOT/bunkerweb/redis:/data
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+  #     interval: 1s
+  #     timeout: 3s
+  #     retries: 5
+  #   environment:
+  #     - TZ=$TZ
+  #     - ENABLE_OVERCOMMIT_MEMORY=true
+  #   networks:
+  #     - bw-services
 
 networks:
   bw-universe:
