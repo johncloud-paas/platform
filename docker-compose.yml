@@ -81,7 +81,7 @@ services:
       # - --experimental.plugins.wafrisPlugin.version=v0.0.3
       # - --experimental.plugins.google-oidc-auth-middleware.modulename=github.com/andrewkroh/google-oidc-auth-middleware
       # - --experimental.plugins.google-oidc-auth-middleware.version=v0.1.0
-      - --certificatesresolvers.letsencrypt.acme.email=$ADMIN_EMAIL
+      - --certificatesresolvers.letsencrypt.acme.email=$EMAIL_LETS_ENCRYPT
       - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
       - --certificatesresolvers.letsencrypt.acme.httpchallenge=true
       - --certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web
