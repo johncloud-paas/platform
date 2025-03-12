@@ -8,6 +8,7 @@ x-bw-env: &bw-env  # We use an anchor to avoid repeating the same settings for b
   REDIS_HOST: redis
   REDIS_PORT: 6379
   REDIS_DATABASE: 0
+  EXTERNAL_PLUGIN_URLS: https://github.com/bunkerity/bunkerweb-plugins/archive/refs/tags/v1.8.zip
 
 
 services:
@@ -39,6 +40,11 @@ services:
         condition: service_healthy
       bw-db:
         condition: service_healthy
+    # entrypoint: |
+    #     /bin/bash -c "
+    #     rm -rf /etc/bunkerweb/configs
+    #     ./entrypoint.sh
+    #     "
     environment:
       <<: *bw-env
       BUNKERWEB_INSTANCES: "" # We don't need to specify the BunkerWeb instance here as they are automatically detected by the autoconf service
