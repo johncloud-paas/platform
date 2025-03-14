@@ -13,7 +13,7 @@ x-bw-env: &bw-env  # We use an anchor to avoid repeating the same settings for b
 services:
   bunkerweb:
     # This is the name that will be used to identify the instance in the Scheduler
-    image: bunkerity/bunkerweb:1.6.0
+    image: bunkerity/bunkerweb:$BUNKERWEB_VERSION
     depends_on:
       redis:
         condition: service_healthy
@@ -33,7 +33,7 @@ services:
       - bw-services
 
   bw-scheduler:
-    image: bunkerity/bunkerweb-scheduler:1.6.0
+    image: bunkerity/bunkerweb-scheduler:$BUNKERWEB_VERSION
     depends_on:
       redis:
         condition: service_healthy
@@ -69,7 +69,7 @@ services:
       - bw-db
 
   bw-autoconf:
-    image: bunkerity/bunkerweb-autoconf:1.6.0
+    image: bunkerity/bunkerweb-autoconf:$BUNKERWEB_VERSION
     depends_on:
       bunkerweb:
         condition: service_started
@@ -111,7 +111,7 @@ services:
       - bw-docker
 
   bw-ui:
-    image: bunkerity/bunkerweb-ui:1.6.0
+    image: bunkerity/bunkerweb-ui:$BUNKERWEB_VERSION
     depends_on:
       redis:
         condition: service_healthy
