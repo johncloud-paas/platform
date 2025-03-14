@@ -18,6 +18,7 @@ sudo docker compose pull
 sudo docker compose down
 if [[ "${ERASE_BW_FOLDERS}" = "yes" ]]; then
   echo "Erasing $JOHNCLOUD_ROOT/bunkerweb/*"
+  sudo docker volume rm platform_bw-storage
   sudo rm -rf $JOHNCLOUD_ROOT/bunkerweb/*
 fi
 
