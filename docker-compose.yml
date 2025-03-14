@@ -23,6 +23,14 @@ services:
       - "80:8080/tcp"
       - "443:8443/tcp"
       - "443:8443/udp" # For QUIC / HTTP3 support
+      - "25:25"
+      - "465:465"
+      - "993:993"
+      - "587:587"
+      - "32400:32400"
+      - "53:53"
+      # - "853:853"
+      # - "3128:3128"
     environment:
       <<: *bw-env # We use the anchor to avoid repeating the same settings for all services
     restart: "unless-stopped"
@@ -61,7 +69,8 @@ services:
       USE_LETS_ENCRYPT_WILDCARD: no
       LETS_ENCRYPT_CLEAR_OLD_CERTS: no
     volumes:
-      - $JOHNCLOUD_ROOT/bunkerweb/bw-storage:/data # This is used to persist the cache and other data like the backups
+      - bw-storage:/data
+      # - $JOHNCLOUD_ROOT/bunkerweb/bw-storage:/data
       - $JOHNCLOUD_ROOT/bunkerweb/letsencrypt:/var/cache/bunkerweb/letsencrypt
     restart: "unless-stopped"
     networks:
@@ -142,12 +151,11 @@ services:
       MYSQL_USER: "bunkerweb"
       MYSQL_PASSWORD: "$DB_PASSWORD" # Remember to set a stronger password for the database
     healthcheck:
-        test: [ "CMD", "healthcheck.sh", "--su-mysql", "--connect", "--innodb_initialized" ]
-        start_period: 1m
-        start_interval: 10s
-        interval: 1m
-        timeout: 5s
-        retries: 3
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      start_period: 10s
+      interval: 10s
+      timeout: 5s
+      retries: 3
     volumes:
       - $JOHNCLOUD_ROOT/bunkerweb/bw-data:/var/lib/mysql
     restart: "unless-stopped"
@@ -212,6 +220,9 @@ services:
       - ENABLE_OVERCOMMIT_MEMORY=true
     networks:
       - bw-services
+
+volumes:
+  bw-storage:
 
 networks:
   bw-universe:
