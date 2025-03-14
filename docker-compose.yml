@@ -1,5 +1,5 @@
 x-bw-env: &bw-env  # We use an anchor to avoid repeating the same settings for both containers
-  API_WHITELIST_IP: "127.0.0.0/24 $UNIVERSE_NET.0/24"
+  API_WHITELIST_IP: "127.0.0.0/24 10.20.30.0/24"
   DATABASE_URI: "mariadb+pymysql://bunkerweb:$DB_PASSWORD@bw-db:3306/db"
   USE_MODSECURITY_GLOBAL_CRS: "yes"
   AUTOCONF_MODE: "yes"
@@ -23,14 +23,6 @@ services:
       - "80:8080/tcp"
       - "443:8443/tcp"
       - "443:8443/udp" # For QUIC / HTTP3 support
-      - "25:25"
-      - "465:465"
-      - "993:993"
-      - "587:587"
-      - "32400:32400"
-      - "53:53"
-      # - "853:853"
-      # - "3128:3128"
     environment:
       <<: *bw-env # We use the anchor to avoid repeating the same settings for all services
     restart: "unless-stopped"
@@ -101,7 +93,7 @@ services:
     #   driver: syslog
     #   options:
     #     tag: "bw-autoconf" # This will be the tag used by syslog-ng to create the log file
-    #     syslog-address: "udp://$UNIVERSE_NET.254:514" # This is the syslog-ng container address
+    #     syslog-address: "udp://10.20.30.254:514" # This is the syslog-ng container address
 
   bw-docker:
     image: tecnativa/docker-socket-proxy:nightly
