@@ -8,7 +8,6 @@ x-bw-env: &bw-env  # We use an anchor to avoid repeating the same settings for b
   REDIS_HOST: redis
   REDIS_PORT: 6379
   REDIS_DATABASE: 0
-  EXTERNAL_PLUGIN_URLS: https://github.com/bunkerity/bunkerweb-plugins/archive/refs/tags/v1.8.zip
 
 
 services:
