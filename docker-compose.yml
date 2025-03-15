@@ -1,56 +1,16 @@
-x-bw-env: &bw-env  # We use an anchor to avoid repeating the same settings for both containers
-  API_WHITELIST_IP: "127.0.0.0/24 10.20.30.0/24"
-  DATABASE_URI: "mariadb+pymysql://bunkerweb:$DB_PASSWORD@bw-db:3306/db"
-  USE_MODSECURITY_GLOBAL_CRS: "yes"
-  AUTOCONF_MODE: "yes"
-  USE_REDIS: yes
-  SECURITY_MODE: "detect"
-  REDIS_HOST: redis
-  REDIS_PORT: 6379
-  REDIS_DATABASE: 0
-
+# https://docs.bunkerweb.io/latest/integrations/#all-in-one-image
 
 services:
   bunkerweb:
     # This is the name that will be used to identify the instance in the Scheduler
-    image: bunkerity/bunkerweb:$BUNKERWEB_VERSION
-    depends_on:
-      redis:
-        condition: service_healthy
-      bw-db:
-        condition: service_healthy
+    image: bunkerity/bunkerweb-all-in-one:$BUNKERWEB_VERSION
     ports:
       - "80:8080/tcp"
       - "443:8443/tcp"
       - "443:8443/udp" # For QUIC / HTTP3 support
+      - "7000:7000/tcp"
     environment:
-      <<: *bw-env # We use the anchor to avoid repeating the same settings for all services
-    restart: "unless-stopped"
-    labels:
-      - "bunkerweb.INSTANCE=yes" # Mandatory label for the autoconf service to identify the BunkerWeb instance
-    networks:
-      - bw-universe
-      - bw-services
-
-  bw-scheduler:
-    image: bunkerity/bunkerweb-scheduler:$BUNKERWEB_VERSION
-    depends_on:
-      redis:
-        condition: service_healthy
-      bw-db:
-        condition: service_healthy
-    # entrypoint: |
-    #     /bin/bash -c "
-    #     rm -rf /etc/bunkerweb/configs
-    #     ./entrypoint.sh
-    #     "
-    environment:
-      <<: *bw-env
-      BUNKERWEB_INSTANCES: "" # We don't need to specify the BunkerWeb instance here as they are automatically detected by the autoconf service
-      SERVER_NAME: "waf.$HOST"
-      DISABLE_DEFAULT_SERVER: "yes"
-      MULTISITE: "yes"
-      UI_HOST: "http://bw-ui:7000" # Change it if needed
+      AUTOCONF_MODE: "yes"
       SERVE_FILES: "no"
       USE_CLIENT_CACHE: "yes"
       USE_GZIP: "yes"
@@ -60,99 +20,12 @@ services:
       LETS_ENCRYPT_CHALLENGE: "http"
       USE_LETS_ENCRYPT_WILDCARD: no
       LETS_ENCRYPT_CLEAR_OLD_CERTS: no
-    volumes:
-      - bw-storage:/data
-      # - $JOHNCLOUD_ROOT/bunkerweb/bw-storage:/data
-      - $JOHNCLOUD_ROOT/bunkerweb/letsencrypt:/var/cache/bunkerweb/letsencrypt
     restart: "unless-stopped"
+    # labels:
+    #   - "bunkerweb.INSTANCE=yes" # Mandatory label for the autoconf service to identify the BunkerWeb instance
     networks:
       - bw-universe
-      - bw-db
-
-  bw-autoconf:
-    image: bunkerity/bunkerweb-autoconf:$BUNKERWEB_VERSION
-    depends_on:
-      bunkerweb:
-        condition: service_started
-      bw-docker:
-        condition: service_started
-      redis:
-        condition: service_healthy
-      bw-db:
-        condition: service_healthy
-    environment:
-      AUTOCONF_MODE: "yes"
-      DATABASE_URI: "mariadb+pymysql://bunkerweb:$DB_PASSWORD@bw-db:3306/db"
-      DOCKER_HOST: "tcp://bw-docker:2375" # The Docker socket
-    restart: "unless-stopped"
-    networks:
-      - bw-universe
-      - bw-docker
-      - bw-db
-    # logging:
-    #   driver: syslog
-    #   options:
-    #     tag: "bw-autoconf" # This will be the tag used by syslog-ng to create the log file
-    #     syslog-address: "udp://10.20.30.254:514" # This is the syslog-ng container address
-
-  bw-docker:
-    image: tecnativa/docker-socket-proxy:nightly
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    depends_on:
-      redis:
-        condition: service_healthy
-      bw-db:
-        condition: service_healthy
-    environment:
-      CONTAINERS: "1"
-      LOG_LEVEL: "warning"
-    restart: "unless-stopped"
-    networks:
-      - bw-docker
-
-  bw-ui:
-    image: bunkerity/bunkerweb-ui:$BUNKERWEB_VERSION
-    depends_on:
-      redis:
-        condition: service_healthy
-      bw-db:
-        condition: service_healthy
-    environment:
-      <<: *bw-env
-      ADMIN_USERNAME: $ADMIN_USERNAME
-      ADMIN_PASSWORD: $ADMIN_PASSWORD
-      TOTP_SECRETS: $TOTP_SECRETS
-    restart: "unless-stopped"
-    labels:
-      - "bunkerweb.SERVER_NAME=waf.$HOST"
-      - "bunkerweb.USE_TEMPLATE=ui"
-      - "bunkerweb.USE_REVERSE_PROXY=yes"
-      - "bunkerweb.REVERSE_PROXY_URL=/"
-      - "bunkerweb.REVERSE_PROXY_HOST=http://bw-ui:7000"
-    networks:
-      - bw-universe
-      - bw-db
       - bw-services
-
-  bw-db:
-    image: mariadb:11
-    environment:
-      MYSQL_RANDOM_ROOT_PASSWORD: "yes"
-      MYSQL_DATABASE: "db"
-      MYSQL_USER: "bunkerweb"
-      MYSQL_PASSWORD: "$DB_PASSWORD" # Remember to set a stronger password for the database
-    healthcheck:
-      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
-      start_period: 10s
-      interval: 10s
-      timeout: 5s
-      retries: 3
-    volumes:
-      - $JOHNCLOUD_ROOT/bunkerweb/bw-data:/var/lib/mysql
-    restart: "unless-stopped"
-    networks:
-      - bw-db
 
   homepage:
     image: ghcr.io/gethomepage/homepage:latest
@@ -197,22 +70,6 @@ services:
       - "homepage.widget.env=2"
       - "homepage.widget.key=$PORTAINER_ACCESS_TOKEN"
 
-  redis:
-    image: redis:7.2.0
-    restart: "unless-stopped"
-    volumes:
-      - $JOHNCLOUD_ROOT/bunkerweb/redis:/data
-    healthcheck:
-      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
-      interval: 1s
-      timeout: 3s
-      retries: 5
-    environment:
-      - TZ=$TZ
-      - ENABLE_OVERCOMMIT_MEMORY=true
-    networks:
-      - bw-services
-
 volumes:
   bw-storage:
 
@@ -222,7 +79,4 @@ networks:
     name: bw-universe
   bw-services:
     name: bw-services
-  bw-db:
-    name: bw-db
-  bw-docker:
-    name: bw-docker
+    
