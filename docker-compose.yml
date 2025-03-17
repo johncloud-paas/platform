@@ -1,4 +1,5 @@
 # https://docs.bunkerweb.io/latest/integrations/#all-in-one-image
+# docker run -d -v bw-storage:/data -p 80:8080/tcp -p 443:8443/tcp -p 443/8443/udp bunkerity/bunkerweb-all-in-one:1.6.1
 
 services:
   bunkerweb:
@@ -20,6 +21,8 @@ services:
       LETS_ENCRYPT_CHALLENGE: "http"
       USE_LETS_ENCRYPT_WILDCARD: no
       LETS_ENCRYPT_CLEAR_OLD_CERTS: no
+    volumes:
+      - bw-storage:/data
     restart: "unless-stopped"
     # labels:
     #   - "bunkerweb.INSTANCE=yes" # Mandatory label for the autoconf service to identify the BunkerWeb instance
