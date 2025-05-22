@@ -35,7 +35,7 @@ services:
       - --entrypoints.imaps.address=:993/tcp
       - --entrypoints.imaps.proxyProtocol.trustedIPs=192.168.203.0/24
       - --entrypoints.submission.address=:587/tcp
-      # - --entrypoints.submission.proxyProtocol.trustedIPs=192.168.203.0/24
+      - --entrypoints.submission.proxyProtocol.trustedIPs=192.168.203.0/24
       # - --entrypoints.proxy.address=:3128
       - --entrypoints.web.address=:80
       - --entrypoints.web.http.redirections.entrypoint.to=websecure
