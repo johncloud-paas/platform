@@ -35,8 +35,7 @@ services:
       - --entrypoints.submissions.proxyProtocol.trustedIPs=$UNIVERSE_NET.0/24
       - --entrypoints.imaps.address=:993/tcp
       - --entrypoints.imaps.proxyProtocol.trustedIPs=$UNIVERSE_NET.0/24
-      - --entrypoints.neo4j.address=:7687/tcp
-      - --entrypoints.neo4j.proxyProtocol.trustedIPs=$UNIVERSE_NET.0/24
+      - --entrypoints.bolt.address=:7687/tcp
       # - --entrypoints.submission.address=:587/tcp
       # - --entrypoints.submission.proxyProtocol.trustedIPs=$UNIVERSE_NET.0/24
       # - --entrypoints.proxy.address=:3128
