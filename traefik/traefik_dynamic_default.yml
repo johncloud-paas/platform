@@ -1,41 +1,12 @@
 http:
   middlewares:
-    # Inspired by
-    # https://www.benjaminrancourt.ca/a-complete-traefik-configuration/
-
     # Recommended default middleware for most of the services
     default:
       chain:
         middlewares:
-          # - crowdsec
           - default-security-headers
           - gzip
-    
-    crowdsec:
-      plugin:
-        bouncer:
-          enabled: true
-          defaultDecisionSeconds: 60
-          crowdsecMode: live
-          crowdsecAppsecEnabled: false # <--- here you can enable appsec waf
-          crowdsecAppsecHost: crowdsec:7422
-          crowdsecAppsecFailureBlock: true
-          crowdsecAppsecUnreachableBlock: true
-          crowdsecLapiKey: FIXME-LAPI-KEY # <--- replace this
-          crowdsecLapiHost: crowdsec:8080
-          crowdsecLapiScheme: http
-          crowdsecLapiTLSInsecureVerify: false
-          # forwardedHeadersTrustedIPs:
-          #   # private class ranges
-          #   - 10.0.0.0/8
-          #   - 172.16.0.0/12
-          #   - 192.168.0.0/16
-          # clientTrustedIPs:
-          #   # private class ranges
-          #   - 10.0.0.0/8
-          #   - 172.16.0.0/12
-          #   - 192.168.0.0/16
-              
+
     # Add automatically some security headers
     default-security-headers:
       headers:

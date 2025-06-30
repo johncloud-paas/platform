@@ -75,14 +75,12 @@ services:
       - --accesslog.bufferingSize=0
       - --accesslog.fields.defaultMode=drop
       - --accesslog.fields.names.User-Agent=keep
-      - --experimental.plugins.bouncer.moduleName=github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin
-      - --experimental.plugins.bouncer.version=v1.4.1
-      # - --experimental.plugins.wafrisPlugin.moduleName=github.com/Wafris/wafris-traefik
-      # - --experimental.plugins.wafrisPlugin.version=v0.0.3
       - --certificatesresolvers.letsencrypt.acme.email=$EMAIL_LETS_ENCRYPT
       - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
       - --certificatesresolvers.letsencrypt.acme.httpchallenge=true
       - --certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web
+      - --experimental.plugins.traefik-api-token-middleware.modulename=github.com/Aetherinox/traefik-api-token-middleware
+      - --experimental.plugins.traefik-api-token-middleware.version=v0.1.4
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./traefik:/conf.d
