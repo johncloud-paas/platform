@@ -18,7 +18,8 @@ http:
           crowdsecAppsecHost: crowdsec:7422
           crowdsecAppsecFailureBlock: true
           crowdsecAppsecUnreachableBlock: true
-          crowdsecLapiKey: jKlzSQmhIgoT0vzVqtslOX6uGjBHJ25cw6ugsTuLTFY
+          # docker exec crowdsec cscli bouncers add crowdsecBouncer
+          crowdsecLapiKey:  # <--- your key here
           crowdsecLapiHost: crowdsec:8080
           crowdsecLapiScheme: http
           crowdsecLapiTLSInsecureVerify: false
