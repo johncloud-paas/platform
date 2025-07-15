@@ -73,14 +73,16 @@ services:
       - --accesslog.format=json
       - --accesslog.filters.statusCodes=200-299,400-599
       - --accesslog.bufferingSize=0
-      - --accesslog.fields.defaultMode=drop
-      - --accesslog.fields.names.User-Agent=keep
+      - --accesslog.fields.headers.defaultMode=drop
+      - --accesslog.fields.headers.names.User-Agent=keep
       - --certificatesresolvers.letsencrypt.acme.email=$EMAIL_LETS_ENCRYPT
       - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
       - --certificatesresolvers.letsencrypt.acme.httpchallenge=true
       - --certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web
       - --experimental.plugins.traefik-api-token-middleware.modulename=github.com/Aetherinox/traefik-api-token-middleware
       - --experimental.plugins.traefik-api-token-middleware.version=v0.1.4
+      - --experimental.plugins.bouncer.moduleName=github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin
+      - --experimental.plugins.bouncer.version=v1.4.4
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./traefik:/conf.d
@@ -101,6 +103,29 @@ services:
       - "homepage.description=Traefik reverse proxy"
       - "homepage.widget.type=traefik"
       - "homepage.widget.url=http://$UNIVERSE_NET.100:8080"
+
+  crowdsec:
+    image: crowdsecurity/crowdsec:v1.6.10
+    container_name: crowdsec
+    restart: unless-stopped
+    ports:
+      - 127.0.0.1:9876:8080 # port mapping for local firewall bouncers
+    expose:
+      - 8080 # http api for bouncers
+      - 6060 # metrics endpoint for prometheus
+      - 7422 # appsec waf endpoint
+    volumes:
+      # crowdsec container data
+      - $JOHNCLOUD_ROOT/crowdsec/data:/var/lib/crowdsec/data
+      - $JOHNCLOUD_ROOT/crowdsec/etc:/etc/crowdsec
+      # log bind mounts into crowdsec
+      - /var/log/auth.log:/var/log/auth.log:ro
+      - /var/log/syslog:/var/log/syslog:ro
+      - $JOHNCLOUD_ROOT/traefik/logs:/var/log/traefik:ro
+    environment:
+      - GID=1000
+      - COLLECTIONS=crowdsecurity/traefik crowdsecurity/http-cve crowdsecurity/base-http-scenarios crowdsecurity/sshd crowdsecurity/linux crowdsecurity/appsec-generic-rules crowdsecurity/appsec-virtual-patching crowdsecurity/appsec-crs
+      #- CUSTOM_HOSTNAME=my-crowdsec-host123
 
   node_exporter:
     image: quay.io/prometheus/node-exporter:latest
