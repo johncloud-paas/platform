@@ -49,6 +49,7 @@ services:
       - --entrypoints.websecure.http.tls.domains.main=$HOST
       - --entrypoints.websecure.http.tls.domains.sans=*.$HOST
       - --entrypoints.websecure.http.middlewares=default@file
+      - --entrypoints.websecure.forwardedHeaders.trustedIPs=$UNIVERSE_NET.0/24
       - --entrypoints.websecure.proxyprotocol=true
       - --entrypoints.websecure.proxyprotocol.trustedips=$UNIVERSE_NET.0/24
       - --providers.docker=true
@@ -89,12 +90,12 @@ services:
       - $JOHNCLOUD_ROOT/traefik/logs:/logs
       - $JOHNCLOUD_ROOT/traefik/letsencrypt:/letsencrypt
     labels:
-      # - "traefik.enable=true"
-      # - "traefik.http.routers.traefik.rule=Host(`traefik.$HOST`)"
-      # - "traefik.http.routers.traefik.service=api@internal"
-      # - "traefik.http.routers.traefik.entrypoints=websecure"
-      # - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
-      # - "traefik.http.routers.traefik.middlewares=forward-auth-verify"
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.$HOST`)"
+      - "traefik.http.routers.traefik.service=api@internal"
+      - "traefik.http.routers.traefik.entrypoints=websecure"
+      - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.traefik.middlewares=forward-auth-verify"
       - "homepage.group=Platform"
       - "homepage.name=Traefik"
       - "homepage.icon=traefik.svg"
@@ -102,18 +103,15 @@ services:
       - "homepage.href=http://$UNIVERSE_NET.100:8080"
       - "homepage.description=Traefik reverse proxy"
       - "homepage.widget.type=traefik"
+      # - "homepage.widget.url=https://traefik.$HOST"
       - "homepage.widget.url=http://$UNIVERSE_NET.100:8080"
 
   crowdsec:
-    image: crowdsecurity/crowdsec:v1.6.10
+    image: crowdsecurity/crowdsec
     container_name: crowdsec
     restart: unless-stopped
-    # ports:
-    #   - 127.0.0.1:9876:8080 # port mapping for local firewall bouncers
-    # expose:
-    #   - 8080 # http api for bouncers
-    #   - 6060 # metrics endpoint for prometheus
-    #   - 7422 # appsec waf endpoint
+    ports:
+      - "127.0.0.1:9876:8080"
     volumes:
       # crowdsec container data
       - $JOHNCLOUD_ROOT/crowdsec/data:/var/lib/crowdsec/data
@@ -125,7 +123,6 @@ services:
     environment:
       - GID=1000
       - COLLECTIONS=crowdsecurity/traefik crowdsecurity/http-cve crowdsecurity/base-http-scenarios crowdsecurity/sshd crowdsecurity/linux crowdsecurity/appsec-generic-rules crowdsecurity/appsec-virtual-patching crowdsecurity/appsec-crs
-      #- CUSTOM_HOSTNAME=my-crowdsec-host123
 
   node_exporter:
     image: quay.io/prometheus/node-exporter:latest
