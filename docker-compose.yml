@@ -2,43 +2,14 @@ services:
   traefik:
     image: traefik:latest
     container_name: traefik
-    networks:
-      default:
-        ipv4_address: $UNIVERSE_NET.100
+    # network_mode: host
     ports:
-      - "80:80"
-      - "443:443"
-      - "25:25"
-      # - "465:465"
-      - "993:993"
-      - "587:587"
-      - "32400:32400"
-      - "7687:7687"
-      # - "53:53"
-      # - "853:853"
-      # - "3128:3128"
+      - 80:80
+      - 443:443
     restart: unless-stopped
     environment:
-    # https://www.ovh.com/auth/api/createToken
-    # https://eu.api.ovh.com/console/?section=%2Fme&branch=v1#delete-/me/api/application/-applicationId-
       - "TZ=$TZ"
     command:
-      # - --entrypoints.dot.address=:853
-      # - --entrypoints.dot.proxyProtocol.trustedIPs=$UNIVERSE_NET.0/24
-      # - --entrypoints.dns.address=:53
-      # - --entrypoints.dns.proxyProtocol.trustedIPs=$UNIVERSE_NET.0/24
-      - --entrypoints.plex.address=:32400/tcp
-      - --entrypoints.plex.proxyProtocol.trustedIPs=$UNIVERSE_NET.0/24
-      - --entrypoints.smtp.address=:25/tcp
-      - --entrypoints.smtp.proxyProtocol.trustedIPs=$UNIVERSE_NET.0/24
-      - --entrypoints.submissions.address=:465/tcp
-      - --entrypoints.submissions.proxyProtocol.trustedIPs=$UNIVERSE_NET.0/24
-      - --entrypoints.imaps.address=:993/tcp
-      - --entrypoints.imaps.proxyProtocol.trustedIPs=$UNIVERSE_NET.0/24
-      - --entrypoints.bolt.address=:7687/tcp
-      # - --entrypoints.submission.address=:587/tcp
-      # - --entrypoints.submission.proxyProtocol.trustedIPs=$UNIVERSE_NET.0/24
-      # - --entrypoints.proxy.address=:3128
       - --entrypoints.web.address=:80
       - --entrypoints.web.http.redirections.entrypoint.to=websecure
       - --entrypoints.web.http.redirections.entrypoint.scheme=https
@@ -58,17 +29,6 @@ services:
       - --providers.file.watch=true
       - --api.dashboard=true
       - --api.insecure=true
-      # - --metrics.addinternals
-      # - --metrics.influxdb2=true
-      # - --metrics.influxdb2.address=http://influxdb:8086
-      # - --metrics.influxdb2.org=$INFLUXDB_INIT_ORG
-      # - --metrics.influxdb2.bucket=$INFLUXDB_INIT_BUCKET
-      # - --metrics.influxdb2.token=$INFLUXDB_INIT_ADMIN_TOKEN
-      # - --metrics.influxdb2.addServicesLabels=true
-      # - --metrics.influxdb2.addEntryPointsLabels=true
-      # - --metrics.influxdb2.addrouterslabels=true
-      # - --metrics.influxdb2.pushInterval=10s
-      # - --tracing.otlp.http.endpoint=http://jaeger:4318/v1/traces
       - --accesslog=true
       - --accesslog.filepath=/logs/traefik.log
       - --accesslog.format=json
@@ -85,7 +45,7 @@ services:
       - --experimental.plugins.bouncer.moduleName=github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin
       - --experimental.plugins.bouncer.version=v1.4.4
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - $XDG_RUNTIME_DIR/docker.sock:/var/run/docker.sock:ro
       - $JOHNCLOUD_ROOT/traefik/conf.d:/conf.d
       - $JOHNCLOUD_ROOT/traefik/logs:/logs
       - $JOHNCLOUD_ROOT/traefik/letsencrypt:/letsencrypt
@@ -96,201 +56,197 @@ services:
       - "traefik.http.routers.traefik.entrypoints=websecure"
       - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
       - "traefik.http.routers.traefik.middlewares=forward-auth-verify"
+      - "traefik.http.services.traefik-platform.loadbalancer.server.port=8080"
       - "homepage.group=Platform"
       - "homepage.name=Traefik"
       - "homepage.icon=traefik.svg"
-      # - "homepage.href=https://traefik.$HOST"
-      - "homepage.href=http://$UNIVERSE_NET.100:8080"
+      - "homepage.href=https://traefik.$HOST"
+      # - "homepage.href=http://$UNIVERSE_NET.100:8080"
       - "homepage.description=Traefik reverse proxy"
       - "homepage.widget.type=traefik"
-      # - "homepage.widget.url=https://traefik.$HOST"
-      - "homepage.widget.url=http://$UNIVERSE_NET.100:8080"
+      - "homepage.widget.url=https://traefik.$HOST"
+      # - "homepage.widget.url=http://$UNIVERSE_NET.100:8080"
 
-  crowdsec:
-    image: crowdsecurity/crowdsec
-    container_name: crowdsec
-    restart: unless-stopped
-    ports:
-      - "127.0.0.1:9876:8080"
-    volumes:
-      # crowdsec container data
-      - $JOHNCLOUD_ROOT/crowdsec/data:/var/lib/crowdsec/data
-      - $JOHNCLOUD_ROOT/crowdsec/etc:/etc/crowdsec
-      # log bind mounts into crowdsec
-      - /var/log/auth.log:/var/log/auth.log:ro
-      - /var/log/syslog:/var/log/syslog:ro
-      - $JOHNCLOUD_ROOT/traefik/logs:/var/log/traefik:ro
-    environment:
-      - GID=1000
-      - COLLECTIONS=crowdsecurity/traefik crowdsecurity/http-cve crowdsecurity/base-http-scenarios crowdsecurity/sshd crowdsecurity/linux crowdsecurity/appsec-generic-rules crowdsecurity/appsec-virtual-patching crowdsecurity/appsec-crs
-
-  node_exporter:
-    image: quay.io/prometheus/node-exporter:latest
-    restart: unless-stopped
-    container_name: node_exporter
-    command:
-      - '--path.rootfs=/host'
-    pid: host
-    volumes:
-      - /:/host:ro,rslave
-    environment:
-      - TZ=$TZ
-    depends_on:
-      - traefik
-      - redis
-      - prometheus
-    labels:
-      - "traefik.enable=false"
-
-  cadvisor:
-    image: gcr.io/cadvisor/cadvisor:latest
-    container_name: cadvisor
-    volumes:
-      - /:/rootfs:ro
-      - /var/run:/var/run:ro
-      - /sys:/sys:ro
-      - /var/lib/docker/:/var/lib/docker:ro
-    command: -max_procs=2 -docker_only=true
-    # command: -max_procs=2 -docker_only=true -storage_driver=influxdb -storage_driver_db=cadvisor -storage_driver_host=influxdb:8086 -storage_driver_user=$INFLUXDB_INIT_USERNAME -storage_driver_password=$INFLUXDB_INIT_ADMIN_TOKEN
-    environment:
-      - TZ=$TZ
-    depends_on:
-      - traefik
-      - redis
-      - prometheus
-    labels:
-      - "traefik.enable=false"
-  
-  pdc:
-    # https://grafana.com/docs/grafana-cloud/connect-externally-hosted/private-data-source-connect/#private-data-source-connect-pdc-concepts
-    image: grafana/pdc-agent:latest
-    container_name: pdc
-    restart: unless-stopped
-    depends_on:
-      - traefik
-      - prometheus
-      - influxdb
-      - loki
-    command: ["-token","$GRAFANA_PDC_TOKEN","-cluster","$GRAFANA_PDC_CLUSTER","-gcloud-hosted-grafana-id","$GRAFANA_PDC_GCP_ID"]
-    labels:
-      - "traefik.enable=false"
-
-  loki:
-    image: grafana/loki:latest
-    container_name: loki
-    user: "0:0"
-    # ports:
-    #   - 3100:3100
-    depends_on:
-      - traefik
-      - promtail
-    volumes:
-      - $JOHNCLOUD_ROOT/monitoring/loki:/loki
-      - ./loki/config.yml:/etc/loki/loki-config.yaml
-    command: -config.file=/etc/loki/loki-config.yaml
-    environment:
-      - TZ=$TZ
-    labels:
-      - "traefik.enable=false"
-        
-  promtail:
-    image:  grafana/promtail:latest
-    container_name: promtail
-    depends_on:
-      - traefik
-    volumes:
-      - ./promtail/config.yml:/etc/promtail/docker-config.yaml
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - $JOHNCLOUD_ROOT/traefik/logs:/var/logs/traefik:ro
-    command: -config.file=/etc/promtail/docker-config.yaml
-    environment:
-      - TZ=$TZ
-    labels:
-      - "traefik.enable=false"
-
-  # jaeger:
-  #   image: jaegertracing/all-in-one:1.62.0
-  #   container_name: jaeger
+  # crowdsec:
+  #   image: crowdsecurity/crowdsec
+  #   container_name: crowdsec
   #   restart: unless-stopped
+  #   ports:
+  #     - "127.0.0.1:9876:8080"
+  #   volumes:
+  #     # crowdsec container data
+  #     - $JOHNCLOUD_ROOT/crowdsec/data:/var/lib/crowdsec/data
+  #     - $JOHNCLOUD_ROOT/crowdsec/etc:/etc/crowdsec
+  #     # log bind mounts into crowdsec
+  #     - /var/log/auth.log:/var/log/auth.log:ro
+  #     - /var/log/syslog:/var/log/syslog:ro
+  #     - $JOHNCLOUD_ROOT/traefik/logs:/var/log/traefik:ro
+  #   environment:
+  #     - GID=1000
+  #     - COLLECTIONS=crowdsecurity/traefik crowdsecurity/http-cve crowdsecurity/base-http-scenarios crowdsecurity/sshd crowdsecurity/linux crowdsecurity/appsec-generic-rules crowdsecurity/appsec-virtual-patching crowdsecurity/appsec-crs
+
+  # node_exporter:
+  #   image: quay.io/prometheus/node-exporter:latest
+  #   restart: unless-stopped
+  #   container_name: node_exporter
+  #   command:
+  #     - '--path.rootfs=/host'
+  #   pid: host
+  #   volumes:
+  #     - /:/host:ro,rslave
   #   environment:
   #     - TZ=$TZ
-  #     - COLLECTOR_OTLP_ENABLED=true
-  #     - METRICS_STORAGE_TYPE=prometheus
-  #     - PROMETHEUS_SERVER_URL=http://prometheus:9090
-    #   - SPAN_STORAGE_TYPE=badger
-    #   - BADGER_EPHEMERAL=false
-    #   - BADGER_DIRECTORY_VALUE=/badger/data
-    #   - BADGER_DIRECTORY_KEY=/badger/key
-    # volumes:
-    #   - $JOHNCLOUD_ROOT/jaeger/data:/badger
-    # labels:
-    #   - "traefik.enable=false"
-      # - "traefik.http.routers.jaeger.rule=Host(`jaeger.$HOST`)"
-      # - "traefik.http.routers.jaeger.entrypoints=websecure"
-      # - "traefik.http.routers.jaeger.tls.certresolver=letsencrypt"
-      # - "traefik.http.services.jaeger.loadbalancer.server.port=16686"
-      # - "traefik.http.routers.jaeger.middlewares=forward-auth-verify"
-      # - "homepage.group=Platform"
-      # - "homepage.name=Jaeger"
-      # - "homepage.icon=jaeger.svg"
-      # - "homepage.href=https://jaeger.$HOST"
-      # - "homepage.description=Open source, distributed tracing platform"
-        
-  prometheus:
-    image: prom/prometheus:main
-    container_name: prometheus
-    user: "0:0"
-    restart: unless-stopped
-    depends_on:
-      - traefik
-    volumes:
-      - ./prometheus/:/etc/prometheus/
-      - $JOHNCLOUD_ROOT/monitoring/prometheus/db:/prometheus
-      - /etc/timezone:/etc/timezone:ro
-      - /etc/localtime:/etc/localtime:ro
-    command:
-      - "--web.route-prefix=/"
-      - "--config.file=/etc/prometheus/prometheus.yml"
-      - "--storage.tsdb.path=/prometheus"
-      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
-      - "--web.console.templates=/usr/share/prometheus/consoles"
-      - "--web.enable-lifecycle"
-    environment:
-      - TZ=$TZ
+  #   depends_on:
+  #     - traefik
+  #     - redis
+  #     - prometheus
+  #   labels:
+  #     - "traefik.enable=false"
+
+  # cadvisor:
+  #   image: gcr.io/cadvisor/cadvisor:latest
+  #   container_name: cadvisor
+  #   volumes:
+  #     - /:/rootfs:ro
+  #     - /var/run:/var/run:ro
+  #     - /sys:/sys:ro
+  #     - /var/lib/docker/:/var/lib/docker:ro
+  #   command: -max_procs=2 -docker_only=true
+  #   # command: -max_procs=2 -docker_only=true -storage_driver=influxdb -storage_driver_db=cadvisor -storage_driver_host=influxdb:8086 -storage_driver_user=$INFLUXDB_INIT_USERNAME -storage_driver_password=$INFLUXDB_INIT_ADMIN_TOKEN
+  #   environment:
+  #     - TZ=$TZ
+  #   depends_on:
+  #     - traefik
+  #     - redis
+  #     - prometheus
+  #   labels:
+  #     - "traefik.enable=false"
   
-  influxdb:
-    image: influxdb:2
-    container_name: influxdb
-    restart: unless-stopped
-    environment:
-      - DOCKER_INFLUXDB_INIT_MODE=setup
-      - DOCKER_INFLUXDB_INIT_USERNAME=$INFLUXDB_INIT_USERNAME
-      - DOCKER_INFLUXDB_INIT_PASSWORD=$INFLUXDB_INIT_PASSWORD
-      - DOCKER_INFLUXDB_INIT_ORG=$INFLUXDB_INIT_ORG
-      - DOCKER_INFLUXDB_INIT_BUCKET=$INFLUXDB_INIT_BUCKET
-      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=$INFLUXDB_INIT_ADMIN_TOKEN
-      - TZ=$TZ
-    networks:
-      default:
-        ipv4_address: $UNIVERSE_NET.101
-    volumes:
-      - "$JOHNCLOUD_ROOT/influxdb/data:/var/lib/influxdb2"
-      - "$JOHNCLOUD_ROOT/influxdb/config:/etc/influxdb2"
-      - /etc/timezone:/etc/timezone:ro
-      - /etc/localtime:/etc/localtime:ro
-    labels:
-      # - "traefik.enable=true"
-      # - "traefik.http.routers.influxdb.rule=Host(`influxdb.$HOST`)"
-      # - "traefik.http.routers.influxdb.entrypoints=websecure"
-      # - "traefik.http.routers.influxdb.tls.certresolver=letsencrypt"
-      # - "traefik.http.services.influxdb.loadbalancer.server.port=8086"
-      - "homepage.group=Platform"
-      - "homepage.name=InfluxDB"
-      - "homepage.icon=influxdb.svg"
-      - "homepage.href=http://$UNIVERSE_NET.101:8086"
-      # - "homepage.href=https://influxdb.$HOST"
-      - "homepage.description=Time Series Data Platform"
+  # pdc:
+  #   # https://grafana.com/docs/grafana-cloud/connect-externally-hosted/private-data-source-connect/#private-data-source-connect-pdc-concepts
+  #   image: grafana/pdc-agent:latest
+  #   container_name: pdc
+  #   restart: unless-stopped
+  #   depends_on:
+  #     - traefik
+  #     - prometheus
+  #     - influxdb
+  #     - loki
+  #   command: ["-token","$GRAFANA_PDC_TOKEN","-cluster","$GRAFANA_PDC_CLUSTER","-gcloud-hosted-grafana-id","$GRAFANA_PDC_GCP_ID"]
+  #   labels:
+  #     - "traefik.enable=false"
+
+  # loki:
+  #   image: grafana/loki:latest
+  #   container_name: loki
+  #   user: "0:0"
+  #   # ports:
+  #   #   - 3100:3100
+  #   depends_on:
+  #     - traefik
+  #     - promtail
+  #   volumes:
+  #     - $JOHNCLOUD_ROOT/monitoring/loki:/loki
+  #     - ./loki/config.yml:/etc/loki/loki-config.yaml
+  #   command: -config.file=/etc/loki/loki-config.yaml
+  #   environment:
+  #     - TZ=$TZ
+  #   labels:
+  #     - "traefik.enable=false"
+        
+  # promtail:
+  #   image:  grafana/promtail:latest
+  #   container_name: promtail
+  #   depends_on:
+  #     - traefik
+  #   volumes:
+  #     - ./promtail/config.yml:/etc/promtail/docker-config.yaml
+  #     - /var/lib/docker/containers:/var/lib/docker/containers:ro
+  #     - $XDG_RUNTIME_DIR/docker.sock:/var/run/docker.sock:ro
+  #     - $JOHNCLOUD_ROOT/traefik/logs:/var/logs/traefik:ro
+  #   command: -config.file=/etc/promtail/docker-config.yaml
+  #   environment:
+  #     - TZ=$TZ
+  #   labels:
+  #     - "traefik.enable=false"
+
+  # # jaeger:
+  # #   image: jaegertracing/all-in-one:1.62.0
+  # #   container_name: jaeger
+  # #   restart: unless-stopped
+  # #   environment:
+  # #     - TZ=$TZ
+  # #     - COLLECTOR_OTLP_ENABLED=true
+  # #     - METRICS_STORAGE_TYPE=prometheus
+  # #     - PROMETHEUS_SERVER_URL=http://prometheus:9090
+  #   #   - SPAN_STORAGE_TYPE=badger
+  #   #   - BADGER_EPHEMERAL=false
+  #   #   - BADGER_DIRECTORY_VALUE=/badger/data
+  #   #   - BADGER_DIRECTORY_KEY=/badger/key
+  #   # volumes:
+  #   #   - $JOHNCLOUD_ROOT/jaeger/data:/badger
+  #   # labels:
+  #   #   - "traefik.enable=false"
+  #     # - "traefik.http.routers.jaeger.rule=Host(`jaeger.$HOST`)"
+  #     # - "traefik.http.routers.jaeger.entrypoints=websecure"
+  #     # - "traefik.http.routers.jaeger.tls.certresolver=letsencrypt"
+  #     # - "traefik.http.services.jaeger.loadbalancer.server.port=16686"
+  #     # - "traefik.http.routers.jaeger.middlewares=forward-auth-verify"
+  #     # - "homepage.group=Platform"
+  #     # - "homepage.name=Jaeger"
+  #     # - "homepage.icon=jaeger.svg"
+  #     # - "homepage.href=https://jaeger.$HOST"
+  #     # - "homepage.description=Open source, distributed tracing platform"
+        
+  # prometheus:
+  #   image: prom/prometheus:main
+  #   container_name: prometheus
+  #   user: "0:0"
+  #   restart: unless-stopped
+  #   depends_on:
+  #     - traefik
+  #   volumes:
+  #     - ./prometheus/:/etc/prometheus/
+  #     - $JOHNCLOUD_ROOT/monitoring/prometheus/db:/prometheus
+  #     - /etc/timezone:/etc/timezone:ro
+  #     - /etc/localtime:/etc/localtime:ro
+  #   command:
+  #     - "--web.route-prefix=/"
+  #     - "--config.file=/etc/prometheus/prometheus.yml"
+  #     - "--storage.tsdb.path=/prometheus"
+  #     - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+  #     - "--web.console.templates=/usr/share/prometheus/consoles"
+  #     - "--web.enable-lifecycle"
+  #   environment:
+  #     - TZ=$TZ
+  
+  # influxdb:
+  #   image: influxdb:2
+  #   container_name: influxdb
+  #   restart: unless-stopped
+  #   environment:
+  #     - DOCKER_INFLUXDB_INIT_MODE=setup
+  #     - DOCKER_INFLUXDB_INIT_USERNAME=$INFLUXDB_INIT_USERNAME
+  #     - DOCKER_INFLUXDB_INIT_PASSWORD=$INFLUXDB_INIT_PASSWORD
+  #     - DOCKER_INFLUXDB_INIT_ORG=$INFLUXDB_INIT_ORG
+  #     - DOCKER_INFLUXDB_INIT_BUCKET=$INFLUXDB_INIT_BUCKET
+  #     - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=$INFLUXDB_INIT_ADMIN_TOKEN
+  #     - TZ=$TZ
+  #   networks:
+  #     default:
+  #       ipv4_address: $UNIVERSE_NET.101
+  #   volumes:
+  #     - "$JOHNCLOUD_ROOT/influxdb/data:/var/lib/influxdb2"
+  #     - "$JOHNCLOUD_ROOT/influxdb/config:/etc/influxdb2"
+  #     - /etc/timezone:/etc/timezone:ro
+  #     - /etc/localtime:/etc/localtime:ro
+  #   labels:
+  #     - "homepage.group=Platform"
+  #     - "homepage.name=InfluxDB"
+  #     - "homepage.icon=influxdb.svg"
+  #     - "homepage.href=http://$UNIVERSE_NET.101:8086"
+  #     # - "homepage.href=https://influxdb.$HOST"
+  #     - "homepage.description=Time Series Data Platform"
 
   oauth:
     image: thomseddon/traefik-forward-auth:latest
@@ -315,107 +271,106 @@ services:
       - "traefik.http.middlewares.forward-auth-verify.forwardauth.address=http://oauth:4181"      
       - "traefik.http.middlewares.forward-auth-verify.forwardauth.authResponseHeaders=X-Forwarded-User"
 
-  certdumper:
-    image: ghcr.io/kereis/traefik-certs-dumper:latest
-    restart: unless-stopped
-    container_name: certdumper
-    depends_on:
-      - traefik
-    volumes:
-      - /etc/localtime:/etc/localtime:ro
-      - $JOHNCLOUD_ROOT/traefik/letsencrypt:/traefik:ro
-      - $JOHNCLOUD_ROOT/traefik/certs:/output
+  # certdumper:
+  #   image: ghcr.io/kereis/traefik-certs-dumper:latest
+  #   restart: unless-stopped
+  #   container_name: certdumper
+  #   depends_on:
+  #     - traefik
+  #   volumes:
+  #     - /etc/localtime:/etc/localtime:ro
+  #     - $JOHNCLOUD_ROOT/traefik/letsencrypt:/traefik:ro
+  #     - $JOHNCLOUD_ROOT/traefik/certs:/output
 
-  portainer:
-    image: portainer/portainer-ee:latest
-    container_name: portainer
-    restart: unless-stopped
-    depends_on:
-      - traefik
-    volumes:
-      - /etc/timezone:/etc/timezone:ro
-      - /etc/localtime:/etc/localtime:ro
-      - /var/run/docker.sock:/var/run/docker.sock
-      - $JOHNCLOUD_ROOT/portainer/data:/data
-    networks:
-      default:
-        ipv4_address: $UNIVERSE_NET.102
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.portainer.rule=Host(`portainer.$HOST`)"
-      - "traefik.http.routers.portainer.entrypoints=websecure"
-      - "traefik.http.routers.portainer.tls.certresolver=letsencrypt"
-      - "traefik.http.services.portainer.loadbalancer.server.port=9000"
-      - "homepage.group=Platform"
-      - "homepage.name=Portainer"
-      - "homepage.icon=portainer.svg"
-      - "homepage.href=https://portainer.$HOST/#!/2/docker/stacks"
-      # - "homepage.href=http://$UNIVERSE_NET.102:9000/#!/2/docker/stacks"
-      - "homepage.description=Container Management Software"
-      - "homepage.widget.type=portainer"
-      - "homepage.widget.url=https://portainer.$HOST"
-      # - "homepage.widget.url=http://$UNIVERSE_NET.102:9000"
-      - "homepage.widget.env=2"
-      - "homepage.widget.key=$PORTAINER_ACCESS_TOKEN"
+  # portainer:
+  #   image: portainer/portainer-ee:latest
+  #   container_name: portainer
+  #   restart: unless-stopped
+  #   depends_on:
+  #     - traefik
+  #   volumes:
+  #     - /etc/timezone:/etc/timezone:ro
+  #     - /etc/localtime:/etc/localtime:ro
+  #     - $XDG_RUNTIME_DIR/docker.sock:/var/run/docker.sock
+  #     - $JOHNCLOUD_ROOT/portainer/data:/data
+  #   networks:
+  #     default:
+  #       ipv4_address: $UNIVERSE_NET.102
+  #   labels:
+  #     - "traefik.enable=true"
+  #     - "traefik.http.routers.portainer.rule=Host(`portainer.$HOST`)"
+  #     - "traefik.http.routers.portainer.entrypoints=websecure"
+  #     - "traefik.http.routers.portainer.tls.certresolver=letsencrypt"
+  #     - "traefik.http.services.portainer.loadbalancer.server.port=9000"
+  #     - "homepage.group=Platform"
+  #     - "homepage.name=Portainer"
+  #     - "homepage.icon=portainer.svg"
+  #     - "homepage.href=https://portainer.$HOST/#!/2/docker/stacks"
+  #     # - "homepage.href=http://$UNIVERSE_NET.102:9000/#!/2/docker/stacks"
+  #     - "homepage.description=Container Management Software"
+  #     - "homepage.widget.type=portainer"
+  #     - "homepage.widget.url=https://portainer.$HOST"
+  #     # - "homepage.widget.url=http://$UNIVERSE_NET.102:9000"
+  #     - "homepage.widget.env=2"
+  #     - "homepage.widget.key=$PORTAINER_ACCESS_TOKEN"
 
-  redis:
-    image: redis:7.2.0
-    container_name: redis
-    depends_on:
-      - traefik
-    environment:
-      - TZ=$TZ
-      - ENABLE_OVERCOMMIT_MEMORY=true
-    labels:
-      - "traefik.enable=false"
+  # redis:
+  #   image: redis:7.2.0
+  #   container_name: redis
+  #   depends_on:
+  #     - traefik
+  #   environment:
+  #     - TZ=$TZ
+  #     - ENABLE_OVERCOMMIT_MEMORY=true
+  #   labels:
+  #     - "traefik.enable=false"
 
-  homepage:
-    image: ghcr.io/gethomepage/homepage:latest
-    container_name: homepage
-    restart: unless-stopped
-    environment:
-      - HOMEPAGE_ALLOWED_HOSTS=home.$HOST
-    depends_on:
-      - traefik
-      - oauth
-      - tailscale
-    volumes:
-      - $JOHNCLOUD_ROOT/home/config:/app/config # Make sure your local config directory exists
-      - /var/run/docker.sock:/var/run/docker.sock:ro # (optional) For docker integrations
-    labels:
-        - "traefik.enable=true"
-        - "traefik.http.routers.homepage.rule=Host(`home.$HOST`)"
-        - "traefik.http.routers.homepage.entrypoints=websecure"
-        - "traefik.http.routers.homepage.tls.certresolver=letsencrypt"
-        - "traefik.http.routers.homepage.middlewares=forward-auth-verify"
+  # homepage:
+  #   image: ghcr.io/gethomepage/homepage:latest
+  #   container_name: homepage
+  #   restart: unless-stopped
+  #   environment:
+  #     - HOMEPAGE_ALLOWED_HOSTS=home.$HOST
+  #   depends_on:
+  #     - traefik
+  #     - oauth
+  #   volumes:
+  #     - $JOHNCLOUD_ROOT/home/config:/app/config # Make sure your local config directory exists
+  #     - $XDG_RUNTIME_DIR/docker.sock:/var/run/docker.sock:ro # (optional) For docker integrations
+  #   labels:
+  #       - "traefik.enable=true"
+  #       - "traefik.http.routers.homepage.rule=Host(`home.$HOST`)"
+  #       - "traefik.http.routers.homepage.entrypoints=websecure"
+  #       - "traefik.http.routers.homepage.tls.certresolver=letsencrypt"
+  #       - "traefik.http.routers.homepage.middlewares=forward-auth-verify"
  
-  tailscale:
-    image: ghcr.io/tailscale/tailscale:latest
-    container_name: tailscale
-    restart: unless-stopped
-    cap_add:
-      - NET_ADMIN
-      - NET_RAW
-    depends_on:
-      - traefik
-    environment:
-      - VIRTUAL_HOST=tailscale.${HOST}
-      - TS_ACCEPT_DNS=$TS_ACCEPT_DNS
-      - TS_AUTH_ONCE=$TS_AUTH_ONCE
-      - TS_AUTHKEY=$TS_AUTHKEY
-      - TS_DEST_IP=$TS_DEST_IP
-      - TS_HOSTNAME=$TS_HOSTNAME
-      - TS_OUTBOUND_HTTP_PROXY_LISTEN=$TS_OUTBOUND_HTTP_PROXY_LISTEN
-      - TS_ROUTES=$TS_ROUTES
-      - TS_SOCKET=$TS_SOCKET
-      - TS_SOCKS5_SERVER=$TS_SOCKS5_SERVER
-      - TS_USERSPACE=$TS_USERSPACE
-      - TS_STATE_DIR=$TS_STATE_DIR
-    volumes:
-      - /var/lib:/var/lib
-      - /dev/net/tun:/dev/net/tun
-    labels:
-      - "traefik.enable=false"
+  # tailscale:
+  #   image: ghcr.io/tailscale/tailscale:latest
+  #   container_name: tailscale
+  #   restart: unless-stopped
+  #   cap_add:
+  #     - NET_ADMIN
+  #     - NET_RAW
+  #   depends_on:
+  #     - traefik
+  #   environment:
+  #     - VIRTUAL_HOST=tailscale.${HOST}
+  #     - TS_ACCEPT_DNS=$TS_ACCEPT_DNS
+  #     - TS_AUTH_ONCE=$TS_AUTH_ONCE
+  #     - TS_AUTHKEY=$TS_AUTHKEY
+  #     - TS_DEST_IP=$TS_DEST_IP
+  #     - TS_HOSTNAME=$TS_HOSTNAME
+  #     - TS_OUTBOUND_HTTP_PROXY_LISTEN=$TS_OUTBOUND_HTTP_PROXY_LISTEN
+  #     - TS_ROUTES=$TS_ROUTES
+  #     - TS_SOCKET=$TS_SOCKET
+  #     - TS_SOCKS5_SERVER=$TS_SOCKS5_SERVER
+  #     - TS_USERSPACE=$TS_USERSPACE
+  #     - TS_STATE_DIR=$TS_STATE_DIR
+  #   volumes:
+  #     - /var/lib:/var/lib
+  #     - /dev/net/tun:/dev/net/tun
+  #   labels:
+  #     - "traefik.enable=false"
 
 networks:
   default:
