@@ -6,3 +6,4 @@ stalwart/
 traefik/
 *.new.yml
 *.ref.yml
+docker-compose.yml
