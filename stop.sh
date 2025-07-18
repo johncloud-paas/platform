@@ -1,3 +1,3 @@
 #! /bin/bash
 
-docker compose down
+sudo docker service rm stackdemo_portainer stackdemo_traefik
