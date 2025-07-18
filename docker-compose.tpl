@@ -12,13 +12,9 @@ services:
         published: 443
         protocol: tcp
         mode: host
-    env_file:
-      - .env
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro    # Swarm API for Docker provider
       - traefik-certs:/letsencrypt                     # Persist ACME certs
-    networks:
-      - traefik_proxy
     command:
       # Enable Swarm provider and disable default exposure
       - "--providers.docker.swarmmode=true"
@@ -54,10 +50,6 @@ services:
 
   whoami:
     image: traefik/whoami
-    networks:
-      - traefik_proxy
-    env_file:
-      - .env
     deploy:
       replicas: 1
       labels:
@@ -68,10 +60,31 @@ services:
         - "traefik.http.routers.whoami.tls.certresolver=le"
         - "traefik.http.services.whoami.loadbalancer.server.port=80"
 
+  portainer:
+    image: portainer/portainer-ee:latest
+    container_name: portainer
+    restart: unless-stopped
+    depends_on:
+      - traefik
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+    deploy:
+      replicas: 1
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.portainer.rule=Host(`portainer.$HOST`)"
+        - "traefik.http.routers.portainer.entrypoints=websecure"
+        - "traefik.http.routers.portainer.tls.certresolver=le"
+        - "traefik.http.services.portainer.loadbalancer.server.port=9000"
+
 volumes:
   traefik-certs:
+  portainer_data:
 
 networks:
-  traefik_proxy:
+  default:
     driver: overlay
     attachable: true
