@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   traefik:
-    image: traefik:v2.9
+    image: traefik:v3
     ports:
       - target: 80
         published: 80
@@ -17,9 +17,8 @@ services:
       - traefik-certs:/letsencrypt                     # Persist ACME certs
     command:
       # Enable Swarm provider and disable default exposure
-      - "--providers.docker.swarmmode=true"
-      - "--providers.docker.endpoint=unix:///var/run/docker.sock"
-      - "--providers.docker.exposedbydefault=false"
+      - "--providers.swarm.endpoint=unix:///var/run/docker.sock"
+      - "--providers.swarm.exposedbydefault=false"
       # HTTP entrypoint and redirect to HTTPS
       - "--entrypoints.web.address=:80"
       - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
@@ -29,10 +28,11 @@ services:
       - "--entrypoints.websecure.address=:443"
       - "--entrypoints.websecure.http.tls=true"
       # Let's Encrypt (ACME) configuration
-      - "--certificatesresolvers.le.acme.email=${LETSENCRYPT_EMAIL}"
-      - "--certificatesresolvers.le.acme.storage=/letsencrypt/acme.json"
-      - "--certificatesresolvers.le.acme.httpchallenge.entrypoint=web"
-      - "--entrypoints.websecure.http.tls.certresolver=le"
+      - "--certificatesresolvers.letsencrypt.acme.email=${LETSENCRYPT_EMAIL}"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
+      - "--entrypoints.websecure.http.tls.certresolver=letsencrypt"
+      - "--api.insecure=true"
     deploy:
       mode: replicated
       replicas: 1
@@ -46,23 +46,11 @@ services:
         - "traefik.http.routers.traefik.entrypoints=websecure"
         - "traefik.http.routers.traefik.service=api@internal"
         - "traefik.http.routers.traefik.tls=true"
+        - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
         - "traefik.http.services.traefik.loadbalancer.server.port=8080"
-
-  whoami:
-    image: traefik/whoami
-    deploy:
-      replicas: 1
-      labels:
-        - "traefik.enable=true"
-        - "traefik.http.routers.whoami.rule=Host(`whoami.${HOST}`)"
-        - "traefik.http.routers.whoami.entrypoints=websecure"
-        - "traefik.http.routers.whoami.tls=true"
-        - "traefik.http.routers.whoami.tls.certresolver=le"
-        - "traefik.http.services.whoami.loadbalancer.server.port=80"
 
   portainer:
     image: portainer/portainer-ee:latest
-    container_name: portainer
     restart: unless-stopped
     depends_on:
       - traefik
@@ -77,7 +65,7 @@ services:
         - "traefik.enable=true"
         - "traefik.http.routers.portainer.rule=Host(`portainer.$HOST`)"
         - "traefik.http.routers.portainer.entrypoints=websecure"
-        - "traefik.http.routers.portainer.tls.certresolver=le"
+        - "traefik.http.routers.portainer.tls.certresolver=letsencrypt"
         - "traefik.http.services.portainer.loadbalancer.server.port=9000"
 
 volumes:
@@ -86,5 +74,5 @@ volumes:
 
 networks:
   default:
-    driver: overlay
-    attachable: true
+    external: true
+    name: $TRAEFIK_NETWORK
