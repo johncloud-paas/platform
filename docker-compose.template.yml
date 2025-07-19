@@ -12,30 +12,81 @@ services:
         published: 443
         protocol: tcp
         mode: host
+      - target: 25
+        published: 25
+        protocol: tcp
+        mode: host
+      - target: 993
+        published: 993
+        protocol: tcp
+        mode: host
+      - target: 587
+        published: 587
+        protocol: tcp
+        mode: host
+      - target: 32400
+        published: 32400
+        protocol: tcp
+        mode: host
+      - target: 7687
+        published: 7687
+        protocol: tcp
+        mode: host
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro    # Swarm API for Docker provider
       - traefik-certs:/letsencrypt                     # Persist ACME certs
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik-conf:/conf.d
+      - traefik-logs:/logs
+    depends_on:
+      - oauth
+    environment:
+      - TZ=$TZ
     command:
       # Enable Swarm provider and disable default exposure
-      - "--providers.swarm.endpoint=unix:///var/run/docker.sock"
-      - "--providers.swarm.exposedbydefault=false"
+      - --providers.swarm.endpoint=unix:///var/run/docker.sock
+      - --providers.swarm.exposedbydefault=false
+      - --providers.file.directory=conf.d
+      - --providers.file.watch=true
+      # TCP entrypoints
+      - --entrypoints.plex.address=:32400/tcp
+      - --entrypoints.plex.proxyProtocol.trustedIPs=$UNIVERSE_NET.0/24
+      - --entrypoints.smtp.address=:25/tcp
+      - --entrypoints.smtp.proxyProtocol.trustedIPs=$UNIVERSE_NET.0/24
+      - --entrypoints.submissions.address=:465/tcp
+      - --entrypoints.submissions.proxyProtocol.trustedIPs=$UNIVERSE_NET.0/24
+      - --entrypoints.imaps.address=:993/tcp
+      - --entrypoints.imaps.proxyProtocol.trustedIPs=$UNIVERSE_NET.0/24
+      - --entrypoints.bolt.address=:7687/tcp
       # HTTP entrypoint and redirect to HTTPS
-      - "--entrypoints.web.address=:80"
-      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
-      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
-      - "--entrypoints.web.http.redirections.entrypoint.permanent=true"
+      - --entrypoints.web.address=:80
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      - --entrypoints.web.http.redirections.entrypoint.permanent=true
       # HTTPS entrypoint
-      - "--entrypoints.websecure.address=:443"
-      - "--entrypoints.websecure.http.tls=true"
+      - --entrypoints.websecure.address=:443
+      - --entrypoints.websecure.http.tls=true
+      - --entrypoints.websecure.http3.advertisedPort=443
+      - --entrypoints.websecure.http.tls.certresolver=letsencrypt
+      - --entrypoints.websecure.http.tls.domains.main=$HOST
+      - --entrypoints.websecure.http.tls.domains.sans=*.$HOST
+      # - --entrypoints.websecure.http.middlewares=default@file
+      - --entrypoints.websecure.forwardedHeaders.trustedIPs=$UNIVERSE_NET.0/24
+      - --entrypoints.websecure.proxyprotocol=true
+      - --entrypoints.websecure.proxyprotocol.trustedips=$UNIVERSE_NET.0/24
       # Let's Encrypt (ACME) configuration
       - "--certificatesresolvers.letsencrypt.acme.email=${LETSENCRYPT_EMAIL}"
       - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
       - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
       - "--entrypoints.websecure.http.tls.certresolver=letsencrypt"
       - "--api.insecure=true"
+      - --accesslog=true
+      - --accesslog.filepath=/logs/traefik.log
+      - --accesslog.format=json
+      - --accesslog.filters.statusCodes=200-299,400-599
+      - --accesslog.bufferingSize=0
+      - --accesslog.fields.headers.defaultMode=drop
+      - --accesslog.fields.headers.names.User-Agent=keep
     deploy:
-      mode: replicated
-      replicas: 1
       placement:
         constraints:
           - node.role == manager
@@ -47,20 +98,45 @@ services:
         - "traefik.http.routers.traefik.service=api@internal"
         - "traefik.http.routers.traefik.tls=true"
         - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
+        - "traefik.http.routers.traefik.middlewares=forward-auth-verify"
         - "traefik.http.services.traefik.loadbalancer.server.port=8080"
+
+  oauth:
+    image: thomseddon/traefik-forward-auth:latest
+    environment:
+      - TZ=$TZ
+      - PROVIDERS_GOOGLE_CLIENT_ID=$PROVIDERS_GOOGLE_CLIENT_ID
+      - PROVIDERS_GOOGLE_CLIENT_SECRET=$PROVIDERS_GOOGLE_CLIENT_SECRET
+      - SECRET=$SECRET
+      - AUTH_HOST=oauth.$HOST
+      - COOKIE_DOMAIN=$HOST
+      - WHITELIST=$WHITELIST
+      - INSECURE_COOKIE=$INSECURE_COOKIE
+    deploy:
+      replicas: 1
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.forward.rule=Host(`oauth.$HOST`)"
+        - "traefik.http.routers.forward.entrypoints=websecure"
+        - "traefik.http.middlewares.forward-auth-verify.forwardauth.address=http://oauth:4181"      
+        - "traefik.http.middlewares.forward-auth-verify.forwardauth.authResponseHeaders=X-Forwarded-User"
+        - "traefik.http.routers.forward.tls.certresolver=letsencrypt"
+        - "traefik.http.services.forward.loadbalancer.server.port=4181"
 
   portainer:
     image: portainer/portainer-ee:latest
-    restart: unless-stopped
     depends_on:
       - traefik
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
-      - /var/run/docker.sock:/var/run/docker.sock
-      - portainer_data:/data
+      - portainer:/data
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     deploy:
+      mode: replicated
       replicas: 1
+      placement:
+        constraints: [node.role == manager]
       labels:
         - "traefik.enable=true"
         - "traefik.http.routers.portainer.rule=Host(`portainer.$HOST`)"
@@ -70,9 +146,12 @@ services:
 
 volumes:
   traefik-certs:
-  portainer_data:
+  traefik-conf:
+  traefik-logs:
+  portainer:
 
 networks:
   default:
     external: true
     name: $TRAEFIK_NETWORK
+    

@@ -1,3 +1,3 @@
 #! /bin/bash
 
-sudo docker service rm stackdemo_portainer stackdemo_traefik
+sudo docker service rm johncloud_portainer johncloud_traefik johncloud_oauth
