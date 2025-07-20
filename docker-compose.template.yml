@@ -87,6 +87,7 @@ services:
       - --accesslog.fields.headers.defaultMode=drop
       - --accesslog.fields.headers.names.User-Agent=keep
     deploy:
+      mode: global
       placement:
         constraints:
           - node.role == manager
@@ -100,6 +101,13 @@ services:
         - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
         - "traefik.http.routers.traefik.middlewares=forward-auth-verify"
         - "traefik.http.services.traefik.loadbalancer.server.port=8080"
+        - "homepage.group=Platform"
+        - "homepage.name=Traefik"
+        - "homepage.icon=traefik.svg"
+        - "homepage.href=https://traefik.$HOST"
+        - "homepage.description=Traefik reverse proxy"
+        - "homepage.widget.type=traefik"
+        - "homepage.widget.url=https://traefik.$HOST"
 
   oauth:
     image: thomseddon/traefik-forward-auth:latest
@@ -107,7 +115,7 @@ services:
       - TZ=$TZ
       - PROVIDERS_GOOGLE_CLIENT_ID=$PROVIDERS_GOOGLE_CLIENT_ID
       - PROVIDERS_GOOGLE_CLIENT_SECRET=$PROVIDERS_GOOGLE_CLIENT_SECRET
-      - SECRET=$SECRET
+      - SECRET=$OAUTH_SECRET
       - AUTH_HOST=oauth.$HOST
       - COOKIE_DOMAIN=$HOST
       - WHITELIST=$WHITELIST
@@ -133,22 +141,48 @@ services:
       - portainer:/data
       - /var/run/docker.sock:/var/run/docker.sock:ro
     deploy:
-      mode: replicated
-      replicas: 1
+      mode: global
       placement:
-        constraints: [node.role == manager]
+        constraints:
+          - node.role == manager
       labels:
         - "traefik.enable=true"
         - "traefik.http.routers.portainer.rule=Host(`portainer.$HOST`)"
         - "traefik.http.routers.portainer.entrypoints=websecure"
         - "traefik.http.routers.portainer.tls.certresolver=letsencrypt"
         - "traefik.http.services.portainer.loadbalancer.server.port=9000"
+        - "homepage.group=Platform"
+        - "homepage.name=Portainer"
+        - "homepage.icon=portainer.svg"
+        - "homepage.href=https://portainer.$HOST/#!/2/docker/stacks"
+        - "homepage.description=Container Management Software"
+
+  homepage:
+    image: ghcr.io/gethomepage/homepage:latest
+    environment:
+      - HOMEPAGE_ALLOWED_HOSTS=home.$HOST
+    depends_on:
+      - traefik
+      - oauth
+    volumes:
+      - homepage-conf:/app/config # Make sure your local config directory exists
+      - /var/run/docker.sock:/var/run/docker.sock:ro # (optional) For docker integrations
+    deploy:
+      replicas: 1
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.homepage.rule=Host(`home.$HOST`)"
+        - "traefik.http.routers.homepage.entrypoints=websecure"
+        - "traefik.http.routers.homepage.tls.certresolver=letsencrypt"
+        - "traefik.http.routers.homepage.middlewares=forward-auth-verify"
+        - "traefik.http.services.homepage.loadbalancer.server.port=3000"
 
 volumes:
   traefik-certs:
   traefik-conf:
   traefik-logs:
   portainer:
+  homepage-conf:
 
 networks:
   default:

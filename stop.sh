@@ -1,3 +1,3 @@
 #! /bin/bash
 
-sudo docker service rm johncloud_portainer johncloud_traefik johncloud_oauth
+sudo docker service rm johncloud_portainer johncloud_traefik johncloud_oauth johncloud_homepage
