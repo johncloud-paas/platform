@@ -124,7 +124,10 @@ services:
       - INSECURE_COOKIE=$INSECURE_COOKIE
     command: ["traefik-forward-auth", "--config", "/run/secrets/traefik-forward-auth.ini"]
     deploy:
-      replicas: 1
+      mode: global
+      placement:
+        constraints:
+          - node.role == manager
       labels:
         - "traefik.enable=true"
         - "traefik.http.routers.forward.rule=Host(`oauth.$HOST`)"
