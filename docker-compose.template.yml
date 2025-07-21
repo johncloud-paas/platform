@@ -33,7 +33,8 @@ services:
         protocol: tcp
         mode: host
     configs:
-      - traefik-dynamic-config.yml:/conf.d/traefik-dynamic-config.yml
+      - source: traefik-dynamic-config.yml
+        target: /conf.d/traefik-dynamic-config.yml
     volumes:
       - traefik-certs:/letsencrypt                     # Persist ACME certs
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -70,7 +71,7 @@ services:
       - --entrypoints.websecure.http.tls.certresolver=letsencrypt
       - --entrypoints.websecure.http.tls.domains.main=$HOST
       - --entrypoints.websecure.http.tls.domains.sans=*.$HOST
-      # - --entrypoints.websecure.http.middlewares=default@file
+      - --entrypoints.websecure.http.middlewares=default@file
       - --entrypoints.websecure.forwardedHeaders.trustedIPs=$UNIVERSE_NET.0/24
       - --entrypoints.websecure.proxyprotocol=true
       - --entrypoints.websecure.proxyprotocol.trustedips=$UNIVERSE_NET.0/24
@@ -189,7 +190,8 @@ services:
     depends_on:
       - traefik
     configs:
-      - loki-config.yaml:/etc/loki/loki-config.yaml
+      - source: loki-config.yaml
+        target: /etc/loki/loki-config.yaml
     volumes:
       - loki-data:/loki
     command: -config.file=/etc/loki/loki-config.yaml
@@ -206,7 +208,8 @@ services:
     depends_on:
       - traefik
     configs:
-      - promtail-config.yaml:/etc/promtail/docker-config.yaml
+      - source: promtail-config.yaml
+        target: /etc/promtail/docker-config.yaml
     volumes:
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -226,7 +229,8 @@ services:
     depends_on:
       - traefik
     configs:
-      - prometheus-config.yaml:/etc/prometheus/prometheus.yml
+      - source: prometheus-config.yaml
+        target: /etc/prometheus/prometheus.yml
     volumes:
       - prometheus-db:/prometheus
       - /etc/timezone:/etc/timezone:ro
