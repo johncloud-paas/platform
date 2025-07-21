@@ -111,15 +111,18 @@ services:
 
   oauth:
     image: thomseddon/traefik-forward-auth:latest
+    secrets:
+      - traefik-forward-auth.ini
     environment:
       - TZ=$TZ
-      - PROVIDERS_GOOGLE_CLIENT_ID=$PROVIDERS_GOOGLE_CLIENT_ID
-      - PROVIDERS_GOOGLE_CLIENT_SECRET=$PROVIDERS_GOOGLE_CLIENT_SECRET
-      - SECRET=$OAUTH_SECRET
+      # - PROVIDERS_GOOGLE_CLIENT_ID=$PROVIDERS_GOOGLE_CLIENT_ID
+      # - PROVIDERS_GOOGLE_CLIENT_SECRET=$PROVIDERS_GOOGLE_CLIENT_SECRET
+      # - SECRET=$OAUTH_SECRET
       - AUTH_HOST=oauth.$HOST
       - COOKIE_DOMAIN=$HOST
       - WHITELIST=$WHITELIST
       - INSECURE_COOKIE=$INSECURE_COOKIE
+    command: ["traefik-forward-auth", "--config", "/run/secrets/traefik-forward-auth.ini"]
     deploy:
       replicas: 1
       labels:
@@ -157,25 +160,25 @@ services:
         - "homepage.href=https://portainer.$HOST/#!/2/docker/stacks"
         - "homepage.description=Container Management Software"
 
-  homepage:
-    image: ghcr.io/gethomepage/homepage:latest
-    environment:
-      - HOMEPAGE_ALLOWED_HOSTS=home.$HOST
-    depends_on:
-      - traefik
-      - oauth
-    volumes:
-      - homepage-conf:/app/config # Make sure your local config directory exists
-      - /var/run/docker.sock:/var/run/docker.sock:ro # (optional) For docker integrations
-    deploy:
-      replicas: 1
-      labels:
-        - "traefik.enable=true"
-        - "traefik.http.routers.homepage.rule=Host(`home.$HOST`)"
-        - "traefik.http.routers.homepage.entrypoints=websecure"
-        - "traefik.http.routers.homepage.tls.certresolver=letsencrypt"
-        - "traefik.http.routers.homepage.middlewares=forward-auth-verify"
-        - "traefik.http.services.homepage.loadbalancer.server.port=3000"
+  # homepage:
+  #   image: ghcr.io/gethomepage/homepage:latest
+  #   environment:
+  #     - HOMEPAGE_ALLOWED_HOSTS=home.$HOST
+  #   depends_on:
+  #     - traefik
+  #     - oauth
+  #   volumes:
+  #     - homepage-conf:/app/config # Make sure your local config directory exists
+  #     - /var/run/docker.sock:/var/run/docker.sock:ro # (optional) For docker integrations
+  #   deploy:
+  #     replicas: 1
+  #     labels:
+  #       - "traefik.enable=true"
+  #       - "traefik.http.routers.homepage.rule=Host(`home.$HOST`)"
+  #       - "traefik.http.routers.homepage.entrypoints=websecure"
+  #       - "traefik.http.routers.homepage.tls.certresolver=letsencrypt"
+  #       - "traefik.http.routers.homepage.middlewares=forward-auth-verify"
+  #       - "traefik.http.services.homepage.loadbalancer.server.port=3000"
 
 volumes:
   traefik-certs:
@@ -183,6 +186,10 @@ volumes:
   traefik-logs:
   portainer:
   homepage-conf:
+
+secrets:
+  traefik-forward-auth.ini:
+    external: true
 
 networks:
   default:
