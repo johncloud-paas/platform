@@ -32,10 +32,11 @@ services:
         published: 7687
         protocol: tcp
         mode: host
+    configs:
+      - traefik-dynamic-config.yml:/conf.d/traefik-dynamic-config.yml
     volumes:
       - traefik-certs:/letsencrypt                     # Persist ACME certs
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - traefik-conf:/conf.d
       - traefik-logs:/logs
     depends_on:
       - oauth
@@ -45,7 +46,7 @@ services:
       # Enable Swarm provider and disable default exposure
       - --providers.swarm.endpoint=unix:///var/run/docker.sock
       - --providers.swarm.exposedbydefault=false
-      - --providers.file.directory=conf.d
+      - --providers.file.directory=/conf.d
       - --providers.file.watch=true
       # TCP entrypoints
       - --entrypoints.plex.address=:32400/tcp
@@ -86,6 +87,10 @@ services:
       - --accesslog.bufferingSize=0
       - --accesslog.fields.headers.defaultMode=drop
       - --accesslog.fields.headers.names.User-Agent=keep
+      - --experimental.plugins.traefik-api-token-middleware.modulename=github.com/Aetherinox/traefik-api-token-middleware
+      - --experimental.plugins.traefik-api-token-middleware.version=v0.1.4
+      - --experimental.plugins.bouncer.moduleName=github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin
+      - --experimental.plugins.bouncer.version=v1.4.4
     deploy:
       mode: global
       placement:
@@ -108,6 +113,186 @@ services:
         - "homepage.description=Traefik reverse proxy"
         - "homepage.widget.type=traefik"
         - "homepage.widget.url=https://traefik.$HOST"
+
+  crowdsec:
+    image: crowdsecurity/crowdsec
+    ports:
+      - "127.0.0.1:9876:8080"
+    volumes:
+      # crowdsec container data
+      - crowdsec-data:/var/lib/crowdsec/data
+      - crowdsec-config:/etc/crowdsec
+      # log bind mounts into crowdsec
+      - /var/log/auth.log:/var/log/auth.log:ro
+      - /var/log/syslog:/var/log/syslog:ro
+      - traefik-logs:/var/logs/traefik:ro
+    environment:
+      - GID=1000
+      - COLLECTIONS=crowdsecurity/traefik crowdsecurity/http-cve crowdsecurity/base-http-scenarios crowdsecurity/sshd crowdsecurity/linux crowdsecurity/appsec-generic-rules crowdsecurity/appsec-virtual-patching crowdsecurity/appsec-crs
+    deploy:
+      mode: global
+      placement:
+        constraints:
+          - node.role == manager
+
+  node_exporter:
+    image: quay.io/prometheus/node-exporter:latest
+    command:
+      - '--path.rootfs=/host'
+    pid: host
+    volumes:
+      - /:/host:ro,rslave
+    environment:
+      - TZ=$TZ
+    depends_on:
+      - traefik
+    deploy:
+      mode: global
+      placement:
+        constraints:
+          - node.role == manager
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    command: -max_procs=2 -docker_only=true
+    # command: -max_procs=2 -docker_only=true -storage_driver=influxdb -storage_driver_db=cadvisor -storage_driver_host=influxdb:8086 -storage_driver_user=$INFLUXDB_INIT_USERNAME -storage_driver_password=$INFLUXDB_INIT_ADMIN_TOKEN
+    environment:
+      - TZ=$TZ
+    depends_on:
+      - traefik
+    deploy:
+      mode: global
+      placement:
+        constraints:
+          - node.role == manager
+
+  pdc:
+    # https://grafana.com/docs/grafana-cloud/connect-externally-hosted/private-data-source-connect/#private-data-source-connect-pdc-concepts
+    image: grafana/pdc-agent:latest
+    depends_on:
+      - traefik
+    command: ["-token","$GRAFANA_PDC_TOKEN","-cluster","$GRAFANA_PDC_CLUSTER","-gcloud-hosted-grafana-id","$GRAFANA_PDC_GCP_ID"]
+    deploy:
+      mode: global
+      placement:
+        constraints:
+          - node.role == manager
+
+  loki:
+    image: grafana/loki:latest
+    user: "0:0"
+    depends_on:
+      - traefik
+    configs:
+      - loki-config.yaml:/etc/loki/loki-config.yaml
+    volumes:
+      - loki-data:/loki
+    command: -config.file=/etc/loki/loki-config.yaml
+    environment:
+      - TZ=$TZ
+    deploy:
+      mode: global
+      placement:
+        constraints:
+          - node.role == manager
+
+  promtail:
+    image:  grafana/promtail:latest
+    depends_on:
+      - traefik
+    configs:
+      - promtail-config.yaml:/etc/promtail/docker-config.yaml
+    volumes:
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik-logs:/var/logs/traefik:ro
+    command: -config.file=/etc/promtail/docker-config.yaml
+    environment:
+      - TZ=$TZ
+    deploy:
+      mode: global
+      placement:
+        constraints:
+          - node.role == manager
+
+  prometheus:
+    image: prom/prometheus:main
+    user: "0:0"
+    depends_on:
+      - traefik
+    configs:
+      - prometheus-config.yaml:/etc/prometheus/prometheus.yml
+    volumes:
+      - prometheus-db:/prometheus
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    command:
+      - "--web.route-prefix=/"
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+      - "--web.enable-lifecycle"
+    environment:
+      - TZ=$TZ
+    deploy:
+      mode: global
+      placement:
+        constraints:
+          - node.role == manager
+
+  influxdb:
+    image: influxdb:2
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=$INFLUXDB_INIT_USERNAME
+      - DOCKER_INFLUXDB_INIT_PASSWORD=$INFLUXDB_INIT_PASSWORD
+      - DOCKER_INFLUXDB_INIT_ORG=$INFLUXDB_INIT_ORG
+      - DOCKER_INFLUXDB_INIT_BUCKET=$INFLUXDB_INIT_BUCKET
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=$INFLUXDB_INIT_ADMIN_TOKEN
+      - TZ=$TZ
+    volumes:
+      - influxdb-data:/var/lib/influxdb2
+      - influxdb-config:/etc/influxdb2
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    deploy:
+      mode: global
+      placement:
+        constraints:
+          - node.role == manager
+
+  certdumper:
+    image: ghcr.io/kereis/traefik-certs-dumper:latest
+    depends_on:
+      - traefik
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - traefik-certs:/traefik:ro
+      - traefik-dump-certs:/output
+    deploy:
+      mode: global
+      placement:
+        constraints:
+          - node.role == manager
+
+  redis:
+    image: redis:7.2.0
+    depends_on:
+      - traefik
+    environment:
+      - TZ=$TZ
+      - ENABLE_OVERCOMMIT_MEMORY=true
+    deploy:
+      mode: global
+      placement:
+        constraints:
+          - node.role == manager
 
   oauth:
     image: thomseddon/traefik-forward-auth:latest
@@ -183,12 +368,28 @@ services:
   #       - "traefik.http.routers.homepage.middlewares=forward-auth-verify"
   #       - "traefik.http.services.homepage.loadbalancer.server.port=3000"
 
+configs:
+  loki-config.yaml:
+    external: true
+  prometheus-config.yaml:
+    external: true
+  promtail-config.yaml:
+    external: true
+  traefik-dynamic-config.yml:
+    external: true
+
 volumes:
   traefik-certs:
-  traefik-conf:
+  traefik-dump-certs:
   traefik-logs:
   portainer:
   homepage-conf:
+  crowdsec-data:
+  crowdsec-config:
+  influxdb-data:
+  influxdb-config:
+  prometheus-db:
+  loki-data:
 
 secrets:
   traefik-forward-auth.ini:

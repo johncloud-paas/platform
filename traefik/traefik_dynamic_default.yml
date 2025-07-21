@@ -23,12 +23,6 @@ http:
           crowdsecLapiHost: crowdsec:8080
           crowdsecLapiScheme: http
           crowdsecLapiTLSInsecureVerify: false
-          forwardedHeadersTrustedIPs:
-            # private class ranges
-            - 192.168.203.0/24
-          clientTrustedIPs:
-            # private class ranges
-            - 192.168.203.0/24
 
     # Add automatically some security headers
     default-security-headers:
