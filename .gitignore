@@ -7,4 +7,4 @@ stalwart/
 traefik/
 *.new.yml
 *.ref.yml
-docker-compose.yml
+traefik_dynamic_default.yml

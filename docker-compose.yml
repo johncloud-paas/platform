@@ -39,6 +39,9 @@ services:
       - traefik-certs:/letsencrypt                     # Persist ACME certs
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - traefik-logs:/logs
+    networks:
+      default:
+        ipv4_address: $TRAEFIK_IP
     depends_on:
       - oauth
     environment:

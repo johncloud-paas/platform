@@ -12,5 +12,5 @@ johncloud_pdc \
 johncloud_portainer \
 johncloud_prometheus \
 johncloud_promtail \
-johncloud_redis
-
+johncloud_redis \
+johncloud_traefik
