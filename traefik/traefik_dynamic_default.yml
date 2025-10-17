@@ -6,30 +6,7 @@ http:
         middlewares:
           - default-security-headers
           - gzip
-          - crowdsec
-
-    crowdsec:
-      plugin:
-        bouncer:
-          enabled: true
-          defaultDecisionSeconds: 60
-          crowdsecMode: live
-          crowdsecAppsecEnabled: true # <--- here you can enable appsec waf
-          crowdsecAppsecHost: crowdsec:7422
-          crowdsecAppsecFailureBlock: true
-          crowdsecAppsecUnreachableBlock: true
-          # docker exec crowdsec cscli bouncers add crowdsecBouncer
-          crowdsecLapiKey:  # <--- your key here
-          crowdsecLapiHost: crowdsec:8080
-          crowdsecLapiScheme: http
-          crowdsecLapiTLSInsecureVerify: false
-          forwardedHeadersTrustedIPs:
-            # private class ranges
-            - 192.168.203.0/24
-          clientTrustedIPs:
-            # private class ranges
-            - 192.168.203.0/24
-
+          
     # Add automatically some security headers
     default-security-headers:
       headers:

@@ -82,8 +82,6 @@ services:
       - --certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web
       - --experimental.plugins.traefik-api-token-middleware.modulename=github.com/Aetherinox/traefik-api-token-middleware
       - --experimental.plugins.traefik-api-token-middleware.version=v0.1.4
-      - --experimental.plugins.bouncer.moduleName=github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin
-      - --experimental.plugins.bouncer.version=v1.4.4
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - $JOHNCLOUD_ROOT/traefik/conf.d:/conf.d
@@ -105,24 +103,6 @@ services:
       - "homepage.widget.type=traefik"
       # - "homepage.widget.url=https://traefik.$HOST"
       - "homepage.widget.url=http://$UNIVERSE_NET.100:8080"
-
-  crowdsec:
-    image: crowdsecurity/crowdsec
-    container_name: crowdsec
-    restart: unless-stopped
-    ports:
-      - "127.0.0.1:9876:8080"
-    volumes:
-      # crowdsec container data
-      - $JOHNCLOUD_ROOT/crowdsec/data:/var/lib/crowdsec/data
-      - $JOHNCLOUD_ROOT/crowdsec/etc:/etc/crowdsec
-      # log bind mounts into crowdsec
-      - /var/log/auth.log:/var/log/auth.log:ro
-      - /var/log/syslog:/var/log/syslog:ro
-      - $JOHNCLOUD_ROOT/traefik/logs:/var/log/traefik:ro
-    environment:
-      - GID=1000
-      - COLLECTIONS=crowdsecurity/traefik crowdsecurity/http-cve crowdsecurity/base-http-scenarios crowdsecurity/sshd crowdsecurity/linux crowdsecurity/appsec-generic-rules crowdsecurity/appsec-virtual-patching crowdsecurity/appsec-crs
 
   node_exporter:
     image: quay.io/prometheus/node-exporter:latest
@@ -209,34 +189,6 @@ services:
     labels:
       - "traefik.enable=false"
 
-  # jaeger:
-  #   image: jaegertracing/all-in-one:1.62.0
-  #   container_name: jaeger
-  #   restart: unless-stopped
-  #   environment:
-  #     - TZ=$TZ
-  #     - COLLECTOR_OTLP_ENABLED=true
-  #     - METRICS_STORAGE_TYPE=prometheus
-  #     - PROMETHEUS_SERVER_URL=http://prometheus:9090
-    #   - SPAN_STORAGE_TYPE=badger
-    #   - BADGER_EPHEMERAL=false
-    #   - BADGER_DIRECTORY_VALUE=/badger/data
-    #   - BADGER_DIRECTORY_KEY=/badger/key
-    # volumes:
-    #   - $JOHNCLOUD_ROOT/jaeger/data:/badger
-    # labels:
-    #   - "traefik.enable=false"
-      # - "traefik.http.routers.jaeger.rule=Host(`jaeger.$HOST`)"
-      # - "traefik.http.routers.jaeger.entrypoints=websecure"
-      # - "traefik.http.routers.jaeger.tls.certresolver=letsencrypt"
-      # - "traefik.http.services.jaeger.loadbalancer.server.port=16686"
-      # - "traefik.http.routers.jaeger.middlewares=forward-auth-verify"
-      # - "homepage.group=Platform"
-      # - "homepage.name=Jaeger"
-      # - "homepage.icon=jaeger.svg"
-      # - "homepage.href=https://jaeger.$HOST"
-      # - "homepage.description=Open source, distributed tracing platform"
-        
   prometheus:
     image: prom/prometheus:main
     container_name: prometheus
@@ -352,11 +304,6 @@ services:
       - "homepage.href=https://portainer.$HOST/#!/2/docker/stacks"
       # - "homepage.href=http://$UNIVERSE_NET.102:9000/#!/2/docker/stacks"
       - "homepage.description=Container Management Software"
-      - "homepage.widget.type=portainer"
-      - "homepage.widget.url=https://portainer.$HOST"
-      # - "homepage.widget.url=http://$UNIVERSE_NET.102:9000"
-      - "homepage.widget.env=2"
-      - "homepage.widget.key=$PORTAINER_ACCESS_TOKEN"
 
   redis:
     image: redis:7.2.0
@@ -377,8 +324,6 @@ services:
       - HOMEPAGE_ALLOWED_HOSTS=home.$HOST
     depends_on:
       - traefik
-      - oauth
-      - tailscale
     volumes:
       - $JOHNCLOUD_ROOT/home/config:/app/config # Make sure your local config directory exists
       - /var/run/docker.sock:/var/run/docker.sock:ro # (optional) For docker integrations
@@ -388,34 +333,6 @@ services:
         - "traefik.http.routers.homepage.entrypoints=websecure"
         - "traefik.http.routers.homepage.tls.certresolver=letsencrypt"
         - "traefik.http.routers.homepage.middlewares=forward-auth-verify"
- 
-  tailscale:
-    image: ghcr.io/tailscale/tailscale:latest
-    container_name: tailscale
-    restart: unless-stopped
-    cap_add:
-      - NET_ADMIN
-      - NET_RAW
-    depends_on:
-      - traefik
-    environment:
-      - VIRTUAL_HOST=tailscale.${HOST}
-      - TS_ACCEPT_DNS=$TS_ACCEPT_DNS
-      - TS_AUTH_ONCE=$TS_AUTH_ONCE
-      - TS_AUTHKEY=$TS_AUTHKEY
-      - TS_DEST_IP=$TS_DEST_IP
-      - TS_HOSTNAME=$TS_HOSTNAME
-      - TS_OUTBOUND_HTTP_PROXY_LISTEN=$TS_OUTBOUND_HTTP_PROXY_LISTEN
-      - TS_ROUTES=$TS_ROUTES
-      - TS_SOCKET=$TS_SOCKET
-      - TS_SOCKS5_SERVER=$TS_SOCKS5_SERVER
-      - TS_USERSPACE=$TS_USERSPACE
-      - TS_STATE_DIR=$TS_STATE_DIR
-    volumes:
-      - /var/lib:/var/lib
-      - /dev/net/tun:/dev/net/tun
-    labels:
-      - "traefik.enable=false"
 
 networks:
   default:
