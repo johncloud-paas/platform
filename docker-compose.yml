@@ -9,36 +9,17 @@ services:
       - "80:80"
       - "443:443"
       - "25:25"
-      # - "465:465"
       - "993:993"
       - "587:587"
       - "32400:32400"
       - "7687:7687"
-      # - "53:53"
-      # - "853:853"
-      # - "3128:3128"
     restart: unless-stopped
     environment:
     # https://www.ovh.com/auth/api/createToken
     # https://eu.api.ovh.com/console/?section=%2Fme&branch=v1#delete-/me/api/application/-applicationId-
       - "TZ=$TZ"
     command:
-      # - --entrypoints.dot.address=:853
-      # - --entrypoints.dot.proxyProtocol.trustedIPs=$UNIVERSE_NET.0/24
-      # - --entrypoints.dns.address=:53
-      # - --entrypoints.dns.proxyProtocol.trustedIPs=$UNIVERSE_NET.0/24
-      - --entrypoints.plex.address=:32400/tcp
-      - --entrypoints.plex.proxyProtocol.trustedIPs=$UNIVERSE_NET.0/24
-      - --entrypoints.smtp.address=:25/tcp
-      - --entrypoints.smtp.proxyProtocol.trustedIPs=$UNIVERSE_NET.0/24
-      - --entrypoints.submissions.address=:465/tcp
-      - --entrypoints.submissions.proxyProtocol.trustedIPs=$UNIVERSE_NET.0/24
-      - --entrypoints.imaps.address=:993/tcp
-      - --entrypoints.imaps.proxyProtocol.trustedIPs=$UNIVERSE_NET.0/24
       - --entrypoints.bolt.address=:7687/tcp
-      # - --entrypoints.submission.address=:587/tcp
-      # - --entrypoints.submission.proxyProtocol.trustedIPs=$UNIVERSE_NET.0/24
-      # - --entrypoints.proxy.address=:3128
       - --entrypoints.web.address=:80
       - --entrypoints.web.http.redirections.entrypoint.to=websecure
       - --entrypoints.web.http.redirections.entrypoint.scheme=https
@@ -58,17 +39,6 @@ services:
       - --providers.file.watch=true
       - --api.dashboard=true
       - --api.insecure=true
-      # - --metrics.addinternals
-      # - --metrics.influxdb2=true
-      # - --metrics.influxdb2.address=http://influxdb:8086
-      # - --metrics.influxdb2.org=$INFLUXDB_INIT_ORG
-      # - --metrics.influxdb2.bucket=$INFLUXDB_INIT_BUCKET
-      # - --metrics.influxdb2.token=$INFLUXDB_INIT_ADMIN_TOKEN
-      # - --metrics.influxdb2.addServicesLabels=true
-      # - --metrics.influxdb2.addEntryPointsLabels=true
-      # - --metrics.influxdb2.addrouterslabels=true
-      # - --metrics.influxdb2.pushInterval=10s
-      # - --tracing.otlp.http.endpoint=http://jaeger:4318/v1/traces
       - --accesslog=true
       - --accesslog.filepath=/logs/traefik.log
       - --accesslog.format=json
@@ -94,15 +64,6 @@ services:
       - "traefik.http.routers.traefik.entrypoints=websecure"
       - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
       - "traefik.http.routers.traefik.middlewares=forward-auth-verify"
-      - "homepage.group=Platform"
-      - "homepage.name=Traefik"
-      - "homepage.icon=traefik.svg"
-      # - "homepage.href=https://traefik.$HOST"
-      - "homepage.href=http://$UNIVERSE_NET.100:8080"
-      - "homepage.description=Traefik reverse proxy"
-      - "homepage.widget.type=traefik"
-      # - "homepage.widget.url=https://traefik.$HOST"
-      - "homepage.widget.url=http://$UNIVERSE_NET.100:8080"
 
   node_exporter:
     image: quay.io/prometheus/node-exporter:latest
@@ -231,18 +192,12 @@ services:
       - "$JOHNCLOUD_ROOT/influxdb/config:/etc/influxdb2"
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
-    labels:
+    # labels:
       # - "traefik.enable=true"
       # - "traefik.http.routers.influxdb.rule=Host(`influxdb.$HOST`)"
       # - "traefik.http.routers.influxdb.entrypoints=websecure"
       # - "traefik.http.routers.influxdb.tls.certresolver=letsencrypt"
       # - "traefik.http.services.influxdb.loadbalancer.server.port=8086"
-      - "homepage.group=Platform"
-      - "homepage.name=InfluxDB"
-      - "homepage.icon=influxdb.svg"
-      - "homepage.href=http://$UNIVERSE_NET.101:8086"
-      # - "homepage.href=https://influxdb.$HOST"
-      - "homepage.description=Time Series Data Platform"
 
   oauth:
     image: thomseddon/traefik-forward-auth:latest
@@ -298,12 +253,6 @@ services:
       - "traefik.http.routers.portainer.entrypoints=websecure"
       - "traefik.http.routers.portainer.tls.certresolver=letsencrypt"
       - "traefik.http.services.portainer.loadbalancer.server.port=9000"
-      - "homepage.group=Platform"
-      - "homepage.name=Portainer"
-      - "homepage.icon=portainer.svg"
-      - "homepage.href=https://portainer.$HOST/#!/2/docker/stacks"
-      # - "homepage.href=http://$UNIVERSE_NET.102:9000/#!/2/docker/stacks"
-      - "homepage.description=Container Management Software"
 
   redis:
     image: redis:7.2.0
@@ -315,24 +264,6 @@ services:
       - ENABLE_OVERCOMMIT_MEMORY=true
     labels:
       - "traefik.enable=false"
-
-  homepage:
-    image: ghcr.io/gethomepage/homepage:latest
-    container_name: homepage
-    restart: unless-stopped
-    environment:
-      - HOMEPAGE_ALLOWED_HOSTS=home.$HOST
-    depends_on:
-      - traefik
-    volumes:
-      - $JOHNCLOUD_ROOT/home/config:/app/config # Make sure your local config directory exists
-      - /var/run/docker.sock:/var/run/docker.sock:ro # (optional) For docker integrations
-    labels:
-        - "traefik.enable=true"
-        - "traefik.http.routers.homepage.rule=Host(`home.$HOST`)"
-        - "traefik.http.routers.homepage.entrypoints=websecure"
-        - "traefik.http.routers.homepage.tls.certresolver=letsencrypt"
-        - "traefik.http.routers.homepage.middlewares=forward-auth-verify"
 
 networks:
   default:
