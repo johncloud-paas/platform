@@ -11,4 +11,4 @@ sudo cp ./loki/config.yml $JOHNCLOUD_ROOT/loki
 sudo cp ./promtail/config.yml:$JOHNCLOUD_ROOT/promtail
 sudo cp ./prometheus/*:$JOHNCLOUD_ROOT/prometheus
 sudo docker compose up -d --remove-orphans --force-recreate
-sudo docker compose logs -f traefik
+# sudo docker compose logs -f traefik

@@ -8,15 +8,6 @@ services:
     ports:
       - "80:80"
       - "443:443"
-      - "25:25"
-      # - "465:465"
-      - "993:993"
-      - "587:587"
-      - "32400:32400"
-      - "7687:7687"
-      # - "53:53"
-      # - "853:853"
-      # - "3128:3128"
     restart: unless-stopped
     environment:
     # https://www.ovh.com/auth/api/createToken
