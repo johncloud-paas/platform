@@ -98,11 +98,9 @@ services:
       - "homepage.name=Traefik"
       - "homepage.icon=traefik.svg"
       - "homepage.href=https://traefik.$HOST"
-      # - "homepage.href=http://$UNIVERSE_NET.100:8080"
       - "homepage.description=Traefik reverse proxy"
       - "homepage.widget.type=traefik"
-      - "homepage.widget.url=https://traefik.$HOST"
-      # - "homepage.widget.url=http://$UNIVERSE_NET.100:8080"
+      - "homepage.widget.url=http://$UNIVERSE_NET.100:8080"
 
   node_exporter:
     image: quay.io/prometheus/node-exporter:latest
