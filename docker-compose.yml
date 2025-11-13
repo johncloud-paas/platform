@@ -155,7 +155,7 @@ services:
       - $JOHNCLOUD_ROOT/promtail/config.yml:/etc/promtail/docker-config.yaml
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - $JOHNCLOUD_ROOT/traefik/logs:/var/logs/traefik:ro
+      - /var/log/traefik:/var/logs/traefik:ro
     command: -config.file=/etc/promtail/docker-config.yaml
     environment:
       - TZ=$TZ
