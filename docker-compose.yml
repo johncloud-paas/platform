@@ -14,22 +14,6 @@ services:
     # https://eu.api.ovh.com/console/?section=%2Fme&branch=v1#delete-/me/api/application/-applicationId-
       - "TZ=$TZ"
     command:
-      # - --entrypoints.dot.address=:853
-      # - --entrypoints.dot.proxyProtocol.trustedIPs=$UNIVERSE_NET.0/24
-      # - --entrypoints.dns.address=:53
-      # - --entrypoints.dns.proxyProtocol.trustedIPs=$UNIVERSE_NET.0/24
-      - --entrypoints.plex.address=:32400/tcp
-      - --entrypoints.plex.proxyProtocol.trustedIPs=$UNIVERSE_NET.0/24
-      - --entrypoints.smtp.address=:25/tcp
-      - --entrypoints.smtp.proxyProtocol.trustedIPs=$UNIVERSE_NET.0/24
-      - --entrypoints.submissions.address=:465/tcp
-      - --entrypoints.submissions.proxyProtocol.trustedIPs=$UNIVERSE_NET.0/24
-      - --entrypoints.imaps.address=:993/tcp
-      - --entrypoints.imaps.proxyProtocol.trustedIPs=$UNIVERSE_NET.0/24
-      - --entrypoints.bolt.address=:7687/tcp
-      # - --entrypoints.submission.address=:587/tcp
-      # - --entrypoints.submission.proxyProtocol.trustedIPs=$UNIVERSE_NET.0/24
-      # - --entrypoints.proxy.address=:3128
       - --entrypoints.web.address=:80
       - --entrypoints.web.http.redirections.entrypoint.to=websecure
       - --entrypoints.web.http.redirections.entrypoint.scheme=https
@@ -76,7 +60,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - $JOHNCLOUD_ROOT/traefik/conf.d:/conf.d
-      - $JOHNCLOUD_ROOT/traefik/logs:/logs
+      - /var/log/traefik:/logs
       - $JOHNCLOUD_ROOT/traefik/letsencrypt:/letsencrypt
     labels:
       - "traefik.enable=true"
