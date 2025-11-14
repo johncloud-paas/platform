@@ -33,17 +33,6 @@ services:
       - --providers.file.watch=true
       - --api.dashboard=true
       - --api.insecure=true
-      # - --metrics.addinternals
-      # - --metrics.influxdb2=true
-      # - --metrics.influxdb2.address=http://influxdb:8086
-      # - --metrics.influxdb2.org=$INFLUXDB_INIT_ORG
-      # - --metrics.influxdb2.bucket=$INFLUXDB_INIT_BUCKET
-      # - --metrics.influxdb2.token=$INFLUXDB_INIT_ADMIN_TOKEN
-      # - --metrics.influxdb2.addServicesLabels=true
-      # - --metrics.influxdb2.addEntryPointsLabels=true
-      # - --metrics.influxdb2.addrouterslabels=true
-      # - --metrics.influxdb2.pushInterval=10s
-      # - --tracing.otlp.http.endpoint=http://jaeger:4318/v1/traces
       - --accesslog=true
       - --accesslog.filepath=/logs/traefik.log
       - --accesslog.format=json
@@ -108,7 +97,6 @@ services:
       - /sys:/sys:ro
       - /var/lib/docker/:/var/lib/docker:ro
     command: -max_procs=2 -docker_only=true
-    # command: -max_procs=2 -docker_only=true -storage_driver=influxdb -storage_driver_db=cadvisor -storage_driver_host=influxdb:8086 -storage_driver_user=$INFLUXDB_INIT_USERNAME -storage_driver_password=$INFLUXDB_INIT_ADMIN_TOKEN
     environment:
       - TZ=$TZ
     depends_on:
@@ -126,7 +114,6 @@ services:
     depends_on:
       - traefik
       - prometheus
-      - influxdb
       - loki
     command: ["-token","$GRAFANA_PDC_TOKEN","-cluster","$GRAFANA_PDC_CLUSTER","-gcloud-hosted-grafana-id","$GRAFANA_PDC_GCP_ID"]
     labels:
@@ -187,39 +174,6 @@ services:
       - "--web.enable-lifecycle"
     environment:
       - TZ=$TZ
-  
-  influxdb:
-    image: influxdb:2
-    container_name: influxdb
-    restart: unless-stopped
-    environment:
-      - DOCKER_INFLUXDB_INIT_MODE=setup
-      - DOCKER_INFLUXDB_INIT_USERNAME=$INFLUXDB_INIT_USERNAME
-      - DOCKER_INFLUXDB_INIT_PASSWORD=$INFLUXDB_INIT_PASSWORD
-      - DOCKER_INFLUXDB_INIT_ORG=$INFLUXDB_INIT_ORG
-      - DOCKER_INFLUXDB_INIT_BUCKET=$INFLUXDB_INIT_BUCKET
-      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=$INFLUXDB_INIT_ADMIN_TOKEN
-      - TZ=$TZ
-    networks:
-      default:
-        ipv4_address: $UNIVERSE_NET.101
-    volumes:
-      - "$JOHNCLOUD_ROOT/influxdb/data:/var/lib/influxdb2"
-      - "$JOHNCLOUD_ROOT/influxdb/config:/etc/influxdb2"
-      - /etc/timezone:/etc/timezone:ro
-      - /etc/localtime:/etc/localtime:ro
-    # labels:
-    #   - "traefik.enable=true"
-    #   - "traefik.http.routers.influxdb.rule=Host(`influxdb.$HOST`)"
-    #   - "traefik.http.routers.influxdb.entrypoints=websecure"
-    #   - "traefik.http.routers.influxdb.tls.certresolver=letsencrypt"
-    #   - "traefik.http.services.influxdb.loadbalancer.server.port=8086"
-    #   - "homepage.group=Platform"
-    #   - "homepage.name=InfluxDB"
-    #   - "homepage.icon=influxdb.svg"
-    #   - "homepage.href=http://$UNIVERSE_NET.101:8086"
-    #   - "homepage.href=https://influxdb.$HOST"
-    #   - "homepage.description=Time Series Data Platform"
 
   certdumper:
     image: ghcr.io/kereis/traefik-certs-dumper:latest
