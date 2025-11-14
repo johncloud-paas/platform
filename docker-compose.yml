@@ -140,13 +140,12 @@ services:
     volumes:
       - $JOHNCLOUD_ROOT/loki/data:/loki
       - $JOHNCLOUD_ROOT/loki:/etc/loki-custom
-      # - $JOHNCLOUD_ROOT/loki/config.yml:/etc/loki/loki-config.yaml
-    command: -config.file=/etc/loki-custom/loki-config.yaml
+    command: -config.file=/etc/loki-custom/config.yml
     environment:
       - TZ=$TZ
     labels:
       - "traefik.enable=false"
-        
+    
   promtail:
     image:  grafana/promtail:latest
     container_name: promtail
@@ -154,11 +153,10 @@ services:
       - traefik
     volumes:
       - $JOHNCLOUD_ROOT/promtail:/etc/promtail-custom
-      # - $JOHNCLOUD_ROOT/promtail/config.yml:/etc/promtail/docker-config.yaml
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /var/log/traefik:/var/logs/traefik:ro
-    command: -config.file=/etc/promtail-custom/docker-config.yaml
+    command: -config.file=/etc/promtail-custom/config.yml
     environment:
       - TZ=$TZ
     labels:
