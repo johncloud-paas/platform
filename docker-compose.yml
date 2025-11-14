@@ -68,7 +68,7 @@ services:
       - "traefik.http.routers.traefik.service=api@internal"
       - "traefik.http.routers.traefik.entrypoints=websecure"
       - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.traefik.middlewares=forward-auth-verify"
+      - "traefik.http.routers.traefik.middlewares=authentik@file"
       - "homepage.group=Platform"
       - "homepage.name=Traefik"
       - "homepage.icon=traefik.svg"
@@ -217,29 +217,6 @@ services:
     #   - "homepage.href=https://influxdb.$HOST"
     #   - "homepage.description=Time Series Data Platform"
 
-  oauth:
-    image: thomseddon/traefik-forward-auth:latest
-    container_name: oauth
-    environment:
-      - TZ=$TZ
-      - PROVIDERS_GOOGLE_CLIENT_ID=$PROVIDERS_GOOGLE_CLIENT_ID
-      - PROVIDERS_GOOGLE_CLIENT_SECRET=$PROVIDERS_GOOGLE_CLIENT_SECRET
-      - SECRET=$SECRET
-      - AUTH_HOST=oauth.$HOST
-      - COOKIE_DOMAIN=$COOKIE_DOMAIN
-      - WHITELIST=$WHITELIST
-      - INSECURE_COOKIE=$INSECURE_COOKIE
-    depends_on:
-      - traefik
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.forward.rule=Host(`oauth.$HOST`)"
-      - "traefik.http.routers.forward.entrypoints=websecure"
-      - "traefik.http.routers.forward.tls.certresolver=letsencrypt"
-      - "traefik.http.services.forward.loadbalancer.server.port=4181"
-      - "traefik.http.middlewares.forward-auth-verify.forwardauth.address=http://oauth:4181"      
-      - "traefik.http.middlewares.forward-auth-verify.forwardauth.authResponseHeaders=X-Forwarded-User"
-
   certdumper:
     image: ghcr.io/kereis/traefik-certs-dumper:latest
     restart: unless-stopped
@@ -305,7 +282,7 @@ services:
         - "traefik.http.routers.homepage.rule=Host(`home.$HOST`)"
         - "traefik.http.routers.homepage.entrypoints=websecure"
         - "traefik.http.routers.homepage.tls.certresolver=letsencrypt"
-        - "traefik.http.routers.homepage.middlewares=forward-auth-verify"
+        - "traefik.http.routers.homepage.middlewares=authentik@file"
 
 networks:
   default:
