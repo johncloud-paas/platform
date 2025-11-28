@@ -224,12 +224,6 @@ services:
       - "traefik.http.routers.portainer.entrypoints=websecure"
       - "traefik.http.routers.portainer.tls.certresolver=letsencrypt"
       - "traefik.http.services.portainer.loadbalancer.server.port=9000"
-      - "homepage.group=Platform"
-      - "homepage.name=Portainer"
-      - "homepage.icon=portainer.svg"
-      - "homepage.href=https://portainer.$HOST/#!/2/docker/stacks"
-      # - "homepage.href=http://$UNIVERSE_NET.102:9000/#!/2/docker/stacks"
-      - "homepage.description=Container Management Software"
 
   redis:
     image: redis:7.2.0
