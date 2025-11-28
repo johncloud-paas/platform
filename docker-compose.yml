@@ -8,18 +8,12 @@ services:
     ports:
       - "80:80"
       - "443:443"
-      - "25:25"
-      - "993:993"
-      - "587:587"
-      - "32400:32400"
-      - "7687:7687"
     restart: unless-stopped
     environment:
     # https://www.ovh.com/auth/api/createToken
     # https://eu.api.ovh.com/console/?section=%2Fme&branch=v1#delete-/me/api/application/-applicationId-
       - "TZ=$TZ"
     command:
-      - --entrypoints.bolt.address=:7687/tcp
       - --entrypoints.web.address=:80
       - --entrypoints.web.http.redirections.entrypoint.to=websecure
       - --entrypoints.web.http.redirections.entrypoint.scheme=https
@@ -55,7 +49,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - $JOHNCLOUD_ROOT/traefik/conf.d:/conf.d
-      - $JOHNCLOUD_ROOT/traefik/logs:/logs
+      - /var/log/traefik:/logs
       - $JOHNCLOUD_ROOT/traefik/letsencrypt:/letsencrypt
     labels:
       - "traefik.enable=true"
@@ -63,7 +57,18 @@ services:
       - "traefik.http.routers.traefik.service=api@internal"
       - "traefik.http.routers.traefik.entrypoints=websecure"
       - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.traefik.middlewares=forward-auth-verify"
+      # - "traefik.http.routers.traefik.middlewares=authentik@file"
+      - "traefik.http.middlewares.authentik-auth.forwardauth.address=http://authentik-server-1:9000/outpost.goauthentik.io/auth/traefik"
+      - "traefik.http.middlewares.authentik-auth.forwardauth.trustForwardHeader=true"
+      - "traefik.http.middlewares.authentik-auth.forwardauth.authResponseHeaders=X-authentik-username,X-authentik-groups,X-authentik-entitlements,X-authentik-email,X-authentik-name,X-authentik-uid,X-authentik-jwt,X-authentik-meta-jwks,X-authentik-meta-outpost,X-authentik-meta-provider,X-authentik-meta-app,X-authentik-meta-version"
+      - "traefik.http.routers.traefik.middlewares=authentik-auth"
+      - "homepage.group=Platform"
+      - "homepage.name=Traefik"
+      - "homepage.icon=traefik.svg"
+      - "homepage.href=https://traefik.$HOST/dashboard/"
+      - "homepage.description=Traefik reverse proxy"
+      - "homepage.widget.type=traefik"
+      - "homepage.widget.url=http://$UNIVERSE_NET.100:8080"
 
   node_exporter:
     image: quay.io/prometheus/node-exporter:latest
@@ -92,7 +97,6 @@ services:
       - /sys:/sys:ro
       - /var/lib/docker/:/var/lib/docker:ro
     command: -max_procs=2 -docker_only=true
-    # command: -max_procs=2 -docker_only=true -storage_driver=influxdb -storage_driver_db=cadvisor -storage_driver_host=influxdb:8086 -storage_driver_user=$INFLUXDB_INIT_USERNAME -storage_driver_password=$INFLUXDB_INIT_ADMIN_TOKEN
     environment:
       - TZ=$TZ
     depends_on:
@@ -110,7 +114,6 @@ services:
     depends_on:
       - traefik
       - prometheus
-      - influxdb
       - loki
     command: ["-token","$GRAFANA_PDC_TOKEN","-cluster","$GRAFANA_PDC_CLUSTER","-gcloud-hosted-grafana-id","$GRAFANA_PDC_GCP_ID"]
     labels:
@@ -126,29 +129,34 @@ services:
       - traefik
       - promtail
     volumes:
-      - $JOHNCLOUD_ROOT/monitoring/loki:/loki
-      - ./loki/config.yml:/etc/loki/loki-config.yaml
-    command: -config.file=/etc/loki/loki-config.yaml
+      - $JOHNCLOUD_ROOT/loki/data:/loki
+      - $JOHNCLOUD_ROOT/loki:/etc/loki-custom
+    command: -config.file=/etc/loki-custom/config.yml
     environment:
       - TZ=$TZ
     labels:
       - "traefik.enable=false"
-        
+    
   promtail:
     image:  grafana/promtail:latest
     container_name: promtail
     depends_on:
       - traefik
     volumes:
-      - ./promtail/config.yml:/etc/promtail/docker-config.yaml
+      - $JOHNCLOUD_ROOT/promtail:/etc/promtail-custom
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - $JOHNCLOUD_ROOT/traefik/logs:/var/logs/traefik:ro
-    command: -config.file=/etc/promtail/docker-config.yaml
+      - /var/log/traefik:/var/logs/traefik:ro
+    command: -config.file=/etc/promtail-custom/config.yml
     environment:
       - TZ=$TZ
     labels:
       - "traefik.enable=false"
+
+  speedtest:
+    image: jraviles/prometheus_speedtest:latest
+    container_name: speedtest
+    restart: unless-stopped
 
   prometheus:
     image: prom/prometheus:main
@@ -157,9 +165,10 @@ services:
     restart: unless-stopped
     depends_on:
       - traefik
+      - speedtest
     volumes:
-      - ./prometheus/:/etc/prometheus/
-      - $JOHNCLOUD_ROOT/monitoring/prometheus/db:/prometheus
+      - $JOHNCLOUD_ROOT/prometheus/:/etc/prometheus/
+      - $JOHNCLOUD_ROOT/prometheus/db:/prometheus
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
     command:
@@ -171,56 +180,18 @@ services:
       - "--web.enable-lifecycle"
     environment:
       - TZ=$TZ
-  
-  influxdb:
-    image: influxdb:2
-    container_name: influxdb
-    restart: unless-stopped
-    environment:
-      - DOCKER_INFLUXDB_INIT_MODE=setup
-      - DOCKER_INFLUXDB_INIT_USERNAME=$INFLUXDB_INIT_USERNAME
-      - DOCKER_INFLUXDB_INIT_PASSWORD=$INFLUXDB_INIT_PASSWORD
-      - DOCKER_INFLUXDB_INIT_ORG=$INFLUXDB_INIT_ORG
-      - DOCKER_INFLUXDB_INIT_BUCKET=$INFLUXDB_INIT_BUCKET
-      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=$INFLUXDB_INIT_ADMIN_TOKEN
-      - TZ=$TZ
-    networks:
-      default:
-        ipv4_address: $UNIVERSE_NET.101
-    volumes:
-      - "$JOHNCLOUD_ROOT/influxdb/data:/var/lib/influxdb2"
-      - "$JOHNCLOUD_ROOT/influxdb/config:/etc/influxdb2"
-      - /etc/timezone:/etc/timezone:ro
-      - /etc/localtime:/etc/localtime:ro
-    # labels:
-      # - "traefik.enable=true"
-      # - "traefik.http.routers.influxdb.rule=Host(`influxdb.$HOST`)"
-      # - "traefik.http.routers.influxdb.entrypoints=websecure"
-      # - "traefik.http.routers.influxdb.tls.certresolver=letsencrypt"
-      # - "traefik.http.services.influxdb.loadbalancer.server.port=8086"
-
-  oauth:
-    image: thomseddon/traefik-forward-auth:latest
-    container_name: oauth
-    environment:
-      - TZ=$TZ
-      - PROVIDERS_GOOGLE_CLIENT_ID=$PROVIDERS_GOOGLE_CLIENT_ID
-      - PROVIDERS_GOOGLE_CLIENT_SECRET=$PROVIDERS_GOOGLE_CLIENT_SECRET
-      - SECRET=$SECRET
-      - AUTH_HOST=oauth.$HOST
-      - COOKIE_DOMAIN=$COOKIE_DOMAIN
-      - WHITELIST=$WHITELIST
-      - INSECURE_COOKIE=$INSECURE_COOKIE
-    depends_on:
-      - traefik
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.forward.rule=Host(`oauth.$HOST`)"
-      - "traefik.http.routers.forward.entrypoints=websecure"
-      - "traefik.http.routers.forward.tls.certresolver=letsencrypt"
-      - "traefik.http.services.forward.loadbalancer.server.port=4181"
-      - "traefik.http.middlewares.forward-auth-verify.forwardauth.address=http://oauth:4181"      
-      - "traefik.http.middlewares.forward-auth-verify.forwardauth.authResponseHeaders=X-Forwarded-User"
+      - "traefik.http.routers.prometheus.rule=Host(`prometheus.$HOST`)"
+      - "traefik.http.routers.prometheus.entrypoints=websecure"
+      - "traefik.http.routers.prometheus.tls.certresolver=letsencrypt"
+      - "traefik.http.services.prometheus.loadbalancer.server.port=9090"
+      - "traefik.http.routers.prometheus.middlewares=authentik@file"
+      - "homepage.group=Platform"
+      - "homepage.name=Prometheus"
+      - "homepage.icon=prometheus.svg"
+      - "homepage.href=https://prometheus.$HOST/"
+      - "homepage.description=Systems and service monitoring system"
 
   certdumper:
     image: ghcr.io/kereis/traefik-certs-dumper:latest
@@ -264,6 +235,24 @@ services:
       - ENABLE_OVERCOMMIT_MEMORY=true
     labels:
       - "traefik.enable=false"
+
+  homepage:
+    image: ghcr.io/gethomepage/homepage:latest
+    container_name: homepage
+    restart: unless-stopped
+    environment:
+      - HOMEPAGE_ALLOWED_HOSTS=home.$HOST
+    depends_on:
+      - traefik
+    volumes:
+      - $JOHNCLOUD_ROOT/homepage/config:/app/config # Make sure your local config directory exists
+      - /var/run/docker.sock:/var/run/docker.sock:ro # (optional) For docker integrations
+    labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.homepage.rule=Host(`home.$HOST`)"
+        - "traefik.http.routers.homepage.entrypoints=websecure"
+        - "traefik.http.routers.homepage.tls.certresolver=letsencrypt"
+        - "traefik.http.routers.homepage.middlewares=authentik@file"
 
 networks:
   default:
