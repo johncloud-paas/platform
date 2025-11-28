@@ -12,6 +12,11 @@ scrape_configs:
   #     - targets:
   #       - traefik:8080
 
+  - job_name: "speedtest"
+    static_configs:
+      - targets: ["speedtest:9090"]
+    scrape_interval: 60m
+
   - job_name: 'cadvisor'
     scrape_interval: 5s
     static_configs:

@@ -153,6 +153,15 @@ services:
     labels:
       - "traefik.enable=false"
 
+  speedtest:
+    image: kutovoys/speedtest-exporter
+    container_name: speedtest
+    restart: unless-stopped
+    environment:
+      - UPDATE_INTERVAL=60
+      - METRICS_PROTECTED=false
+      - METRICS_PORT=9090
+
   prometheus:
     image: prom/prometheus:main
     container_name: prometheus
@@ -160,6 +169,7 @@ services:
     restart: unless-stopped
     depends_on:
       - traefik
+      - speedtest
     volumes:
       - $JOHNCLOUD_ROOT/prometheus/:/etc/prometheus/
       - $JOHNCLOUD_ROOT/prometheus/db:/prometheus
