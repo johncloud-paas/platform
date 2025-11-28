@@ -186,10 +186,10 @@ services:
       - TZ=$TZ
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.portainer.rule=Host(`prometheus.$HOST`)"
-      - "traefik.http.routers.portainer.entrypoints=websecure"
-      - "traefik.http.routers.portainer.tls.certresolver=letsencrypt"
-      - "traefik.http.services.portainer.loadbalancer.server.port=9090"
+      - "traefik.http.routers.prometheus.rule=Host(`prometheus.$HOST`)"
+      - "traefik.http.routers.prometheus.entrypoints=websecure"
+      - "traefik.http.routers.prometheus.tls.certresolver=letsencrypt"
+      - "traefik.http.services.prometheus.loadbalancer.server.port=9090"
       - "homepage.group=Platform"
       - "homepage.name=Prometheus"
       - "homepage.icon=prometheus.svg"
