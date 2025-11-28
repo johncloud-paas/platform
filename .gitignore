@@ -6,3 +6,5 @@ stalwart/
 traefik/
 *.new.yml
 *.ref.yml
+*.mmdb
+*.gz

@@ -10,19 +10,4 @@ scrape_configs:
     metrics_path: /probe
     static_configs:
       - targets: ["speedtest:9516"]
-
-  - job_name: 'cadvisor'
-    scrape_interval: 15s
-    static_configs:
-      - targets: ["cadvisor:8080"]
-
-  - job_name: 'crowdsec'
-    scrape_interval: 15s
-    static_configs:
-      - targets: ["crowdsec:6060"]
-
-  - job_name: 'node_exporter'
-    scrape_interval: 15s
-    static_configs:
-      - targets: ["node_exporter:9100"]
-        
+      
