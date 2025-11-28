@@ -154,13 +154,9 @@ services:
       - "traefik.enable=false"
 
   speedtest:
-    image: kutovoys/speedtest-exporter
+    image: jraviles/prometheus_speedtest:latest
     container_name: speedtest
     restart: unless-stopped
-    environment:
-      - UPDATE_INTERVAL=60
-      - METRICS_PROTECTED=false
-      - METRICS_PORT=9090
 
   prometheus:
     image: prom/prometheus:main
