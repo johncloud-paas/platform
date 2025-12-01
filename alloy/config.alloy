@@ -6,6 +6,7 @@ livedebugging {
   enabled = true
 }
 
+/*
 // Local file component to read Snort3 logs
 local.file_match "snort3_logs" {
   path_targets = [{"__path__" = "/var/log/snort/*.txt"}]
@@ -117,22 +118,22 @@ loki.process "add_geoip" {
 
   forward_to = [loki.write.local.receiver]
 }
+*/
 
 // ###############################
 // #### Metrics Configuration ####
 // ###############################
 
-// Host Cadvisor on the Docker socket to expose container metrics.
-prometheus.exporter.cadvisor "cadvisor" {
-  docker_only = true
+prometheus.exporter.unix "node_exporter" {
+  rootfs_path = "/rootfs"
 }
 
-prometheus.exporter.unix "node_exporter" {}
-
-// Configure a prometheus.scrape component to collect unix metrics.
+// Component to collect unix metrics.
 prometheus.scrape "node_exporter" {
   targets    = prometheus.exporter.unix.node_exporter.targets
   forward_to = [prometheus.remote_write.node_exporter.receiver]
+
+  scrape_interval = "10s"
 }
 
 prometheus.remote_write "node_exporter" {
@@ -141,6 +142,12 @@ prometheus.remote_write "node_exporter" {
   }
 }
 
+// Host Cadvisor on the Docker socket to expose container metrics.
+prometheus.exporter.cadvisor "cadvisor" {
+  docker_only = true
+}
+
+/*
 discovery.relabel "cadvisor" {
     targets = prometheus.exporter.cadvisor.cadvisor.targets
 
@@ -154,10 +161,12 @@ discovery.relabel "cadvisor" {
         replacement  = constants.hostname
     }
 }
+*/
 
-// Configure a prometheus.scrape component to collect cadvisor metrics.
-prometheus.scrape "scraper" {
-  targets    = discovery.relabel.cadvisor.output
+// Component to collect cadvisor metrics.
+prometheus.scrape "cadvisor" {
+  // targets    = discovery.relabel.cadvisor.output
+  targets    = prometheus.exporter.cadvisor.cadvisor.targets
   forward_to = [ prometheus.remote_write.cadvisor.receiver ]
 
   scrape_interval = "10s"
