@@ -57,11 +57,11 @@ services:
       - "traefik.http.routers.traefik.service=api@internal"
       - "traefik.http.routers.traefik.entrypoints=websecure"
       - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
-      # - "traefik.http.routers.traefik.middlewares=authentik@file"
-      - "traefik.http.middlewares.authentik-auth.forwardauth.address=http://authentik-server-1:9000/outpost.goauthentik.io/auth/traefik"
-      - "traefik.http.middlewares.authentik-auth.forwardauth.trustForwardHeader=true"
-      - "traefik.http.middlewares.authentik-auth.forwardauth.authResponseHeaders=X-authentik-username,X-authentik-groups,X-authentik-entitlements,X-authentik-email,X-authentik-name,X-authentik-uid,X-authentik-jwt,X-authentik-meta-jwks,X-authentik-meta-outpost,X-authentik-meta-provider,X-authentik-meta-app,X-authentik-meta-version"
-      - "traefik.http.routers.traefik.middlewares=authentik-auth"
+      - "traefik.http.routers.traefik.middlewares=authentik@file"
+      # - "traefik.http.middlewares.authentik-auth.forwardauth.address=http://authentik-server-1:9000/outpost.goauthentik.io/auth/traefik"
+      # - "traefik.http.middlewares.authentik-auth.forwardauth.trustForwardHeader=true"
+      # - "traefik.http.middlewares.authentik-auth.forwardauth.authResponseHeaders=X-authentik-username,X-authentik-groups,X-authentik-entitlements,X-authentik-email,X-authentik-name,X-authentik-uid,X-authentik-jwt,X-authentik-meta-jwks,X-authentik-meta-outpost,X-authentik-meta-provider,X-authentik-meta-app,X-authentik-meta-version"
+      # - "traefik.http.routers.traefik.middlewares=authentik-auth"
       - "homepage.group=Platform"
       - "homepage.name=Traefik"
       - "homepage.icon=traefik.svg"
@@ -107,6 +107,7 @@ services:
       - $JOHNCLOUD_ROOT/alloy/geoip:/geoip:ro
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/log/snort:/var/log/snort:ro
       - /:/rootfs:ro,rslave
       - /var/run:/var/run:ro
       - /sys:/sys:ro

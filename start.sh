@@ -16,7 +16,7 @@ sudo rm -rf $JOHNCLOUD_ROOT/loki/config.yml
 sudo cp ./traefik/* $JOHNCLOUD_ROOT/traefik/conf.d
 sudo cp ./loki/* $JOHNCLOUD_ROOT/loki
 sudo cp ./alloy/* $JOHNCLOUD_ROOT/alloy
-sudo cp ./GeoLite2-City.mmdb $JOHNCLOUD_ROOT/alloy/geoip
+sudo mv ./GeoLite2-City.mmdb $JOHNCLOUD_ROOT/alloy/geoip
 sudo cp ./prometheus/* $JOHNCLOUD_ROOT/prometheus
 sudo docker compose up -d --remove-orphans --force-recreate
-sudo docker compose logs -f 
+sudo docker compose logs -f prometheus

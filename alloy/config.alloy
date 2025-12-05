@@ -3,148 +3,146 @@
 // and forwards them to Loki
 
 livedebugging {
-  enabled = true
+	enabled = true
 }
 
-/*
 // Local file component to read Snort3 logs
 local.file_match "snort3_logs" {
-  path_targets = [{"__path__" = "/var/log/snort/*.txt"}]
+	path_targets = [{"__path__" = "/var/log/snort/*.txt"}]
 }
 
 // Scrape Snort3 JSON logs from file
 loki.source.file "snort3" {
-  targets    = local.file_match.snort3_logs.targets
-  forward_to = [loki.process.add_geoip.receiver]
+	targets    = local.file_match.snort3_logs.targets
+	forward_to = [loki.process.add_geoip.receiver]
 }
 
 // Process logs to extract JSON and add GeoIP information
 loki.process "add_geoip" {
-  // Extract JSON fields
-  stage.json {
-    expressions = {
-      timestamp = "timestamp",
-      pkt_num   = "pkt_num",
-      proto     = "proto",
-      pkt_gen   = "pkt_gen",
-      pkt_len   = "pkt_len",
-      dir       = "dir",
-      src_ap    = "src_ap",
-      dst_ap    = "dst_ap",
-      rule      = "rule",
-      action    = "action",
-    }
-  }
+	// Extract JSON fields
+	stage.json {
+		expressions = {
+			timestamp = "timestamp",
+			pkt_num   = "pkt_num",
+			proto     = "proto",
+			pkt_gen   = "pkt_gen",
+			pkt_len   = "pkt_len",
+			dir       = "dir",
+			src_ap    = "src_ap",
+			dst_ap    = "dst_ap",
+			rule      = "rule",
+			action    = "action",
+		}
+	}
 
-  // Extract source IP (handle both IPv4:port and IPv6 without port)
-  // IPv4 format: 192.168.1.1:8080 or 192.168.1.1
-  // IPv6 format: fe80::1234:5678:abcd:ef12 (no port in Snort3 output)
-  stage.regex {
-    expression = "^(?P<src_ip>(?:[0-9a-fA-F:]+::[0-9a-fA-F:]*|[0-9a-fA-F:]+:[0-9a-fA-F:]+:[0-9a-fA-F:]+|[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}))(?::(\\d+))?$"
-    source     = "src_ap"
-  }
+	// Extract source IP (handle both IPv4:port and IPv6 without port)
+	// IPv4 format: 192.168.1.1:8080 or 192.168.1.1
+	// IPv6 format: fe80::1234:5678:abcd:ef12 (no port in Snort3 output)
+	stage.regex {
+		expression = "^(?P<src_ip>(?:[0-9a-fA-F:]+::[0-9a-fA-F:]*|[0-9a-fA-F:]+:[0-9a-fA-F:]+:[0-9a-fA-F:]+|[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}))(?::(\\d+))?$"
+		source     = "src_ap"
+	}
 
-  // Extract destination IP (handle both IPv4:port and IPv6 without port)
-  stage.regex {
-    expression = "^(?P<dst_ip>(?:[0-9a-fA-F:]+::[0-9a-fA-F:]*|[0-9a-fA-F:]+:[0-9a-fA-F:]+:[0-9a-fA-F:]+|[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}))(?::(\\d+))?$"
-    source     = "dst_ap"
-  }
+	// Extract destination IP (handle both IPv4:port and IPv6 without port)
+	stage.regex {
+		expression = "^(?P<dst_ip>(?:[0-9a-fA-F:]+::[0-9a-fA-F:]*|[0-9a-fA-F:]+:[0-9a-fA-F:]+:[0-9a-fA-F:]+|[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}))(?::(\\d+))?$"
+		source     = "dst_ap"
+	}
 
-  // Add GeoIP information for source IP
-  stage.geoip {
-    db      = "/geoip/GeoLite2-City.mmdb"
-    source  = "src_ip"
-    db_type = "city"
-  }
+	// Add GeoIP information for source IP
+	stage.geoip {
+		db      = "/geoip/GeoLite2-City.mmdb"
+		source  = "src_ip"
+		db_type = "city"
+	}
 
-  // Rename GeoIP fields to distinguish source location (as structured metadata, not labels)
-  stage.structured_metadata {
-    values = {
-      src_country      = "geoip_country_name",
-      src_country_code = "geoip_country_code",
-      src_city         = "geoip_city_name",
-      src_latitude     = "geoip_location_latitude",
-      src_longitude    = "geoip_location_longitude",
-      src_timezone     = "geoip_timezone",
-      src_subdivision  = "geoip_subdivision_name",
-    }
-  }
+	// Rename GeoIP fields to distinguish source location (as structured metadata, not labels)
+	stage.structured_metadata {
+		values = {
+			src_country      = "geoip_country_name",
+			src_country_code = "geoip_country_code",
+			src_city         = "geoip_city_name",
+			src_latitude     = "geoip_location_latitude",
+			src_longitude    = "geoip_location_longitude",
+			src_timezone     = "geoip_timezone",
+			src_subdivision  = "geoip_subdivision_name",
+		}
+	}
 
-  // Add GeoIP information for destination IP
-  stage.geoip {
-    db      = "/geoip/GeoLite2-City.mmdb"
-    source  = "dst_ip"
-    db_type = "city"
-  }
+	// Add GeoIP information for destination IP
+	stage.geoip {
+		db      = "/geoip/GeoLite2-City.mmdb"
+		source  = "dst_ip"
+		db_type = "city"
+	}
 
-  // Add destination GeoIP as structured metadata
-  stage.structured_metadata {
-    values = {
-      dst_country      = "geoip_country_name",
-      dst_country_code = "geoip_country_code",
-      dst_city         = "geoip_city_name",
-      dst_latitude     = "geoip_location_latitude",
-      dst_longitude    = "geoip_location_longitude",
-      dst_timezone     = "geoip_timezone",
-      dst_subdivision  = "geoip_subdivision_name",
-    }
-  }
+	// Add destination GeoIP as structured metadata
+	stage.structured_metadata {
+		values = {
+			dst_country      = "geoip_country_name",
+			dst_country_code = "geoip_country_code",
+			dst_city         = "geoip_city_name",
+			dst_latitude     = "geoip_location_latitude",
+			dst_longitude    = "geoip_location_longitude",
+			dst_timezone     = "geoip_timezone",
+			dst_subdivision  = "geoip_subdivision_name",
+		}
+	}
 
-  // Add static labels for filtering
-  stage.static_labels {
-    values = {
-      job      = "snort3",
-      source   = "snort_ids",
-    }
-  }
+	// Add static labels for filtering
+	stage.static_labels {
+		values = {
+			job    = "snort3",
+			source = "snort_ids",
+		}
+	}
 
-  // Add all extracted fields as structured metadata (stored as values, not indexed)
-  stage.structured_metadata {
-    values = {
-      timestamp = "timestamp",
-      pkt_num   = "pkt_num",
-      proto     = "proto",
-      pkt_gen   = "pkt_gen",
-      pkt_len   = "pkt_len",
-      dir       = "dir",
-      src_ap    = "src_ap",
-      dst_ap    = "dst_ap",
-      src_ip    = "src_ip",
-      dst_ip    = "dst_ip",
-      rule      = "rule",
-      action    = "action",
-    }
-  }
+	// Add all extracted fields as structured metadata (stored as values, not indexed)
+	stage.structured_metadata {
+		values = {
+			timestamp = "timestamp",
+			pkt_num   = "pkt_num",
+			proto     = "proto",
+			pkt_gen   = "pkt_gen",
+			pkt_len   = "pkt_len",
+			dir       = "dir",
+			src_ap    = "src_ap",
+			dst_ap    = "dst_ap",
+			src_ip    = "src_ip",
+			dst_ip    = "dst_ip",
+			rule      = "rule",
+			action    = "action",
+		}
+	}
 
-  forward_to = [loki.write.local.receiver]
+	forward_to = [loki.write.local.receiver]
 }
-*/
 
 // ###############################
 // #### Metrics Configuration ####
 // ###############################
 
 prometheus.exporter.unix "node_exporter" {
-  rootfs_path = "/rootfs"
+	rootfs_path = "/rootfs"
 }
 
 // Component to collect unix metrics.
 prometheus.scrape "node_exporter" {
-  targets    = prometheus.exporter.unix.node_exporter.targets
-  forward_to = [prometheus.remote_write.node_exporter.receiver]
+	targets    = prometheus.exporter.unix.node_exporter.targets
+	forward_to = [prometheus.remote_write.node_exporter.receiver]
 
-  scrape_interval = "10s"
+	scrape_interval = "10s"
 }
 
 prometheus.remote_write "node_exporter" {
-  endpoint {
-    url = "http://prometheus:9090/api/v1/write"
-  }
+	endpoint {
+		url = "http://prometheus:9090/api/v1/write"
+	}
 }
 
 // Host Cadvisor on the Docker socket to expose container metrics.
 prometheus.exporter.cadvisor "cadvisor" {
-  docker_only = true
+	docker_only = true
 }
 
 /*
@@ -165,18 +163,18 @@ discovery.relabel "cadvisor" {
 
 // Component to collect cadvisor metrics.
 prometheus.scrape "cadvisor" {
-  // targets    = discovery.relabel.cadvisor.output
-  targets    = prometheus.exporter.cadvisor.cadvisor.targets
-  forward_to = [ prometheus.remote_write.cadvisor.receiver ]
+	// targets    = discovery.relabel.cadvisor.output
+	targets    = prometheus.exporter.cadvisor.cadvisor.targets
+	forward_to = [prometheus.remote_write.cadvisor.receiver]
 
-  scrape_interval = "10s"
+	scrape_interval = "10s"
 }
 
 // Configure a prometheus.remote_write component to send metrics to a Prometheus server.
 prometheus.remote_write "cadvisor" {
-  endpoint {
-    url = "http://prometheus:9090/api/v1/write"
-  }
+	endpoint {
+		url = "http://prometheus:9090/api/v1/write"
+	}
 }
 
 // ###############################
@@ -185,37 +183,36 @@ prometheus.remote_write "cadvisor" {
 
 // Discover Docker containers and extract metadata.
 discovery.docker "linux" {
-  host = "unix:///var/run/docker.sock"
+	host = "unix:///var/run/docker.sock"
 }
 
 // Define a relabeling rule to create a service name from the container name.
 discovery.relabel "logs_integrations_docker" {
-      targets = []
-  
-      rule {
-          source_labels = ["__meta_docker_container_name"]
-          regex = "/(.*)"
-          target_label = "container_name"
-      }
+	targets = []
 
-     rule {
-        target_label = "instance"
-        replacement  = constants.hostname
-    }
+	rule {
+		source_labels = ["__meta_docker_container_name"]
+		regex         = "/(.*)"
+		target_label  = "container_name"
+	}
 
-  }
+	rule {
+		target_label = "instance"
+		replacement  = constants.hostname
+	}
+}
 
 // Configure a loki.source.docker component to collect logs from Docker containers.
 loki.source.docker "default" {
-  host       = "unix:///var/run/docker.sock"
-  targets    = discovery.docker.linux.targets
-  relabel_rules = discovery.relabel.logs_integrations_docker.rules
-  forward_to = [loki.write.local.receiver]
+	host          = "unix:///var/run/docker.sock"
+	targets       = discovery.docker.linux.targets
+	relabel_rules = discovery.relabel.logs_integrations_docker.rules
+	forward_to    = [loki.write.local.receiver]
 }
 
 // Write to Loki
 loki.write "local" {
-  endpoint {
-    url = "http://loki:3100/loki/api/v1/push"
-  }
+	endpoint {
+		url = "http://loki:3100/loki/api/v1/push"
+	}
 }
