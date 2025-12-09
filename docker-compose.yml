@@ -97,6 +97,7 @@ services:
     
   alloy:
     image: grafana/alloy:latest
+    restart: unless-stopped
     container_name: alloy
     depends_on:
       - loki
