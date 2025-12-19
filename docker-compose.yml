@@ -1,10 +1,37 @@
 services:
+  docker-socket-proxy:
+    image: tecnativa/docker-socket-proxy
+    container_name: dockerproxy
+    networks:
+      default:
+        ipv4_address: $UNIVERSE_NET.101
+    privileged: true
+    environment:
+      LOG_LEVEL: info
+      CONTAINERS: 1
+      SERVICES: 1
+      TASKS: 1
+      NETWORKS: 1
+      INFO: 1
+      VOLUMES: 1
+      IMAGES: 1
+      SYSTEM: 0
+      EXEC: 0
+      POST: 1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker:/var/lib/docker:ro
+    # ports:
+    #   - 127.0.0.1:2375:2375
+
   traefik:
-    image: traefik:latest
+    image: dhi.io/traefik:3
     container_name: traefik
     networks:
       default:
         ipv4_address: $UNIVERSE_NET.100
+    depends_on:
+      - docker-socket-proxy
     ports:
       - "80:80"
       - "443:443"
@@ -28,6 +55,7 @@ services:
       - --entrypoints.websecure.proxyprotocol=true
       - --entrypoints.websecure.proxyprotocol.trustedips=$UNIVERSE_NET.0/24
       - --providers.docker=true
+      - --providers.docker.endpoint=http://$UNIVERSE_NET.101:2375
       - --providers.docker.exposedByDefault=false
       - --providers.file.directory=conf.d
       - --providers.file.watch=true
@@ -42,15 +70,14 @@ services:
       - --accesslog.fields.headers.names.User-Agent=keep
       - --certificatesresolvers.letsencrypt.acme.email=$EMAIL_LETS_ENCRYPT
       - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
-      - --certificatesresolvers.letsencrypt.acme.httpchallenge=true
       - --certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web
       - --experimental.plugins.traefik-api-token-middleware.modulename=github.com/Aetherinox/traefik-api-token-middleware
       - --experimental.plugins.traefik-api-token-middleware.version=v0.1.4
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
       - $JOHNCLOUD_ROOT/traefik/conf.d:/conf.d
       - /var/log/traefik:/logs
       - $JOHNCLOUD_ROOT/traefik/letsencrypt:/letsencrypt
+      - $JOHNCLOUD_ROOT/traefik/plugins:/plugins-storage
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.traefik.rule=Host(`traefik.$HOST`)"
@@ -83,7 +110,7 @@ services:
       - "traefik.enable=false"
 
   loki:
-    image: grafana/loki:latest
+    image: dhi.io/loki:3
     container_name: loki
     user: "0:0"
     volumes:
@@ -96,7 +123,7 @@ services:
       - "traefik.enable=false"
     
   alloy:
-    image: grafana/alloy:latest
+    image: dhi.io/alloy:1
     restart: unless-stopped
     container_name: alloy
     depends_on:
@@ -106,13 +133,13 @@ services:
       - $JOHNCLOUD_ROOT/alloy/config.alloy:/etc/alloy/config.alloy
       - $JOHNCLOUD_ROOT/alloy/data:/var/lib/alloy/data
       - $JOHNCLOUD_ROOT/alloy/geoip:/geoip:ro
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      # - /var/run/docker.sock:/var/run/docker.sock:ro
       - /var/log/snort:/var/log/snort:ro
       - /:/rootfs:ro,rslave
       - /var/run:/var/run:ro
       - /sys:/sys:ro
-      - /var/lib/docker:/var/lib/docker:ro
+      # - /var/lib/docker:/var/lib/docker:ro
     command: 'run --server.http.listen-addr=0.0.0.0:12345 --storage.path=/var/lib/alloy/data /etc/alloy/config.alloy'
     labels:
       - "traefik.enable=true"
@@ -133,7 +160,7 @@ services:
     restart: unless-stopped
 
   prometheus:
-    image: prom/prometheus:main
+    image: dhi.io/prometheus:3.8
     container_name: prometheus
     user: "0:0"
     restart: unless-stopped
@@ -187,7 +214,6 @@ services:
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
-      - /var/run/docker.sock:/var/run/docker.sock
       - $JOHNCLOUD_ROOT/portainer/data:/data
     networks:
       default:
@@ -205,7 +231,7 @@ services:
       - "homepage.description=Making Docker and Kubernetes management easy"
 
   redis:
-    image: redis:7.2.0
+    image: dhi.io/redis:8
     container_name: redis
     environment:
       - TZ=$TZ
@@ -223,7 +249,6 @@ services:
       - traefik
     volumes:
       - $JOHNCLOUD_ROOT/homepage/config:/app/config # Make sure your local config directory exists
-      - /var/run/docker.sock:/var/run/docker.sock:ro # (optional) For docker integrations
     labels:
         - "traefik.enable=true"
         - "traefik.http.routers.homepage.rule=Host(`home.$HOST`)"

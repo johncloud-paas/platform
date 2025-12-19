@@ -1,3 +1,7 @@
+Using Hardened docker images. First authenticate :
+
+    docker login dhi.io
+
 https://hub.docker.com/r/wallarm/gotestwaf#quick-start-with-docker
 
 Google OAuth setup: https://www.libe.net/en-traefik-auth
