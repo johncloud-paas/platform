@@ -1,23 +1,68 @@
 services:
-  docker-socket-proxy:
+  docker-socket-proxy-admin:
     image: tecnativa/docker-socket-proxy
-    container_name: dockerproxy
+    container_name: dockerproxy_admin
     networks:
-      backend:
+      socket_admin:
         ipv4_address: 172.16.238.101
     privileged: true
     environment:
       LOG_LEVEL: info
-      CONTAINERS: 1
-      SERVICES: 1
-      TASKS: 1
-      NETWORKS: 1
+      # Core info & inspection
       INFO: 1
-      VOLUMES: 1
+      VERSION: 1
+      EVENTS: 1
+      PING: 1
+      # Containers (read-only operations)
+      CONTAINERS: 1
+      # Images (list & inspect)
       IMAGES: 1
+      # Volumes (list & inspect)
+      VOLUMES: 1
+      # Networks (list & inspect)
+      NETWORKS: 1
+      # Nodes & Swarm info (read-only)
+      NODES: 0
+      SERVICES: 0
+      TASKS: 0
+      # System-wide data
+      SYSTEM: 1
+      EXEC: 1
+      POST: 1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      
+  docker-socket-proxy-ro:
+    image: tecnativa/docker-socket-proxy
+    container_name: dockerproxy_ro
+    networks:
+      socket_ro:
+        ipv4_address: 173.16.238.101
+    privileged: true
+    environment:
+      LOG_LEVEL: info
+      # Core info & inspection
+      INFO: 1
+      VERSION: 1
+      EVENTS: 1
+      PING: 1
+      # Containers (read-only operations)
+      CONTAINERS: 1
+      # Images (list & inspect)
+      IMAGES: 1
+      # Volumes (list & inspect)
+      VOLUMES: 1
+      # Networks (list & inspect)
+      NETWORKS: 1
+      # Nodes & Swarm info (read-only)
+      NODES: 0
+      SERVICES: 0
+      TASKS: 0
+      # System-wide data
       SYSTEM: 0
       EXEC: 0
-      POST: 1
+      POST: 0
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /var/lib/docker:/var/lib/docker:ro
@@ -29,8 +74,9 @@ services:
       frontend:
         ipv4_address: $UNIVERSE_NET.100
       backend:
+      socket_ro:
     depends_on:
-      - docker-socket-proxy
+      - docker-socket-proxy-ro
     ports:
       - "80:80"
       - "443:443"
@@ -54,7 +100,7 @@ services:
       - --entrypoints.websecure.proxyprotocol=true
       - --entrypoints.websecure.proxyprotocol.trustedips=$UNIVERSE_NET.0/24
       - --providers.docker=true
-      - --providers.docker.endpoint=http://172.16.238.101:2375
+      - --providers.docker.endpoint=http://173.16.238.101:2375
       - --providers.docker.exposedByDefault=false
       - --providers.file.directory=conf.d
       - --providers.file.watch=true
@@ -128,8 +174,10 @@ services:
     depends_on:
       - loki
       - prometheus
+      - docker-socket-proxy-ro
     networks:
       - backend
+      - socket_ro
     volumes:
       - $JOHNCLOUD_ROOT/alloy/config.alloy:/etc/alloy/config.alloy
       - $JOHNCLOUD_ROOT/alloy/data:/var/lib/alloy/data
@@ -191,8 +239,10 @@ services:
     container_name: dockhand
     depends_on:
       - traefik
+      - docker-socket-proxy-admin
     networks:
       backend:
+      socket_admin:
       frontend:
         ipv4_address: $UNIVERSE_NET.102
     volumes:
@@ -228,9 +278,11 @@ services:
       - HOMEPAGE_ALLOWED_HOSTS=home.$HOST
     depends_on:
       - traefik
+      - docker-socket-proxy-ro
     networks:
       - frontend
       - backend
+      - socket_ro
     volumes:
       - $JOHNCLOUD_ROOT/homepage/config:/app/config # Make sure your local config directory exists
     labels:
@@ -246,8 +298,16 @@ networks:
     name: $TRAEFIK_NETWORK
   backend:
     driver: bridge
+  socket_admin:
+    driver: bridge
     ipam:
       driver: default
       config:
         - subnet: "172.16.238.0/24"
+  socket_ro:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: "173.16.238.0/24"
         
