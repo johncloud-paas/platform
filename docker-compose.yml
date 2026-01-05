@@ -3,8 +3,8 @@ services:
     image: tecnativa/docker-socket-proxy
     container_name: dockerproxy
     networks:
-      default:
-        ipv4_address: $UNIVERSE_NET.101
+      backend:
+        ipv4_address: 172.16.238.101
     privileged: true
     environment:
       LOG_LEVEL: info
@@ -21,15 +21,14 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /var/lib/docker:/var/lib/docker:ro
-    # ports:
-    #   - 127.0.0.1:2375:2375
 
   traefik:
     image: dhi.io/traefik:3
     container_name: traefik
     networks:
-      default:
+      frontend:
         ipv4_address: $UNIVERSE_NET.100
+      backend:
     depends_on:
       - docker-socket-proxy
     ports:
@@ -55,7 +54,7 @@ services:
       - --entrypoints.websecure.proxyprotocol=true
       - --entrypoints.websecure.proxyprotocol.trustedips=$UNIVERSE_NET.0/24
       - --providers.docker=true
-      - --providers.docker.endpoint=http://$UNIVERSE_NET.101:2375
+      - --providers.docker.endpoint=http://172.16.238.101:2375
       - --providers.docker.exposedByDefault=false
       - --providers.file.directory=conf.d
       - --providers.file.watch=true
@@ -85,10 +84,6 @@ services:
       - "traefik.http.routers.traefik.entrypoints=websecure"
       - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
       - "traefik.http.routers.traefik.middlewares=authentik@file"
-      # - "traefik.http.middlewares.authentik-auth.forwardauth.address=http://authentik-server-1:9000/outpost.goauthentik.io/auth/traefik"
-      # - "traefik.http.middlewares.authentik-auth.forwardauth.trustForwardHeader=true"
-      # - "traefik.http.middlewares.authentik-auth.forwardauth.authResponseHeaders=X-authentik-username,X-authentik-groups,X-authentik-entitlements,X-authentik-email,X-authentik-name,X-authentik-uid,X-authentik-jwt,X-authentik-meta-jwks,X-authentik-meta-outpost,X-authentik-meta-provider,X-authentik-meta-app,X-authentik-meta-version"
-      # - "traefik.http.routers.traefik.middlewares=authentik-auth"
       - "homepage.group=Platform"
       - "homepage.name=Traefik"
       - "homepage.icon=traefik.svg"
@@ -102,6 +97,8 @@ services:
     image: grafana/pdc-agent:latest
     container_name: pdc
     restart: unless-stopped
+    networks:
+      - backend
     depends_on:
       - prometheus
       - loki
@@ -113,6 +110,8 @@ services:
     image: dhi.io/loki:3
     container_name: loki
     user: "0:0"
+    networks:
+      - backend
     volumes:
       - $JOHNCLOUD_ROOT/loki/data:/loki
       - $JOHNCLOUD_ROOT/loki:/etc/loki-custom
@@ -129,35 +128,24 @@ services:
     depends_on:
       - loki
       - prometheus
+    networks:
+      - backend
     volumes:
       - $JOHNCLOUD_ROOT/alloy/config.alloy:/etc/alloy/config.alloy
       - $JOHNCLOUD_ROOT/alloy/data:/var/lib/alloy/data
       - $JOHNCLOUD_ROOT/alloy/geoip:/geoip:ro
-      # - /var/lib/docker/containers:/var/lib/docker/containers:ro
-      # - /var/run/docker.sock:/var/run/docker.sock:ro
       - /var/log/snort:/var/log/snort:ro
       - /:/rootfs:ro,rslave
       - /var/run:/var/run:ro
       - /sys:/sys:ro
-      # - /var/lib/docker:/var/lib/docker:ro
     command: 'run --server.http.listen-addr=0.0.0.0:12345 --storage.path=/var/lib/alloy/data /etc/alloy/config.alloy'
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.alloy.rule=Host(`alloy.$HOST`)"
-      - "traefik.http.routers.alloy.entrypoints=websecure"
-      - "traefik.http.routers.alloy.tls.certresolver=letsencrypt"
-      - "traefik.http.services.alloy.loadbalancer.server.port=12345"
-      - "traefik.http.routers.alloy.middlewares=authentik@file"
-      - "homepage.group=Platform"
-      - "homepage.name=Alloy"
-      - "homepage.icon=alloy.svg"
-      - "homepage.href=https://alloy.$HOST/"
-      - "homepage.description=Collect, process, and export telemetry signals"
 
   speedtest:
     image: jraviles/prometheus_speedtest:latest
     container_name: speedtest
     restart: unless-stopped
+    networks:
+      - backend
 
   prometheus:
     image: dhi.io/prometheus:3.8
@@ -166,6 +154,8 @@ services:
     restart: unless-stopped
     depends_on:
       - speedtest
+    networks:
+      - backend
     volumes:
       - $JOHNCLOUD_ROOT/prometheus/:/etc/prometheus/
       - $JOHNCLOUD_ROOT/prometheus/db:/prometheus
@@ -181,18 +171,6 @@ services:
       - "--web.enable-lifecycle"
     environment:
       - TZ=$TZ
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.prometheus.rule=Host(`prometheus.$HOST`)"
-      - "traefik.http.routers.prometheus.entrypoints=websecure"
-      - "traefik.http.routers.prometheus.tls.certresolver=letsencrypt"
-      - "traefik.http.services.prometheus.loadbalancer.server.port=9090"
-      - "traefik.http.routers.prometheus.middlewares=authentik@file"
-      - "homepage.group=Platform"
-      - "homepage.name=Prometheus"
-      - "homepage.icon=prometheus.svg"
-      - "homepage.href=https://prometheus.$HOST/"
-      - "homepage.description=Systems and service monitoring system"
 
   certdumper:
     image: ghcr.io/kereis/traefik-certs-dumper:latest
@@ -200,35 +178,12 @@ services:
     container_name: certdumper
     depends_on:
       - traefik
+    networks:
+      - backend
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - $JOHNCLOUD_ROOT/traefik/letsencrypt:/traefik:ro
       - $JOHNCLOUD_ROOT/traefik/certs:/output
-
-  # portainer:
-  #   image: portainer/portainer-ee:latest
-  #   container_name: portainer
-  #   restart: unless-stopped
-  #   depends_on:
-  #     - traefik
-  #   volumes:
-  #     - /etc/timezone:/etc/timezone:ro
-  #     - /etc/localtime:/etc/localtime:ro
-  #     - $JOHNCLOUD_ROOT/portainer/data:/data
-  #   networks:
-  #     default:
-  #       ipv4_address: $UNIVERSE_NET.102
-  #   labels:
-  #     - "traefik.enable=true"
-  #     - "traefik.http.routers.portainer.rule=Host(`portainer.$HOST`)"
-  #     - "traefik.http.routers.portainer.entrypoints=websecure"
-  #     - "traefik.http.routers.portainer.tls.certresolver=letsencrypt"
-  #     - "traefik.http.services.portainer.loadbalancer.server.port=9000"
-  #     - "homepage.group=Platform"
-  #     - "homepage.name=Portainer"
-  #     - "homepage.icon=portainer.svg"
-  #     - "homepage.href=https://portainer.$HOST/"
-  #     - "homepage.description=Making Docker and Kubernetes management easy"
 
   dockhand:
     image: fnsys/dockhand:latest
@@ -237,7 +192,8 @@ services:
     depends_on:
       - traefik
     networks:
-      default:
+      backend:
+      frontend:
         ipv4_address: $UNIVERSE_NET.102
     volumes:
       - $JOHNCLOUD_ROOT/dockhand/data:/app/data
@@ -259,6 +215,8 @@ services:
     environment:
       - TZ=$TZ
       - ENABLE_OVERCOMMIT_MEMORY=true
+    networks:
+      - backend
     labels:
       - "traefik.enable=false"
 
@@ -270,6 +228,9 @@ services:
       - HOMEPAGE_ALLOWED_HOSTS=home.$HOST
     depends_on:
       - traefik
+    networks:
+      - frontend
+      - backend
     volumes:
       - $JOHNCLOUD_ROOT/homepage/config:/app/config # Make sure your local config directory exists
     labels:
@@ -280,7 +241,13 @@ services:
         - "traefik.http.routers.homepage.middlewares=authentik@file"
 
 networks:
-  default:
+  frontend:
     external: true
     name: $TRAEFIK_NETWORK
-    
+  backend:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: "172.16.238.0/24"
+        

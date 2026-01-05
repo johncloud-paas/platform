@@ -143,7 +143,7 @@ prometheus.remote_write "node_exporter" {
 // Host Cadvisor on the Docker socket to expose container metrics.
 prometheus.exporter.cadvisor "cadvisor" {
 	docker_only = true
-	docker_host = "tcp://192.168.203.101:2375"
+	docker_host = "tcp://172.16.238.101:2375"
 }
 
 discovery.relabel "cadvisor" {
@@ -163,7 +163,6 @@ discovery.relabel "cadvisor" {
 // Component to collect cadvisor metrics.
 prometheus.scrape "cadvisor" {
 	targets    = discovery.relabel.cadvisor.output
-	// targets    = prometheus.exporter.cadvisor.cadvisor.targets
 	forward_to = [prometheus.remote_write.cadvisor.receiver]
 
 	scrape_interval = "10s"
@@ -182,7 +181,7 @@ prometheus.remote_write "cadvisor" {
 
 // Discover Docker containers and extract metadata.
 discovery.docker "linux" {
-	host = "tcp://192.168.203.101:2375"
+	host = "tcp://172.16.238.101:2375"
 }
 
 // Define a relabeling rule to create a service name from the container name.
@@ -203,7 +202,7 @@ discovery.relabel "logs_integrations_docker" {
 
 // Configure a loki.source.docker component to collect logs from Docker containers.
 loki.source.docker "default" {
-	host          = "tcp://192.168.203.101:2375"
+	host          = "tcp://172.16.238.101:2375"
 	targets       = discovery.docker.linux.targets
 	relabel_rules = discovery.relabel.logs_integrations_docker.rules
 	forward_to    = [loki.write.local.receiver]
