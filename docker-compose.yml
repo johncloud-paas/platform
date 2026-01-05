@@ -205,30 +205,53 @@ services:
       - $JOHNCLOUD_ROOT/traefik/letsencrypt:/traefik:ro
       - $JOHNCLOUD_ROOT/traefik/certs:/output
 
-  portainer:
-    image: portainer/portainer-ee:latest
-    container_name: portainer
+  # portainer:
+  #   image: portainer/portainer-ee:latest
+  #   container_name: portainer
+  #   restart: unless-stopped
+  #   depends_on:
+  #     - traefik
+  #   volumes:
+  #     - /etc/timezone:/etc/timezone:ro
+  #     - /etc/localtime:/etc/localtime:ro
+  #     - $JOHNCLOUD_ROOT/portainer/data:/data
+  #   networks:
+  #     default:
+  #       ipv4_address: $UNIVERSE_NET.102
+  #   labels:
+  #     - "traefik.enable=true"
+  #     - "traefik.http.routers.portainer.rule=Host(`portainer.$HOST`)"
+  #     - "traefik.http.routers.portainer.entrypoints=websecure"
+  #     - "traefik.http.routers.portainer.tls.certresolver=letsencrypt"
+  #     - "traefik.http.services.portainer.loadbalancer.server.port=9000"
+  #     - "homepage.group=Platform"
+  #     - "homepage.name=Portainer"
+  #     - "homepage.icon=portainer.svg"
+  #     - "homepage.href=https://portainer.$HOST/"
+  #     - "homepage.description=Making Docker and Kubernetes management easy"
+
+  dockhand:
+    image: fnsys/dockhand:latest
     restart: unless-stopped
+    container_name: dockhand
     depends_on:
       - traefik
-    volumes:
-      - /etc/timezone:/etc/timezone:ro
-      - /etc/localtime:/etc/localtime:ro
-      - $JOHNCLOUD_ROOT/portainer/data:/data
     networks:
       default:
         ipv4_address: $UNIVERSE_NET.102
+    volumes:
+      - $JOHNCLOUD_ROOT/dockhand/data:/app/data
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.portainer.rule=Host(`portainer.$HOST`)"
-      - "traefik.http.routers.portainer.entrypoints=websecure"
-      - "traefik.http.routers.portainer.tls.certresolver=letsencrypt"
-      - "traefik.http.services.portainer.loadbalancer.server.port=9000"
+      - "traefik.http.routers.dockhand.rule=Host(`dockhand.$HOST`)"
+      - "traefik.http.routers.dockhand.entrypoints=websecure"
+      - "traefik.http.routers.dockhand.tls.certresolver=letsencrypt"
+      - traefik.http.services.dockhand.loadbalancer.server.port=3000
       - "homepage.group=Platform"
-      - "homepage.name=Portainer"
-      - "homepage.icon=portainer.svg"
-      - "homepage.href=https://portainer.$HOST/"
-      - "homepage.description=Making Docker and Kubernetes management easy"
+      - "homepage.name=Dockhand"
+      - "homepage.icon=https://dockhand.pro/images/logo-dark.webp"
+      - "homepage.href=https://dockhand.$HOST"
+      - "homepage.description=Modern Docker management for everyone"
 
   redis:
     image: dhi.io/redis:8

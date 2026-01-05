@@ -146,7 +146,6 @@ prometheus.exporter.cadvisor "cadvisor" {
 	docker_host = "tcp://192.168.203.101:2375"
 }
 
-/*
 discovery.relabel "cadvisor" {
     targets = prometheus.exporter.cadvisor.cadvisor.targets
 
@@ -160,12 +159,11 @@ discovery.relabel "cadvisor" {
         replacement  = constants.hostname
     }
 }
-*/
 
 // Component to collect cadvisor metrics.
 prometheus.scrape "cadvisor" {
-	// targets    = discovery.relabel.cadvisor.output
-	targets    = prometheus.exporter.cadvisor.cadvisor.targets
+	targets    = discovery.relabel.cadvisor.output
+	// targets    = prometheus.exporter.cadvisor.cadvisor.targets
 	forward_to = [prometheus.remote_write.cadvisor.receiver]
 
 	scrape_interval = "10s"
