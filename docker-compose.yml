@@ -103,42 +103,40 @@ services:
       - "homepage.widget.type=traefik"
       - "homepage.widget.url=http://$UNIVERSE_NET.100:8080"
   
-  pdc:
-    # https://grafana.com/docs/grafana-cloud/connect-externally-hosted/private-data-source-connect/#private-data-source-connect-pdc-concepts
-    image: grafana/pdc-agent:latest
-    container_name: pdc
-    restart: unless-stopped
-    networks:
-      - backend
-    depends_on:
-      - prometheus
-      - loki
-    command: ["-token","$GRAFANA_PDC_TOKEN","-cluster","$GRAFANA_PDC_CLUSTER","-gcloud-hosted-grafana-id","$GRAFANA_PDC_GCP_ID"]
-    labels:
-      - "traefik.enable=false"
+  # pdc:
+  #   # https://grafana.com/docs/grafana-cloud/connect-externally-hosted/private-data-source-connect/#private-data-source-connect-pdc-concepts
+  #   image: grafana/pdc-agent:latest
+  #   container_name: pdc
+  #   restart: unless-stopped
+  #   networks:
+  #     - backend
+  #   depends_on:
+  #     - prometheus
+  #     - loki
+  #   command: ["-token","$GRAFANA_PDC_TOKEN","-cluster","$GRAFANA_PDC_CLUSTER","-gcloud-hosted-grafana-id","$GRAFANA_PDC_GCP_ID"]
+  #   labels:
+  #     - "traefik.enable=false"
 
-  loki:
-    image: dhi.io/loki:3
-    container_name: loki
-    user: "0:0"
-    networks:
-      - backend
-    volumes:
-      - $JOHNCLOUD_ROOT/loki/data:/loki
-      - $JOHNCLOUD_ROOT/loki:/etc/loki-custom
-    command: -config.file=/etc/loki-custom/config.yml
-    environment:
-      - TZ=$TZ
-    labels:
-      - "traefik.enable=false"
+  # loki:
+  #   image: dhi.io/loki:3
+  #   container_name: loki
+  #   user: "0:0"
+  #   networks:
+  #     - backend
+  #   volumes:
+  #     - $JOHNCLOUD_ROOT/loki/data:/loki
+  #     - $JOHNCLOUD_ROOT/loki:/etc/loki-custom
+  #   command: -config.file=/etc/loki-custom/config.yml
+  #   environment:
+  #     - TZ=$TZ
+  #   labels:
+  #     - "traefik.enable=false"
     
   alloy:
     image: dhi.io/alloy:1
     restart: unless-stopped
     container_name: alloy
     depends_on:
-      - loki
-      - prometheus
       - docker-socket-proxy
     networks:
       - backend
@@ -160,30 +158,30 @@ services:
     networks:
       - backend
 
-  prometheus:
-    image: dhi.io/prometheus:3.8
-    container_name: prometheus
-    user: "0:0"
-    restart: unless-stopped
-    depends_on:
-      - speedtest
-    networks:
-      - backend
-    volumes:
-      - $JOHNCLOUD_ROOT/prometheus/:/etc/prometheus/
-      - $JOHNCLOUD_ROOT/prometheus/db:/prometheus
-      - /etc/timezone:/etc/timezone:ro
-      - /etc/localtime:/etc/localtime:ro
-    command:
-      - "--web.route-prefix=/"
-      - "--web.enable-remote-write-receiver"
-      - "--config.file=/etc/prometheus/prometheus.yml"
-      - "--storage.tsdb.path=/prometheus"
-      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
-      - "--web.console.templates=/usr/share/prometheus/consoles"
-      - "--web.enable-lifecycle"
-    environment:
-      - TZ=$TZ
+  # prometheus:
+  #   image: dhi.io/prometheus:3.8
+  #   container_name: prometheus
+  #   user: "0:0"
+  #   restart: unless-stopped
+  #   depends_on:
+  #     - speedtest
+  #   networks:
+  #     - backend
+  #   volumes:
+  #     - $JOHNCLOUD_ROOT/prometheus/:/etc/prometheus/
+  #     - $JOHNCLOUD_ROOT/prometheus/db:/prometheus
+  #     - /etc/timezone:/etc/timezone:ro
+  #     - /etc/localtime:/etc/localtime:ro
+  #   command:
+  #     - "--web.route-prefix=/"
+  #     - "--web.enable-remote-write-receiver"
+  #     - "--config.file=/etc/prometheus/prometheus.yml"
+  #     - "--storage.tsdb.path=/prometheus"
+  #     - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+  #     - "--web.console.templates=/usr/share/prometheus/consoles"
+  #     - "--web.enable-lifecycle"
+  #   environment:
+  #     - TZ=$TZ
 
   certdumper:
     image: ghcr.io/kereis/traefik-certs-dumper:latest
