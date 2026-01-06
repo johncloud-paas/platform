@@ -9,8 +9,8 @@ set -a; source .env; set +a
 )
 
 (
-    git pull &&
-    sudo docker compose pull &&
+    # git pull &&
+    # sudo docker compose pull &&
     sudo docker compose down &&
     sudo mkdir -p $JOHNCLOUD_ROOT/traefik/plugins $JOHNCLOUD_ROOT/traefik/conf.d $JOHNCLOUD_ROOT/loki/data $JOHNCLOUD_ROOT/alloy/geoip $JOHNCLOUD_ROOT/alloy/data $JOHNCLOUD_ROOT/prometheus/db &&
     sudo rm -rf $JOHNCLOUD_ROOT/prometheus/db &&
@@ -23,6 +23,7 @@ set -a; source .env; set +a
     sudo cp ./prometheus/* $JOHNCLOUD_ROOT/prometheus &&
     sudo docker compose up -d --remove-orphans &&
     sudo chown 65532:65532 -R $JOHNCLOUD_ROOT/traefik &&
+    sudo chmod 644 $JOHNCLOUD_ROOT/traefik/conf.d/* &&
     sudo chmod 755 $JOHNCLOUD_ROOT/traefik/plugins &&
     sudo chown 99:99 -R $JOHNCLOUD_ROOT/prometheus &&
     sudo chown 473:473 -R $JOHNCLOUD_ROOT/alloy &&

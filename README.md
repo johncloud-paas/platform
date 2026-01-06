@@ -42,3 +42,7 @@ https://blog.lrvt.de/configuring-crowdsec-with-traefik/
 Docker daemon version
 
 https://community.traefik.io/t/traefik-stops-working-it-uses-old-api-version-1-24/29019/10#p-61219-h-2-set-minimum-docker-api-version-3
+
+Initial setup for authentik :
+
+    $HOST/if/flow/initial-setup/

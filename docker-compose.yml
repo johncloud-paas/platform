@@ -253,6 +253,112 @@ services:
   #     - "homepage.href=https://portainer.$HOST/"
   #     - "homepage.description=Making Docker and Kubernetes management easy"
 
+  authentik_server:
+    image: 'ghcr.io/goauthentik/server:${AUTHENTIK_TAG:-2025.6.4}'
+    container_name: authentik_server
+    restart: unless-stopped
+    command: server
+    environment:
+      AUTHENTIK_REDIS__HOST: 'redis'
+      AUTHENTIK_POSTGRESQL__HOST: 'authentik_postgresql'
+      AUTHENTIK_POSTGRESQL__USER: '${AUTHENTIK_SERVICE_USER_POSTGRESQL}'
+      AUTHENTIK_POSTGRESQL__NAME: '${AUTHENTIK_POSTGRES_DB}'
+      AUTHENTIK_POSTGRESQL__PASSWORD: '${AUTHENTIK_PASSWORD_POSTGRESQL}'
+      AUTHENTIK_SECRET_KEY: '${AUTHENTIK_SERVICE_PASSWORD_64}'
+      AUTHENTIK_ERROR_REPORTING__ENABLED: true
+      AUTHENTIK_EMAIL__HOST: '${AUTHENTIK_EMAIL__HOST}'
+      AUTHENTIK_EMAIL__PORT: '${AUTHENTIK_EMAIL__PORT}'
+      AUTHENTIK_EMAIL__USERNAME: '${AUTHENTIK_EMAIL__USERNAME}'
+      AUTHENTIK_EMAIL__PASSWORD: '${AUTHENTIK_EMAIL__PASSWORD}'
+      AUTHENTIK_EMAIL__USE_TLS: '${AUTHENTIK_EMAIL__USE_TLS}'
+      AUTHENTIK_EMAIL__USE_SSL: '${AUTHENTIK_EMAIL__USE_SSL}'
+      AUTHENTIK_EMAIL__TIMEOUT: '${AUTHENTIK_EMAIL__TIMEOUT}'
+      AUTHENTIK_EMAIL__FROM: '${AUTHENTIK_EMAIL__FROM}'
+      SERVICE_USER_POSTGRESQL: '${AUTHENTIK_SERVICE_USER_POSTGRESQL}'
+      SERVICE_PASSWORD_POSTGRESQL: '${AUTHENTIK_PASSWORD_POSTGRESQL}'
+      SERVICE_PASSWORD_64_AUTHENTIKSERVER: '${AUTHENTIK_SERVICE_PASSWORD_64}'
+    volumes:
+      - '$JOHNCLOUD_ROOT/authentik/media:/media'
+      - '$JOHNCLOUD_ROOT/authentik/custom-templates:/templates'
+    depends_on:
+      - authentik_postgresql
+      - redis
+      - authentik_worker
+    networks:
+      # - backend
+      - frontend
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.authentik.entryPoints=websecure
+      - 'traefik.http.routers.authentik.rule=Host(`authentik.$HOST`) && PathPrefix(`/`)'
+      - traefik.http.routers.authentik.tls.certresolver=letsencrypt
+      - traefik.http.routers.authentik.tls=true
+      - traefik.http.services.authentik.loadbalancer.server.port=9000
+      - "homepage.group=Platform"
+      - "homepage.name=Authentik"
+      - "homepage.icon=authentik.png"
+      - "homepage.href=https://authentik.$HOST/if/admin/"
+      - "homepage.description=Identity provider prioritizing security and control of your most sensitive data"
+      
+  authentik_worker:
+    image: 'ghcr.io/goauthentik/server:${AUTHENTIK_TAG:-2025.6.4}'
+    restart: unless-stopped
+    command: worker
+    container_name: authentik_worker
+    environment:
+      AUTHENTIK_REDIS__HOST: 'redis'
+      AUTHENTIK_POSTGRESQL__HOST: 'authentik_postgresql'
+      AUTHENTIK_POSTGRESQL__USER: '${AUTHENTIK_SERVICE_USER_POSTGRESQL}'
+      AUTHENTIK_POSTGRESQL__NAME: '${AUTHENTIK_POSTGRES_DB}'
+      AUTHENTIK_POSTGRESQL__PASSWORD: '${AUTHENTIK_PASSWORD_POSTGRESQL}'
+      AUTHENTIK_SECRET_KEY: '${AUTHENTIK_SERVICE_PASSWORD_64}'
+      AUTHENTIK_ERROR_REPORTING__ENABLED: true
+      AUTHENTIK_EMAIL__HOST: '${AUTHENTIK_EMAIL__HOST}'
+      AUTHENTIK_EMAIL__PORT: '${AUTHENTIK_EMAIL__PORT}'
+      AUTHENTIK_EMAIL__USERNAME: '${AUTHENTIK_EMAIL__USERNAME}'
+      AUTHENTIK_EMAIL__PASSWORD: '${AUTHENTIK_EMAIL__PASSWORD}'
+      AUTHENTIK_EMAIL__USE_TLS: '${AUTHENTIK_EMAIL__USE_TLS}'
+      AUTHENTIK_EMAIL__USE_SSL: '${AUTHENTIK_EMAIL__USE_SSL}'
+      AUTHENTIK_EMAIL__TIMEOUT: '${AUTHENTIK_EMAIL__TIMEOUT}'
+      AUTHENTIK_EMAIL__FROM: '${AUTHENTIK_EMAIL__FROM}'
+      SERVICE_USER_POSTGRESQL: '${AUTHENTIK_SERVICE_USER_POSTGRESQL}'
+      SERVICE_PASSWORD_POSTGRESQL: '${AUTHENTIK_PASSWORD_POSTGRESQL}'
+      SERVICE_PASSWORD_64_AUTHENTIKSERVER: '${AUTHENTIK_SERVICE_PASSWORD_64}'
+    user: root
+    networks:
+      # - backend
+      - frontend
+    volumes:
+      - '$JOHNCLOUD_ROOT/authentik/media:/media'
+      - '$JOHNCLOUD_ROOT/authentik/certs:/certs'
+      - '$JOHNCLOUD_ROOT/authentik/custom-templates:/templates'
+    depends_on:
+      - authentik_postgresql
+      - redis
+    
+  authentik_postgresql:
+    image: 'postgres:16-alpine'
+    container_name: authentik_postgresql
+    restart: unless-stopped
+    # healthcheck:
+    #   test:
+    #     - CMD-SHELL
+    #     - 'pg_isready -d $${AUTHENTIK_POSTGRES_DB} -U $${POSTGRES_USER}'
+    #   interval: 2s
+    #   timeout: 10s
+    #   retries: 15
+    networks:
+      # - backend
+      - frontend
+    volumes:
+      - '$JOHNCLOUD_ROOT/authentik/db:/var/lib/postgresql/data'
+    environment:
+      POSTGRES_PASSWORD: '${AUTHENTIK_PASSWORD_POSTGRESQL}'
+      POSTGRES_USER: '${AUTHENTIK_SERVICE_USER_POSTGRESQL}'
+      POSTGRES_DB: ${AUTHENTIK_POSTGRES_DB}
+      SERVICE_PASSWORD_POSTGRESQL: '${AUTHENTIK_PASSWORD_POSTGRESQL}'
+      SERVICE_USER_POSTGRESQL: '${AUTHENTIK_SERVICE_USER_POSTGRESQL}'
+
   dockhand:
     image: fnsys/dockhand:latest
     restart: unless-stopped
