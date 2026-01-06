@@ -1,41 +1,7 @@
 services:
-  docker-socket-proxy-admin:
+  docker-socket-proxy:
     image: tecnativa/docker-socket-proxy
-    container_name: dockerproxy_admin
-    networks:
-      socket_admin:
-        ipv4_address: 172.16.238.101
-    privileged: true
-    environment:
-      LOG_LEVEL: info
-      # Core info & inspection
-      INFO: 1
-      VERSION: 1
-      EVENTS: 1
-      PING: 1
-      # Containers (read-only operations)
-      CONTAINERS: 1
-      # Images (list & inspect)
-      IMAGES: 1
-      # Volumes (list & inspect)
-      VOLUMES: 1
-      # Networks (list & inspect)
-      NETWORKS: 1
-      # Nodes & Swarm info (read-only)
-      NODES: 0
-      SERVICES: 0
-      TASKS: 0
-      # System-wide data
-      SYSTEM: 1
-      EXEC: 1
-      POST: 1
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /var/lib/docker:/var/lib/docker:ro
-      
-  docker-socket-proxy-ro:
-    image: tecnativa/docker-socket-proxy
-    container_name: dockerproxy_ro
+    container_name: dockerproxy
     networks:
       socket_ro:
         ipv4_address: 173.16.238.101
@@ -76,7 +42,7 @@ services:
       backend:
       socket_ro:
     depends_on:
-      - docker-socket-proxy-ro
+      - docker-socket-proxy
     ports:
       - "80:80"
       - "443:443"
@@ -106,6 +72,7 @@ services:
       - --providers.file.watch=true
       - --api.dashboard=true
       - --api.insecure=true
+      - --tracing=true
       - --accesslog=true
       - --accesslog.filepath=/logs/traefik.log
       - --accesslog.format=json
@@ -116,8 +83,6 @@ services:
       - --certificatesresolvers.letsencrypt.acme.email=$EMAIL_LETS_ENCRYPT
       - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
       - --certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web
-      - --experimental.plugins.traefik-api-token-middleware.modulename=github.com/Aetherinox/traefik-api-token-middleware
-      - --experimental.plugins.traefik-api-token-middleware.version=v0.1.4
     volumes:
       - $JOHNCLOUD_ROOT/traefik/conf.d:/conf.d
       - /var/log/traefik:/logs
@@ -174,7 +139,7 @@ services:
     depends_on:
       - loki
       - prometheus
-      - docker-socket-proxy-ro
+      - docker-socket-proxy
     networks:
       - backend
       - socket_ro
@@ -233,20 +198,73 @@ services:
       - $JOHNCLOUD_ROOT/traefik/letsencrypt:/traefik:ro
       - $JOHNCLOUD_ROOT/traefik/certs:/output
 
+  # arcane:
+  #   image: ghcr.io/getarcaneapp/arcane:latest
+  #   container_name: arcane
+  #   volumes:
+  #     - /var/run/docker.sock:/var/run/docker.sock
+  #     - $JOHNCLOUD_ROOT/arcane/data:/app/data
+  #     - /opt/docker:/opt/docker
+  #   environment:
+  #     - APP_URL=https://arcane.$HOST
+  #     - PUID=1000
+  #     - PGID=1000
+  #     - ENCRYPTION_KEY=$ARCANE_ENCRYPTION_KEY
+  #     - JWT_SECRET=$ARCANE_JWT_SECRET
+  #   restart: unless-stopped
+  #   networks:
+  #     frontend:
+  #       ipv4_address: $UNIVERSE_NET.102
+  #   labels:
+  #     - "traefik.enable=true"
+  #     - "traefik.http.routers.arcane.rule=Host(`arcane.$HOST`)"
+  #     - "traefik.http.routers.arcane.entrypoints=websecure"
+  #     - "traefik.http.routers.arcane.tls.certresolver=letsencrypt"
+  #     - "traefik.http.services.arcane.loadbalancer.server.port=3552"
+  #     - "homepage.group=Arcane"
+  #     - "homepage.name=Portainer"
+  #     - "homepage.icon=arcane.svg"
+  #     - "homepage.href=https://arcane.$HOST/"
+  #     - "homepage.description=Modern Docker Management, Designed for Everyone"
+
+  # portainer:
+  #   image: portainer/portainer-ee:latest
+  #   container_name: portainer
+  #   restart: unless-stopped
+  #   depends_on:
+  #     - traefik
+  #   volumes:
+  #     - /etc/timezone:/etc/timezone:ro
+  #     - /etc/localtime:/etc/localtime:ro
+  #     - $JOHNCLOUD_ROOT/portainer/data:/data
+  #     - /var/run/docker.sock:/var/run/docker.sock
+  #   networks:
+  #     frontend:
+  #       ipv4_address: $UNIVERSE_NET.102
+  #   labels:
+  #     - "traefik.enable=true"
+  #     - "traefik.http.routers.portainer.rule=Host(`portainer.$HOST`)"
+  #     - "traefik.http.routers.portainer.entrypoints=websecure"
+  #     - "traefik.http.routers.portainer.tls.certresolver=letsencrypt"
+  #     - "traefik.http.services.portainer.loadbalancer.server.port=9000"
+  #     - "homepage.group=Platform"
+  #     - "homepage.name=Portainer"
+  #     - "homepage.icon=portainer.svg"
+  #     - "homepage.href=https://portainer.$HOST/"
+  #     - "homepage.description=Making Docker and Kubernetes management easy"
+
   dockhand:
     image: fnsys/dockhand:latest
     restart: unless-stopped
     container_name: dockhand
     depends_on:
       - traefik
-      - docker-socket-proxy-admin
     networks:
-      backend:
-      socket_admin:
       frontend:
         ipv4_address: $UNIVERSE_NET.102
     volumes:
       - $JOHNCLOUD_ROOT/dockhand/data:/app/data
+      - /var/run/docker.sock:/var/run/docker.sock
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.dockhand.rule=Host(`dockhand.$HOST`)"
@@ -278,7 +296,7 @@ services:
       - HOMEPAGE_ALLOWED_HOSTS=home.$HOST
     depends_on:
       - traefik
-      - docker-socket-proxy-ro
+      - docker-socket-proxy
     networks:
       - frontend
       - backend
@@ -292,22 +310,30 @@ services:
         - "traefik.http.routers.homepage.tls.certresolver=letsencrypt"
         - "traefik.http.routers.homepage.middlewares=authentik@file"
 
+  tailscale:
+    image: tailscale/tailscale:latest
+    container_name: tailscale
+    environment:
+      - TS_AUTHKEY=$TS_AUTHKEY
+      - TS_STATE_DIR=/var/lib/tailscale
+      - TS_USERSPACE=false
+      - TS_HOSTNAME=$TS_HOSTNAME
+      - TS_ROUTES=$UNIVERSE_NET.0/24
+    networks:
+      - frontend
+    volumes:
+      - $JOHNCLOUD_ROOT/tailscale:/var/lib/tailscale
+      - /dev/net/tun:/dev/net/tun
+    cap_add:
+      - NET_ADMIN
+    restart: unless-stopped
+
 networks:
   frontend:
     external: true
     name: $TRAEFIK_NETWORK
   backend:
     driver: bridge
-  socket_admin:
-    driver: bridge
-    ipam:
-      driver: default
-      config:
-        - subnet: "172.16.238.0/24"
   socket_ro:
-    driver: bridge
-    ipam:
-      driver: default
-      config:
-        - subnet: "173.16.238.0/24"
-        
+    external: true
+    name: $PROXY_NETWORK

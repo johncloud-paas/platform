@@ -6,9 +6,10 @@ https://hub.docker.com/r/wallarm/gotestwaf#quick-start-with-docker
 
 Google OAuth setup: https://www.libe.net/en-traefik-auth
 
-First create the network:
+First create the networks:
 
     sudo docker network create -d bridge --subnet=192.168.203.0/24 traefik-proxy 
+    sudo docker network create -d bridge --subnet=173.16.238.0/24 johncloud-docker-proxy
 
 Define the root data folder in a .env file, 
 

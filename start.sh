@@ -21,7 +21,7 @@ set -a; source .env; set +a
     sudo cp ./alloy/* $JOHNCLOUD_ROOT/alloy &&
     sudo mv ./GeoLite2-City.mmdb $JOHNCLOUD_ROOT/alloy/geoip &&
     sudo cp ./prometheus/* $JOHNCLOUD_ROOT/prometheus &&
-    sudo docker compose up -d --remove-orphans --force-recreate &&
+    sudo docker compose up -d --remove-orphans &&
     sudo chown 65532:65532 -R $JOHNCLOUD_ROOT/traefik &&
     sudo chmod 755 $JOHNCLOUD_ROOT/traefik/plugins &&
     sudo chown 99:99 -R $JOHNCLOUD_ROOT/prometheus &&
