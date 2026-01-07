@@ -12,6 +12,10 @@ set -a; source .env; set +a
     git pull &&
     sudo docker compose pull &&
     sudo docker compose down &&
+    sudo docker network rm $RAEFIK_NETWORK $PROXY_NETWORK $TAILSCALE_NETWORK &&
+    sudo docker network create -d bridge --subnet=$UNIVERSE_NET.0/24 $TRAEFIK_NETWORK &&
+    sudo docker network create -d bridge --subnet=$PROXY_NET.0/24 $PROXY_NETWORK &&
+    sudo docker network create -d bridge --subnet=$TAILSCALE_NET.0/24 $TAILSCALE_NETWORK &&
     sudo mkdir -p $JOHNCLOUD_ROOT/traefik/plugins $JOHNCLOUD_ROOT/traefik/conf.d $JOHNCLOUD_ROOT/alloy/geoip $JOHNCLOUD_ROOT/alloy/data &&
     sudo rm -rf $JOHNCLOUD_ROOT/alloy/data &&
     sudo cp ./traefik/* $JOHNCLOUD_ROOT/traefik/conf.d &&

@@ -38,9 +38,10 @@ services:
     container_name: traefik
     networks:
       frontend:
-        ipv4_address: $UNIVERSE_NET.100
       backend:
       socket_ro:
+      tailscale:
+        ipv4_address: $TAILSCALE_NET.100
     depends_on:
       - docker-socket-proxy
     ports:
@@ -62,9 +63,9 @@ services:
       - --entrypoints.websecure.http.tls.domains.main=$HOST
       - --entrypoints.websecure.http.tls.domains.sans=*.$HOST
       - --entrypoints.websecure.http.middlewares=default@file
-      - --entrypoints.websecure.forwardedHeaders.trustedIPs=$UNIVERSE_NET.0/24
+      - --entrypoints.websecure.forwardedHeaders.trustedIPs=$TRAEFIK_NET.0/24
       - --entrypoints.websecure.proxyprotocol=true
-      - --entrypoints.websecure.proxyprotocol.trustedips=$UNIVERSE_NET.0/24
+      - --entrypoints.websecure.proxyprotocol.trustedips=$TRAEFIK_NET.0/24
       - --providers.docker=true
       - --providers.docker.endpoint=http://173.16.238.101:2375
       - --providers.docker.exposedByDefault=false
@@ -89,19 +90,20 @@ services:
       - $JOHNCLOUD_ROOT/traefik/letsencrypt:/letsencrypt
       - $JOHNCLOUD_ROOT/traefik/plugins:/plugins-storage
     labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.traefik.rule=Host(`traefik.$HOST`)"
-      - "traefik.http.routers.traefik.service=api@internal"
-      - "traefik.http.routers.traefik.entrypoints=websecure"
-      - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.traefik.middlewares=authentik@file"
+      # - "traefik.enable=true"
+      # - "traefik.http.routers.traefik.rule=Host(`traefik.$HOST`)"
+      # - "traefik.http.routers.traefik.service=api@internal"
+      # - "traefik.http.routers.traefik.entrypoints=websecure"
+      # - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
+      # - "traefik.http.routers.traefik.middlewares=authentik@file"
       - "homepage.group=Platform"
       - "homepage.name=Traefik"
       - "homepage.icon=traefik.svg"
-      - "homepage.href=https://traefik.$HOST/dashboard/"
+      - "homepage.href=http://$TAILSCALE_NET.100:8080/dashboard/"
+      # - "homepage.href=https://traefik.$HOST/dashboard/"
       - "homepage.description=Traefik reverse proxy"
       - "homepage.widget.type=traefik"
-      - "homepage.widget.url=http://$UNIVERSE_NET.100:8080"
+      - "homepage.widget.url=http://$TAILSCALE_NET.100:8080"
   
   pdc:
     # https://grafana.com/docs/grafana-cloud/connect-externally-hosted/private-data-source-connect/#private-data-source-connect-pdc-concepts
@@ -140,8 +142,10 @@ services:
       - docker-socket-proxy
       - pdc
     networks:
-      - backend
-      - socket_ro
+      tailscale:
+        ipv4_address: $TAILSCALE_NET.110
+      backend:
+      socket_ro:
     volumes:
       - $JOHNCLOUD_ROOT/alloy/config.alloy:/etc/alloy/config.alloy
       - $JOHNCLOUD_ROOT/alloy/data:/var/lib/alloy/data
@@ -157,17 +161,18 @@ services:
       # - /var/lib/docker:/var/lib/docker:ro
     command: 'run --server.http.listen-addr=0.0.0.0:12345 --storage.path=/var/lib/alloy/data /etc/alloy/config.alloy'
     labels:
-      - traefik.enable=true
-      - traefik.http.routers.alloy.entryPoints=websecure
-      - traefik.http.routers.alloy.rule=Host(`alloy.$HOST`)
-      - traefik.http.routers.alloy.tls.certresolver=letsencrypt
-      - traefik.http.routers.alloy.tls=true
-      - traefik.http.services.alloy.loadbalancer.server.port=12345
-      - "traefik.http.routers.alloy.middlewares=authentik@file"
+      # - traefik.enable=true
+      # - traefik.http.routers.alloy.entrypoints=websecure
+      # - traefik.http.routers.alloy.rule=Host(`alloy.$HOST`)
+      # - traefik.http.routers.alloy.tls.certresolver=letsencrypt
+      # - traefik.http.routers.alloy.tls=true
+      # - traefik.http.services.alloy.loadbalancer.server.port=12345
+      # - "traefik.http.routers.alloy.middlewares=authentik@file"
       - "homepage.group=Platform"
       - "homepage.name=Alloy"
       - "homepage.icon=alloy.png"
-      - "homepage.href=https://alloy.$HOST"
+      - "homepage.href=http://$TAILSCALE_NET.110:12345"
+      # - "homepage.href=https://alloy.$HOST"
       - "homepage.description=Flexible, high performance, vendor-neutral distribution of the OpenTelemetry Collector"
 
   speedtest:
@@ -228,7 +233,7 @@ services:
   #     - /var/run/docker.sock:/var/run/docker.sock
   #   networks:
   #     frontend:
-  #       ipv4_address: $UNIVERSE_NET.102
+  #       ipv4_address: $TRAEFIK_NET.102
   #   labels:
   #     - "traefik.enable=true"
   #     - "traefik.http.routers.portainer.rule=Host(`portainer.$HOST`)"
@@ -354,21 +359,22 @@ services:
     depends_on:
       - traefik
     networks:
-      frontend:
-        ipv4_address: $UNIVERSE_NET.102
+      tailscale:
+        ipv4_address: $TAILSCALE_NET.102
     volumes:
       - $JOHNCLOUD_ROOT/dockhand/data:/app/data
       - /var/run/docker.sock:/var/run/docker.sock
     labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.dockhand.rule=Host(`dockhand.$HOST`)"
-      - "traefik.http.routers.dockhand.entrypoints=websecure"
-      - "traefik.http.routers.dockhand.tls.certresolver=letsencrypt"
-      - traefik.http.services.dockhand.loadbalancer.server.port=3000
+      # - "traefik.enable=true"
+      # - "traefik.http.routers.dockhand.rule=Host(`dockhand.$HOST`)"
+      # - "traefik.http.routers.dockhand.entrypoints=websecure"
+      # - "traefik.http.routers.dockhand.tls.certresolver=letsencrypt"
+      # - traefik.http.services.dockhand.loadbalancer.server.port=3000
       - "homepage.group=Platform"
       - "homepage.name=Dockhand"
       - "homepage.icon=https://dockhand.pro/images/logo-dark.webp"
-      - "homepage.href=https://dockhand.$HOST"
+      - "homepage.href=http://$TAILSCALE_NET.102:3000"
+      # - "homepage.href=https://dockhand.$HOST"
       - "homepage.description=Modern Docker management for everyone"
 
   redis:
@@ -393,8 +399,8 @@ services:
       - docker-socket-proxy
     networks:
       - frontend
-      - backend
       - socket_ro
+      - tailscale
     volumes:
       - $JOHNCLOUD_ROOT/homepage/config:/app/config # Make sure your local config directory exists
     labels:
@@ -412,9 +418,9 @@ services:
       - TS_STATE_DIR=/var/lib/tailscale
       - TS_USERSPACE=false
       - TS_HOSTNAME=$TS_HOSTNAME
-      - TS_ROUTES=$UNIVERSE_NET.0/24
+      - TS_ROUTES=$TAILSCALE_NET.0/24
     networks:
-      - frontend
+      tailscale:
     volumes:
       - $JOHNCLOUD_ROOT/tailscale:/var/lib/tailscale
       - /dev/net/tun:/dev/net/tun
@@ -431,3 +437,7 @@ networks:
   socket_ro:
     external: true
     name: $PROXY_NETWORK
+  tailscale:
+    external: true
+    name: $TAILSCALE_NETWORK
+    

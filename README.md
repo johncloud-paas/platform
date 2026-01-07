@@ -10,6 +10,7 @@ First create the networks:
 
     sudo docker network create -d bridge --subnet=192.168.203.0/24 traefik-proxy 
     sudo docker network create -d bridge --subnet=173.16.238.0/24 hippias-docker-proxy
+    sudo docker network create -d bridge --subnet=11.16.238.0/24 hippias-tailscale
 
 Define the root data folder in a .env file, 
 
