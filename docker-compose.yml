@@ -335,7 +335,7 @@ services:
       - redis
     
   authentik_postgresql:
-    image: postgres:15.15-trixie
+    image: postgres:16-trixie
     container_name: authentik_postgresql
     restart: unless-stopped
     # healthcheck:
