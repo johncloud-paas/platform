@@ -34,7 +34,7 @@ services:
       - /var/lib/docker:/var/lib/docker:ro
 
   traefik:
-    image: dhi.io/traefik:3
+    image: traefik:v3
     container_name: traefik
     networks:
       frontend:
@@ -133,7 +133,7 @@ services:
   #     - "traefik.enable=false"
     
   alloy:
-    image: dhi.io/alloy:1
+    image: grafana/alloy
     restart: unless-stopped
     container_name: alloy
     depends_on:
@@ -335,7 +335,7 @@ services:
       - redis
     
   authentik_postgresql:
-    image: dhi.io/postgres:18-alpine3.22
+    image: postgres:15.15-trixie
     container_name: authentik_postgresql
     restart: unless-stopped
     # healthcheck:
@@ -382,7 +382,7 @@ services:
       - "homepage.description=Modern Docker management for everyone"
 
   redis:
-    image: dhi.io/redis:8
+    image: redis:8
     container_name: redis
     environment:
       - TZ=$TZ
@@ -415,7 +415,7 @@ services:
         - "traefik.http.routers.homepage.middlewares=authentik@file"
 
   tailscale:
-    image: dhi.io/tailscale:1
+    image: tailscale/tailscale
     container_name: tailscale
     environment:
       - TS_AUTHKEY=$TS_AUTHKEY
