@@ -197,7 +197,7 @@ services:
       # - "traefik.http.routers.speedtest.middlewares=authentik@file"
       - "homepage.group=Platform"
       - "homepage.name=Speedtest"
-      - "homepage.icon=speedtest.png"
+      - "homepage.icon=si-speedtest"
       - "homepage.href=http://$TAILSCALE_NET.120:9090"
       - "homepage.description=Monitor the performance and uptime of your internet connection"
 
