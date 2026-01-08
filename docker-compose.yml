@@ -176,11 +176,30 @@ services:
       - "homepage.description=Flexible, high performance, vendor-neutral distribution of the OpenTelemetry Collector"
 
   speedtest:
-    image: jraviles/prometheus_speedtest:latest
+    image: kutovoys/speedtest-exporter
     container_name: speedtest
     restart: unless-stopped
+    environment:
+        - UPDATE_INTERVAL=60
+    volumes:
+        - $JOHNCLOUD_ROOT/speedtest/data:/config
     networks:
-      - backend
+      backend:
+      tailscale:
+        ipv4_address: $TAILSCALE_NET.120
+    labels:
+      # - traefik.enable=true
+      # - traefik.http.routers.speedtest.entrypoints=websecure
+      # - traefik.http.routers.speedtest.rule=Host(`speedtest.$HOST`)
+      # - traefik.http.routers.speedtest.tls.certresolver=letsencrypt
+      # - traefik.http.routers.speedtest.tls=true
+      # - traefik.http.services.speedtest.loadbalancer.server.port=80
+      # - "traefik.http.routers.speedtest.middlewares=authentik@file"
+      - "homepage.group=Platform"
+      - "homepage.name=Speedtest"
+      - "homepage.icon=speedtest.png"
+      - "homepage.href=http://$TAILSCALE_NET.120:9090"
+      - "homepage.description=Monitor the performance and uptime of your internet connection"
 
   prometheus:
     image: ubuntu/prometheus
@@ -292,7 +311,11 @@ services:
       - "homepage.icon=authentik.png"
       - "homepage.href=https://authentik.$HOST/if/admin/"
       - "homepage.description=Identity provider prioritizing security and control of your most sensitive data"
-      
+      - "homepage.widget.type=authentik"
+      - "homepage.widget.url=https://authentik.$HOST"
+      - "homepage.widget.key=Q7FrrGla28NyTY4rlS0SZJgjQRvI0ptZETawwrcqESRpkcMmKxeBT2mpdY41"
+      - "homepage.widget.version=2"
+
   authentik_worker:
     image: 'ghcr.io/goauthentik/server:${AUTHENTIK_TAG:-2025.6.4}'
     restart: unless-stopped

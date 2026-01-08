@@ -6,9 +6,9 @@ rule_files:
   - 'alert.rules'
 
 scrape_configs:
-  - job_name: "speedtest"
-    scrape_interval: 60m
-    metrics_path: /probe
+  - job_name: 'speedtest'
     static_configs:
-      - targets: ["speedtest:9516"]
-      
+      - targets: ["speedtest:9090"]
+    scrape_interval: 60m
+    metrics_path: /metrics
+  
