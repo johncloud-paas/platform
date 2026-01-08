@@ -313,7 +313,7 @@ services:
       - "homepage.description=Identity provider prioritizing security and control of your most sensitive data"
       - "homepage.widget.type=authentik"
       - "homepage.widget.url=https://authentik.$HOST"
-      - "homepage.widget.key=Q7FrrGla28NyTY4rlS0SZJgjQRvI0ptZETawwrcqESRpkcMmKxeBT2mpdY41"
+      - "homepage.widget.key=$AUTHENTIK_KEY"
       - "homepage.widget.version=2"
 
   authentik_worker:
