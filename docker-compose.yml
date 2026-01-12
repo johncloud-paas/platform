@@ -160,20 +160,20 @@ services:
       # - /var/run/docker.sock:/var/run/docker.sock:ro
       # - /var/lib/docker:/var/lib/docker:ro
     command: 'run --server.http.listen-addr=0.0.0.0:12345 --storage.path=/var/lib/alloy/data /etc/alloy/config.alloy'
-    labels:
-      # - traefik.enable=true
-      # - traefik.http.routers.alloy.entrypoints=websecure
-      # - traefik.http.routers.alloy.rule=Host(`alloy.$HOST`)
-      # - traefik.http.routers.alloy.tls.certresolver=letsencrypt
-      # - traefik.http.routers.alloy.tls=true
-      # - traefik.http.services.alloy.loadbalancer.server.port=12345
-      # - "traefik.http.routers.alloy.middlewares=authentik@file"
-      - "homepage.group=Platform"
-      - "homepage.name=Alloy"
-      - "homepage.icon=alloy.png"
-      - "homepage.href=http://$TAILSCALE_NET.110:12345"
-      # - "homepage.href=https://alloy.$HOST"
-      - "homepage.description=Flexible, high performance, vendor-neutral distribution of the OpenTelemetry Collector"
+    # labels:
+    #   # - traefik.enable=true
+    #   # - traefik.http.routers.alloy.entrypoints=websecure
+    #   # - traefik.http.routers.alloy.rule=Host(`alloy.$HOST`)
+    #   # - traefik.http.routers.alloy.tls.certresolver=letsencrypt
+    #   # - traefik.http.routers.alloy.tls=true
+    #   # - traefik.http.services.alloy.loadbalancer.server.port=12345
+    #   # - "traefik.http.routers.alloy.middlewares=authentik@file"
+    #   - "homepage.group=Platform"
+    #   - "homepage.name=Alloy"
+    #   - "homepage.icon=alloy.png"
+    #   - "homepage.href=http://$TAILSCALE_NET.110:12345"
+    #   # - "homepage.href=https://alloy.$HOST"
+    #   - "homepage.description=Flexible, high performance, vendor-neutral distribution of the OpenTelemetry Collector"
 
   speedtest:
     image: kutovoys/speedtest-exporter
@@ -187,19 +187,19 @@ services:
       backend:
       tailscale:
         ipv4_address: $TAILSCALE_NET.120
-    labels:
-      # - traefik.enable=true
-      # - traefik.http.routers.speedtest.entrypoints=websecure
-      # - traefik.http.routers.speedtest.rule=Host(`speedtest.$HOST`)
-      # - traefik.http.routers.speedtest.tls.certresolver=letsencrypt
-      # - traefik.http.routers.speedtest.tls=true
-      # - traefik.http.services.speedtest.loadbalancer.server.port=80
-      # - "traefik.http.routers.speedtest.middlewares=authentik@file"
-      - "homepage.group=Platform"
-      - "homepage.name=Speedtest"
-      - "homepage.icon=si-speedtest"
-      - "homepage.href=http://$TAILSCALE_NET.120:9090"
-      - "homepage.description=Monitor the performance and uptime of your internet connection"
+    # labels:
+    #   # - traefik.enable=true
+    #   # - traefik.http.routers.speedtest.entrypoints=websecure
+    #   # - traefik.http.routers.speedtest.rule=Host(`speedtest.$HOST`)
+    #   # - traefik.http.routers.speedtest.tls.certresolver=letsencrypt
+    #   # - traefik.http.routers.speedtest.tls=true
+    #   # - traefik.http.services.speedtest.loadbalancer.server.port=9090
+    #   # - "traefik.http.routers.speedtest.middlewares=authentik@file"
+    #   - "homepage.group=Platform"
+    #   - "homepage.name=Speedtest"
+    #   - "homepage.icon=si-speedtest"
+    #   - "homepage.href=http://$TAILSCALE_NET.120:9090"
+    #   - "homepage.description=Monitor the performance and uptime of your internet connection"
 
   prometheus:
     image: ubuntu/prometheus
