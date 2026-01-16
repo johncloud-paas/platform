@@ -190,6 +190,33 @@ services:
       - "homepage.href=http://$TAILSCALE_NET.111:3000/dashboard"
       - "homepage.description=Traefik Log Dashboard"
 
+  atlas:
+    image: keinstien/atlas:latest
+    cap_add:
+    - NET_RAW
+    - NET_ADMIN
+    networks:
+      frontend:
+      backend:
+      socket_ro:
+      tailscale:
+        ipv4_address: $TAILSCALE_NET.121
+    environment:
+      - ATLAS_UI_PORT=8884
+      - ATLAS_API_PORT=8885
+      - FASTSCAN_INTERVAL=3600
+      - DOCKERSCAN_INTERVAL=3600
+      - DEEPSCAN_INTERVAL=7200
+      - SCAN_SUBNETS="$TRAEFIK_NET.0/24,$PROXY_NET.0/24,$TAILSCALE_NET.0/24"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    labels:
+      - "homepage.group=Platform"
+      - "homepage.name=Atlas"
+      - "homepage.icon=atlas.svg"
+      - "homepage.href=http://$TAILSCALE_NET.121:8884"
+      - "homepage.description=Open-source tool for network discovery, visualization, and monitoring. Built with Go, FastAPI, and React, supports Docker host scanning."
+  
   pdc:
     # https://grafana.com/docs/grafana-cloud/connect-externally-hosted/private-data-source-connect/#private-data-source-connect-pdc-concepts
     image: grafana/pdc-agent:latest
