@@ -499,25 +499,24 @@ services:
     restart: unless-stopped
     container_name: dockhand
     user: 0:0
-    depends_on:
-      - traefik
     networks:
-      tailscale:
-        ipv4_address: $TAILSCALE_NET.102
+      # tailscale:
+      #   ipv4_address: $TAILSCALE_NET.102
+      frontend:
     volumes:
       - $JOHNCLOUD_ROOT/dockhand/data:/app/data
       - /var/run/docker.sock:/var/run/docker.sock
     labels:
-      # - "traefik.enable=true"
-      # - "traefik.http.routers.dockhand.rule=Host(`dockhand.$HOST`)"
-      # - "traefik.http.routers.dockhand.entrypoints=websecure"
-      # - "traefik.http.routers.dockhand.tls.certresolver=letsencrypt"
-      # - traefik.http.services.dockhand.loadbalancer.server.port=3000
+      - "traefik.enable=true"
+      - "traefik.http.routers.dockhand.rule=Host(`dockhand.$HOST`)"
+      - "traefik.http.routers.dockhand.entrypoints=websecure"
+      - "traefik.http.routers.dockhand.tls.certresolver=letsencrypt"
+      - "traefik.http.services.dockhand.loadbalancer.server.port=3000"
       - "homepage.group=Platform"
       - "homepage.name=Dockhand"
       - "homepage.icon=https://dockhand.pro/images/logo-dark.webp"
-      - "homepage.href=http://$TAILSCALE_NET.102:3000"
-      # - "homepage.href=https://dockhand.$HOST"
+      # - "homepage.href=http://$TAILSCALE_NET.102:3000"
+      - "homepage.href=https://dockhand.$HOST"
       - "homepage.description=Modern Docker management for everyone"
 
   redis:
