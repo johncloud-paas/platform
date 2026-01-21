@@ -23,7 +23,7 @@ services:
       - database
       - frontend
     depends_on:
-      portabase-pg:
+      portabase_pg:
         condition: service_healthy
     environment:
       - PORT=8887
@@ -33,9 +33,9 @@ services:
       - POSTGRES_DB=portabase
       - POSTGRES_USER=portabase
       - POSTGRES_PASSWORD=$POSTGRES_PASSWORD
-      - POSTGRES_HOST=portabase-pg
+      - POSTGRES_HOST=portabase_pg
       - PG_PORT=5432
-      - DATABASE_URL=postgresql://portabase:$POSTGRES_PASSWORD@portabase-pg:5432/portabase?schema=public
+      - DATABASE_URL=postgresql://portabase:$POSTGRES_PASSWORD@portabase_pg:5432/portabase?schema=public
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.portabase.entryPoints=websecure"
@@ -49,7 +49,7 @@ services:
       - "homepage.href=https://portabase.$HOST/"
       - "homepage.description=PostgreSQL backup tool with MySQL and MongoDB support"
   
-  portabase-pg:
+  portabase_pg:
     image: postgres:17-alpine
     restart: unless-stopped
     volumes:
