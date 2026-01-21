@@ -1,0 +1,258 @@
+services:
+  traefik-agent:
+    image: hhftechnology/traefik-log-dashboard-agent:dev-dashboard
+    container_name: traefik-agent
+    restart: unless-stopped
+    user: "1001:1001"
+    # ports:
+    #   - "5000:5000"
+    volumes:
+      - $JOHNCLOUD_ROOT/traefik/agent/positions:/data
+      - /var/log/traefik:/logs:ro
+    environment:
+      # Log Paths
+      - TRAEFIK_LOG_DASHBOARD_ACCESS_PATH=/logs/access.log
+      - TRAEFIK_LOG_DASHBOARD_ERROR_PATH=/logs/access.log
+
+      # Authentication - REPLACE WITH YOUR TOKEN
+      - TRAEFIK_LOG_DASHBOARD_AUTH_TOKEN=$TRAEFIK_LOG_DASHBOARD_AUTH_TOKEN
+
+      # System Monitoring
+      - TRAEFIK_LOG_DASHBOARD_SYSTEM_MONITORING=true
+
+      # REFACTOR: GeoIP removed - Dashboard handles GeoIP locally
+
+      # Log Format
+      - TRAEFIK_LOG_DASHBOARD_LOG_FORMAT=json
+
+      # Server Port
+      - PORT=5000
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000/api/logs/status"]
+      interval: 2m  # PERFORMANCE FIX: Increased from 30s to 2min to reduce load
+      timeout: 10s
+      retries: 3
+      start_period: 30s  # Increased to allow agent to fully start
+    networks:
+      backend:
+
+  # Traefik Log Dashboard - Next.js web UI
+  traefik-dashboard:
+    image: hhftechnology/traefik-log-dashboard:dev-dashboard
+    container_name: traefik-dashboard
+    restart: unless-stopped
+    user: "1001:1001"
+    # ports:
+    #   - "3000:3000"
+    volumes:
+      - $JOHNCLOUD_ROOT/traefik/dashboard:/app/data
+    environment:
+      # Agent Configuration - REPLACE WITH YOUR TOKEN
+      - AGENT_API_URL=http://traefik-agent:5000
+      - AGENT_API_TOKEN=$TRAEFIK_LOG_DASHBOARD_AUTH_TOKEN
+      - AGENT_NAME=$PLATFORM_NAME
+
+      # Node Environment
+      - NODE_ENV=production
+      - PORT=3000
+
+      # Display Configuration
+      - NEXT_PUBLIC_SHOW_DEMO_PAGE=true
+      - NEXT_PUBLIC_MAX_LOGS_DISPLAY=500
+
+      # GeoIP: Auto-downloaded by geolite2-redist, no config needed
+    depends_on:
+      traefik-agent:
+        condition: service_healthy
+    networks:
+      frontend:
+      backend:
+      socket_ro:
+      tailscale:
+        ipv4_address: $TAILSCALE_NET.111
+    labels:
+      # - "traefik.enable=true"
+      # - "traefik.http.routers.traefik-logs.rule=Host(`traefik-logs.$HOST`)"
+      # - "traefik.http.routers.traefik-logs.service=api@internal"
+      # - "traefik.http.routers.traefik-logs.entrypoints=websecure"
+      # - "traefik.http.routers.traefik-logs.tls.certresolver=letsencrypt"
+      # - "traefik.http.routers.traefik-logs.middlewares=authentik@file"
+      - "homepage.group=Platform"
+      - "homepage.name=Traefik Logs Dashboard"
+      - "homepage.icon=traefik.svg"
+      - "homepage.href=http://$TAILSCALE_NET.111:3000/dashboard"
+      - "homepage.description=Traefik Log Dashboard"
+
+  atlas:
+    image: keinstien/atlas:latest
+    cap_add:
+    - NET_RAW
+    - NET_ADMIN
+    networks:
+      frontend:
+      backend:
+      socket_ro:
+      tailscale:
+        ipv4_address: $TAILSCALE_NET.121
+    environment:
+      - ATLAS_UI_PORT=8884
+      - ATLAS_API_PORT=8885
+      - FASTSCAN_INTERVAL=3600
+      - DOCKERSCAN_INTERVAL=3600
+      - DEEPSCAN_INTERVAL=7200
+      - SCAN_SUBNETS="$TRAEFIK_NET.0/24,$PROXY_NET.0/24,$TAILSCALE_NET.0/24"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    labels:
+      # - "traefik.enable=true"
+      # - "traefik.http.routers.atlas.rule=Host(`atlas.$HOST`)"
+      # - "traefik.http.routers.atlas.service=api@internal"
+      # - "traefik.http.routers.atlas.entrypoints=websecure"
+      # - traefik.http.services.atlas.loadbalancer.server.port=8884
+      # - "traefik.http.routers.atlas.tls.certresolver=letsencrypt"
+      # - "traefik.http.routers.atlas.middlewares=authentik@file"
+      - "homepage.group=Platform"
+      - "homepage.name=Atlas"
+      - "homepage.icon=mdi-web"
+      - "homepage.href=http://$TAILSCALE_NET.121:8884"
+      - "homepage.description=Network discovery, visualization, and monitoring"
+  
+  pdc:
+    # https://grafana.com/docs/grafana-cloud/connect-externally-hosted/private-data-source-connect/#private-data-source-connect-pdc-concepts
+    image: grafana/pdc-agent:latest
+    container_name: pdc
+    restart: unless-stopped
+    networks:
+      - backend
+    depends_on:
+      - prometheus
+      - loki
+    command: ["-token","$GRAFANA_PDC_TOKEN","-cluster","$GRAFANA_PDC_CLUSTER","-gcloud-hosted-grafana-id","$GRAFANA_PDC_GCP_ID"]
+    labels:
+      - "traefik.enable=false"
+
+  loki:
+    image: grafana/loki
+    container_name: loki
+    user: "0:0"
+    networks:
+      - backend
+      - database
+    volumes:
+      - $JOHNCLOUD_ROOT/loki/data:/loki
+      - $JOHNCLOUD_ROOT/loki:/etc/loki-custom
+    command: -config.file=/etc/loki-custom/config.yml
+    environment:
+      - TZ=$TZ
+    labels:
+      - "traefik.enable=false"
+    
+  alloy:
+    image: grafana/alloy
+    restart: unless-stopped
+    container_name: alloy
+    depends_on:
+      - docker-socket-proxy
+      - pdc
+    networks:
+      tailscale:
+        ipv4_address: $TAILSCALE_NET.110
+      backend:
+      socket_ro:
+    volumes:
+      - $JOHNCLOUD_ROOT/alloy/config.alloy:/etc/alloy/config.alloy
+      - $JOHNCLOUD_ROOT/alloy/data:/var/lib/alloy/data
+      - $JOHNCLOUD_ROOT/alloy/geoip:/geoip:ro
+      - /var/log:/var/log:ro
+      - /var/log/snort:/var/log/snort:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /:/rootfs:ro,rslave
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /proc:/proc:ro
+      # - /var/run/docker.sock:/var/run/docker.sock:ro
+      # - /var/lib/docker:/var/lib/docker:ro
+    command: 'run --server.http.listen-addr=0.0.0.0:12345 --storage.path=/var/lib/alloy/data /etc/alloy/config.alloy'
+    # labels:
+    #   # - traefik.enable=true
+    #   # - traefik.http.routers.alloy.entrypoints=websecure
+    #   # - traefik.http.routers.alloy.rule=Host(`alloy.$HOST`)
+    #   # - traefik.http.routers.alloy.tls.certresolver=letsencrypt
+    #   # - traefik.http.routers.alloy.tls=true
+    #   # - traefik.http.services.alloy.loadbalancer.server.port=12345
+    #   # - "traefik.http.routers.alloy.middlewares=authentik@file"
+    #   - "homepage.group=Platform"
+    #   - "homepage.name=Alloy"
+    #   - "homepage.icon=alloy.png"
+    #   - "homepage.href=http://$TAILSCALE_NET.110:12345"
+    #   # - "homepage.href=https://alloy.$HOST"
+    #   - "homepage.description=Flexible, high performance, vendor-neutral distribution of the OpenTelemetry Collector"
+
+  speedtest:
+    image: kutovoys/speedtest-exporter
+    container_name: speedtest
+    restart: unless-stopped
+    environment:
+        - UPDATE_INTERVAL=60
+    volumes:
+        - $JOHNCLOUD_ROOT/speedtest/data:/config
+    networks:
+      backend:
+      tailscale:
+        ipv4_address: $TAILSCALE_NET.120
+    # labels:
+    #   # - traefik.enable=true
+    #   # - traefik.http.routers.speedtest.entrypoints=websecure
+    #   # - traefik.http.routers.speedtest.rule=Host(`speedtest.$HOST`)
+    #   # - traefik.http.routers.speedtest.tls.certresolver=letsencrypt
+    #   # - traefik.http.routers.speedtest.tls=true
+    #   # - traefik.http.services.speedtest.loadbalancer.server.port=9090
+    #   # - "traefik.http.routers.speedtest.middlewares=authentik@file"
+    #   - "homepage.group=Platform"
+    #   - "homepage.name=Speedtest"
+    #   - "homepage.icon=si-speedtest"
+    #   - "homepage.href=http://$TAILSCALE_NET.120:9090"
+    #   - "homepage.description=Monitor the performance and uptime of your internet connection"
+
+  prometheus:
+    image: ubuntu/prometheus
+    container_name: prometheus
+    user: "0:0"
+    restart: unless-stopped
+    depends_on:
+      - speedtest
+    networks:
+      - backend
+      - database
+    volumes:
+      - $JOHNCLOUD_ROOT/prometheus/:/etc/prometheus/
+      - $JOHNCLOUD_ROOT/prometheus/db:/prometheus
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    command:
+      - "--web.route-prefix=/"
+      - "--web.enable-remote-write-receiver"
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+      - "--web.enable-lifecycle"
+    environment:
+      - TZ=$TZ
+
+networks:
+  frontend:
+    external: true
+    name: $TRAEFIK_NETWORK
+  backend:
+    driver: bridge
+  socket_ro:
+    external: true
+    name: $PROXY_NETWORK
+  tailscale:
+    external: true
+    name: $TAILSCALE_NETWORK
+  database:
+    external: true
+    name: $DATABASE_NETWORK
+    

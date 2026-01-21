@@ -1,0 +1,40 @@
+services:
+  homepage:
+    image: ghcr.io/gethomepage/homepage:latest
+    container_name: homepage
+    restart: unless-stopped
+    environment:
+      - HOMEPAGE_ALLOWED_HOSTS=home.$HOST
+    depends_on:
+      - traefik
+      - docker-socket-proxy
+    networks:
+      - frontend
+      - socket_ro
+      - tailscale
+    volumes:
+      - $JOHNCLOUD_ROOT/homepage/config:/app/config # Make sure your local config directory exists
+    labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.homepage.rule=Host(`home.$HOST`)"
+        - "traefik.http.routers.homepage.entrypoints=websecure"
+        - "traefik.http.routers.homepage.tls.certresolver=letsencrypt"
+        - "traefik.http.routers.homepage.middlewares=authentik@file"
+
+networks:
+  frontend:
+    external: true
+    name: $TRAEFIK_NETWORK
+  backend:
+    driver: bridge
+  socket_ro:
+    external: true
+    name: $PROXY_NETWORK
+  tailscale:
+    external: true
+    name: $TAILSCALE_NETWORK
+  database:
+    external: true
+    name: $DATABASE_NETWORK
+    
+
