@@ -1,3 +1,5 @@
+name: monitoring
+
 services:
   traefik-agent:
     image: hhftechnology/traefik-log-dashboard-agent:dev-dashboard

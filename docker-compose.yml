@@ -1,3 +1,5 @@
+name: core
+
 services:
   docker-socket-proxy:
     image: tecnativa/docker-socket-proxy

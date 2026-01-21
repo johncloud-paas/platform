@@ -1,3 +1,5 @@
+name: backup
+
 services:
   # agent:
   #   image: portabase/agent:latest
