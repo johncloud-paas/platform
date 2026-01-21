@@ -5,9 +5,6 @@ services:
     restart: unless-stopped
     environment:
       - HOMEPAGE_ALLOWED_HOSTS=home.$HOST
-    depends_on:
-      - traefik
-      - docker-socket-proxy
     networks:
       - frontend
       - socket_ro
