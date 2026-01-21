@@ -55,11 +55,11 @@ services:
     volumes:
       - $JOHNCLOUD_ROOT/portabase/db:/var/lib/postgresql/data
     environment:
-      - POSTGRES_DB=${POSTGRES_DB}
-      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_DB=portabase
+      - POSTGRES_USER=portabase
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U portabase -d portabase"]
       interval: 10s
       timeout: 5s
       retries: 5
