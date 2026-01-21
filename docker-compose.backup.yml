@@ -39,7 +39,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.portabase.entryPoints=websecure"
-      - "traefik.http.routers.portabase.rule=Host(`portabase.$HOST`)""
+      - "traefik.http.routers.portabase.rule=Host(`portabase.$HOST`)"
       - "traefik.http.routers.portabase.tls.certresolver=letsencrypt"
       - "traefik.http.routers.portabase.tls=true"
       - "traefik.http.services.portabase.loadbalancer.server.port=3000"
