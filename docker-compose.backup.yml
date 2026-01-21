@@ -68,27 +68,52 @@ services:
   #   networks:
   #     - database
 
-  databasus:
-    image: databasus/databasus:latest
-    container_name: databasus
+  app:
+    image: davidcrty/databasement:latest
+    container_name: databasement
     volumes:
-      - $JOHNCLOUD_ROOT/databasus/data:/databasus-data
+      - $JOHNCLOUD_ROOT/databasement/data:/data
     networks:
       - database
       - frontend
     restart: unless-stopped
+    environment:
+      - APP_URL=https://databasement.$HOST
+      - APP_KEY=$DATABASEMENT_KET
+      - TZ=$TZ
+      - DB_CONNECTION=sqlite
+      - DB_DATABASE=/data/database.sqlite
+      - TRUSTED_PROXIES=$TRAEFIK_NET.0/24
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:2226/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     labels:
       - traefik.enable=true
-      - traefik.http.routers.databasus.entryPoints=websecure
-      - traefik.http.routers.databasus.rule=Host(`databasus.$HOST`)
-      - traefik.http.routers.databasus.tls.certresolver=letsencrypt
-      - traefik.http.routers.databasus.tls=true
-      - traefik.http.services.databasus.loadbalancer.server.port=4005
+      - traefik.http.routers.databasement.entryPoints=websecure
+      - traefik.http.routers.databasement.rule=Host(`databasement.$HOST`)
+      - traefik.http.routers.databasement.tls.certresolver=letsencrypt
+      - traefik.http.routers.databasement.tls=true
+      - traefik.http.services.databasement.loadbalancer.server.port=2226
       - "homepage.group=Platform"
-      - "homepage.name=Databasus"
-      - "homepage.icon=sh-databasus"
-      - "homepage.href=https://databasus.$HOST/"
+      - "homepage.name=Databasement"
+      - "homepage.icon=sh-databasement"
+      - "homepage.href=https://databasement.$HOST/"
       - "homepage.description=PostgreSQL backup tool with MySQL and MongoDB support"
+
+  worker:
+    image: davidcrty/databasement:latest
+    container_name: databasement-worker
+    restart: unless-stopped
+    command: sh -c "php artisan db:wait --check-migrations && php artisan queue:work --queue=backups,default --tries=3 --timeout=3600 --sleep=3 --max-jobs=1000"
+    volumes:
+      - $JOHNCLOUD_ROOT/databasement/data:/data
+    networks:
+      - database
+    depends_on:
+      app:
+        condition: service_healthy
           
 networks:
   frontend:
