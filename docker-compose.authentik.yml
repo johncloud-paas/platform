@@ -110,6 +110,16 @@ services:
       SERVICE_PASSWORD_POSTGRESQL: '${AUTHENTIK_PASSWORD_POSTGRESQL}'
       SERVICE_USER_POSTGRESQL: 'postgres'
 
+  redis:
+    image: redis:8
+    environment:
+      - TZ=$TZ
+      - ENABLE_OVERCOMMIT_MEMORY=true
+    networks:
+      - backend
+    labels:
+      - "traefik.enable=false"
+
 networks:
   frontend:
     external: true

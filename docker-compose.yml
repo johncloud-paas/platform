@@ -145,7 +145,6 @@ services:
 
   redis:
     image: redis:8
-    container_name: redis
     environment:
       - TZ=$TZ
       - ENABLE_OVERCOMMIT_MEMORY=true
