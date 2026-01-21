@@ -495,62 +495,26 @@ services:
       SERVICE_PASSWORD_POSTGRESQL: '${AUTHENTIK_PASSWORD_POSTGRESQL}'
       SERVICE_USER_POSTGRESQL: 'postgres'
 
-  velld-api:
-    image: ghcr.io/dendianugerah/velld/api:latest
-    # ports:
-    #   - "8080:8080"
-    environment:
-      - NEXT_PUBLIC_API_URL=https://velld.$HOST
-
-      # Server
-      - JWT_SECRET=$VELLD_JWT_SECRET
-      - ENCRYPTION_KEY=$VELLD_ENCRYPTION_KEY
-
-      # Database (optional - defaults to /app/data/velld.db)
-      # DB_PATH=/app/data/velld.db
-
-      # Auth Credentials
-      - ADMIN_USERNAME_CREDENTIAL=$VELLD_ADMIN_USERNAME
-      - ADMIN_PASSWORD_CREDENTIAL=$VELLD_ADMIN_PASSWORD
-      - ALLOW_REGISTER=false // true or false
-
-      # Email Notifications (optional - configure via UI or environment variables)
-      # When set via env vars, these fields become read-only in the UI
-      # - SMTP_HOST=smtp.gmail.com
-      # - SMTP_PORT=587
-      # - SMTP_USER=your-email@gmail.com
-      # - SMTP_PASSWORD=your-app-password
-      # - SMTP_FROM=noreply@yourdomain.com
-    networks:
-      - backend
-      - database
+  databasus:
+    image: databasus/databasus:latest
+    container_name: databasus
     volumes:
-      - $JOHNCLOUD_ROOT/velld/api_data:/app/data
-      - $JOHNCLOUD_ROOT/velld/backup_data:/app/backups
-    restart: unless-stopped
-
-  velld-web:
-    image: ghcr.io/dendianugerah/velld/web:latest
-    environment:
-      NEXT_PUBLIC_API_URL: http://velld-api:8080
-      ALLOW_REGISTER: false
-    depends_on:
-      - velld-api
+      - $JOHNCLOUD_ROOT/databasus/data:/databasus-data
     networks:
-      - backend
+      - database
       - frontend
     restart: unless-stopped
     labels:
       - traefik.enable=true
-      - traefik.http.routers.velld.entryPoints=websecure
-      - traefik.http.routers.velld.rule=Host(`velld.$HOST`)
-      - traefik.http.routers.velld.tls.certresolver=letsencrypt
-      - traefik.http.routers.velld.tls=true
-      - traefik.http.services.velld.loadbalancer.server.port=3000
+      - traefik.http.routers.databasus.entryPoints=websecure
+      - traefik.http.routers.databasus.rule=Host(`databasus.$HOST`)
+      - traefik.http.routers.databasus.tls.certresolver=letsencrypt
+      - traefik.http.routers.databasus.tls=true
+      - traefik.http.services.databasus.loadbalancer.server.port=4005
       - "homepage.group=Platform"
-      - "homepage.name=Velld"
-      - "homepage.icon=velld.png"
-      - "homepage.href=https://velld.$HOST/"
+      - "homepage.name=Databasus"
+      - "homepage.icon=databasus.png"
+      - "homepage.href=https://databasus.$HOST/"
       - "homepage.description=Backup your databases with ease"
       
   dockhand:
