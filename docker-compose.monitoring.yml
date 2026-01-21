@@ -152,7 +152,6 @@ services:
     restart: unless-stopped
     container_name: alloy
     depends_on:
-      - docker-socket-proxy
       - pdc
     networks:
       tailscale:
