@@ -59,6 +59,7 @@ services:
       - "traefik.http.routers.databasus.tls.certresolver=letsencrypt"
       - "traefik.http.routers.databasus.tls=true"
       - "traefik.http.services.databasus.loadbalancer.server.port=4005"
+      - "traefik.docker.network=frontend"
       - "homepage.group=Platform"
       - "homepage.name=Databasus"
       - "homepage.icon=sh-databasus"
