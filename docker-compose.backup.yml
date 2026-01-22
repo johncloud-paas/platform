@@ -68,7 +68,28 @@ services:
   #   depends_on:
   #     - app
   #       # condition: service_healthy
-          
+  
+  databasus:
+    image: databasus/databasus:latest
+    restart: unless-stopped
+    volumes:
+      - $JOHNCLOUD_ROOT/databasus/data:/data
+    networks:
+      - database
+      - frontend
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.databasus.entryPoints=websecure"
+      - "traefik.http.routers.databasus.rule=Host(`databasus.$HOST`)"
+      - "traefik.http.routers.databasus.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.databasus.tls=true"
+      - "traefik.http.services.databasus.loadbalancer.server.port=4005"
+      - "homepage.group=Platform"
+      - "homepage.name=Databasement"
+      - "homepage.icon=sh-databasus"
+      - "homepage.href=https://databasus.$HOST/"
+      - "homepage.description=Database backup management application for MySQL, PostgreSQL, and MariaDB"
+
 networks:
   frontend:
     external: true
