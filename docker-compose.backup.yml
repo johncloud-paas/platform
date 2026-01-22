@@ -8,7 +8,7 @@ services:
     volumes:
       - $JOHNCLOUD_ROOT/databasement/data:/data
     networks:
-      - database
+      # - database
       - frontend
     restart: unless-stopped
     environment:
