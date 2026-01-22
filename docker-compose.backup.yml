@@ -52,7 +52,7 @@ services:
       - $JOHNCLOUD_ROOT/databasus/data:/databasus-data
     networks:
       - frontend
-      # - database
+      - database
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=frontend"
