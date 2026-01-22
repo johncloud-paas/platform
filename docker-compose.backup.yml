@@ -51,7 +51,7 @@ services:
     volumes:
       - $JOHNCLOUD_ROOT/databasus/data:/databasus-data
     networks:
-      # - database
+      - database
       - frontend
     labels:
       - "traefik.enable=true"
