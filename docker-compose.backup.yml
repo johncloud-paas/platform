@@ -24,7 +24,7 @@ services:
       - OAUTH_OIDC_BASE_URL=$DATABASEMENT_OAUTH_OIDC_BASE_URL
       - OAUTH_OIDC_LABEL=$DATABASEMENT_OAUTH_OIDC_LABEL
     command:
-       # It tells whoami to start listening on 2001 instead of 80
+       # It tells whoami to start listening on 2226 instead of 80
        - --port=2226
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:2226/health"]
@@ -32,12 +32,12 @@ services:
       timeout: 5s
       retries: 5
     labels:
-      - traefik.enable=true
-      - traefik.http.routers.databasement.entryPoints=websecure
-      - traefik.http.routers.databasement.rule=Host(`databasement.$HOST`)
-      - traefik.http.routers.databasement.tls.certresolver=letsencrypt
-      - traefik.http.routers.databasement.tls=true
-      - traefik.http.services.databasement.loadbalancer.server.port=2226
+      - "traefik.enable=true"
+      - "traefik.http.routers.databasement.entryPoints=websecure"
+      - "traefik.http.routers.databasement.rule=Host(`databasement.$HOST`)"
+      - "traefik.http.routers.databasement.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.databasement.tls=true"
+      - "traefik.http.services.databasement.loadbalancer.server.port=2226"
       - "homepage.group=Platform"
       - "homepage.name=Databasement"
       - "homepage.icon=sh-databasement"
