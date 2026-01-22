@@ -22,11 +22,11 @@ services:
       - OAUTH_OIDC_CLIENT_SECRET=$DATABASEMENT_OAUTH_OIDC_CLIENT_SECRET
       - OAUTH_OIDC_BASE_URL=$DATABASEMENT_OAUTH_OIDC_BASE_URL
       - OAUTH_OIDC_LABEL=$DATABASEMENT_OAUTH_OIDC_LABEL
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:2226/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+    # healthcheck:
+    #   test: ["CMD", "curl", "-f", "http://localhost:2226/health"]
+    #   interval: 10s
+    #   timeout: 5s
+    #   retries: 5
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.databasement.entryPoints=websecure"
@@ -62,8 +62,8 @@ services:
     networks:
       - database
     depends_on:
-      app:
-        condition: service_healthy
+      - app
+        # condition: service_healthy
           
 networks:
   frontend:
