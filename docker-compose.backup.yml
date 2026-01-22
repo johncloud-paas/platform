@@ -23,6 +23,9 @@ services:
       - OAUTH_OIDC_CLIENT_SECRET=$DATABASEMENT_OAUTH_OIDC_CLIENT_SECRET
       - OAUTH_OIDC_BASE_URL=$DATABASEMENT_OAUTH_OIDC_BASE_URL
       - OAUTH_OIDC_LABEL=$DATABASEMENT_OAUTH_OIDC_LABEL
+    command:
+       # It tells whoami to start listening on 2001 instead of 80
+       - --port=2226
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:2226/health"]
       interval: 10s
