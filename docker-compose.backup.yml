@@ -47,6 +47,7 @@ services:
   databasus:
     image: databasus/databasus:latest
     restart: unless-stopped
+    user: 1000:1000
     volumes:
       - $JOHNCLOUD_ROOT/databasus/data:/data
     networks:
