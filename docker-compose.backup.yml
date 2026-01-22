@@ -2,7 +2,9 @@ name: backup
 
 services:
   app:
-    image: davidcrty/databasement:latest
+    # image: davidcrty/databasement:latest
+    image: traefik/whoami
+    command: ["--port", "2226"]
     volumes:
       - $JOHNCLOUD_ROOT/databasement/data:/data
     networks:
