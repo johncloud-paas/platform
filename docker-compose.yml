@@ -3,7 +3,6 @@ name: core
 services:
   docker-socket-proxy:
     image: tecnativa/docker-socket-proxy
-    container_name: dockerproxy
     networks:
       socket_ro:
         ipv4_address: 173.16.238.101
@@ -37,7 +36,6 @@ services:
 
   traefik:
     image: traefik:v3
-    container_name: traefik
     networks:
       frontend:
       backend:
@@ -110,7 +108,6 @@ services:
   certdumper:
     image: ghcr.io/kereis/traefik-certs-dumper:latest
     restart: unless-stopped
-    container_name: certdumper
     depends_on:
       - traefik
     networks:
@@ -123,7 +120,6 @@ services:
   dockhand:
     image: fnsys/dockhand:latest
     restart: unless-stopped
-    container_name: dockhand
     user: 0:0
     networks:
       # tailscale:
@@ -157,7 +153,6 @@ services:
 
   tailscale:
     image: tailscale/tailscale
-    container_name: tailscale
     environment:
       - TS_AUTHKEY=$TS_AUTHKEY
       - TS_STATE_DIR=/var/lib/tailscale
