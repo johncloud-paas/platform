@@ -1,47 +1,48 @@
 name: backup
 
 services:
-  databasement:
-    image: davidcrty/databasement:latest
-    # image: traefik/whoami
-    # command: ["--port", "2226"]
-    volumes:
-      - $JOHNCLOUD_ROOT/databasement/data:/data
-    networks:
-      - database
-      - frontend
-    restart: unless-stopped
-    environment:
-      - APP_DEBUG=true
-      - APP_URL=https://databasement.$HOST
-      - APP_KEY=$DATABASEMENT_KEY
-      - TZ=$TZ
-      - DB_CONNECTION=sqlite
-      - DB_DATABASE=/data/database.sqlite
-      - TRUSTED_PROXIES=$TRAEFIK_NET.0/24
-      # - OAUTH_OIDC_ENABLED=$DATABASEMENT_OAUTH_OIDC_ENABLED
-      # - OAUTH_OIDC_CLIENT_ID=$DATABASEMENT_OAUTH_OIDC_CLIENT_ID
-      # - OAUTH_OIDC_CLIENT_SECRET=$DATABASEMENT_OAUTH_OIDC_CLIENT_SECRET
-      # - OAUTH_OIDC_BASE_URL=$DATABASEMENT_OAUTH_OIDC_BASE_URL
-      # - OAUTH_OIDC_LABEL=$DATABASEMENT_OAUTH_OIDC_LABEL
-      - ENABLE_QUEUE_WORKER=true
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:2226/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.databasement.entryPoints=websecure"
-      - "traefik.http.routers.databasement.rule=Host(`databasement.$HOST`)"
-      - "traefik.http.routers.databasement.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.databasement.tls=true"
-      - "traefik.http.services.databasement.loadbalancer.server.port=2226"
-      - "homepage.group=Platform"
-      - "homepage.name=Databasement"
-      - "homepage.icon=sh-databasement"
-      - "homepage.href=https://databasement.$HOST/"
-      - "homepage.description=Database backup management application for MySQL, PostgreSQL, and MariaDB"
+  # databasement:
+  #   image: davidcrty/databasement:latest
+  #   # image: traefik/whoami
+  #   # command: ["--port", "2226"]
+  #   volumes:
+  #     - $JOHNCLOUD_ROOT/databasement/data:/data
+  #   networks:
+  #     - database
+  #     - frontend
+  #   restart: unless-stopped
+  #   user: 1000:1000
+  #   environment:
+  #     - APP_DEBUG=true
+  #     - APP_URL=https://databasement.$HOST
+  #     - APP_KEY=$DATABASEMENT_KEY
+  #     - TZ=$TZ
+  #     - DB_CONNECTION=sqlite
+  #     - DB_DATABASE=/data/database.sqlite
+  #     - TRUSTED_PROXIES=$TRAEFIK_NET.0/24
+  #     # - OAUTH_OIDC_ENABLED=$DATABASEMENT_OAUTH_OIDC_ENABLED
+  #     # - OAUTH_OIDC_CLIENT_ID=$DATABASEMENT_OAUTH_OIDC_CLIENT_ID
+  #     # - OAUTH_OIDC_CLIENT_SECRET=$DATABASEMENT_OAUTH_OIDC_CLIENT_SECRET
+  #     # - OAUTH_OIDC_BASE_URL=$DATABASEMENT_OAUTH_OIDC_BASE_URL
+  #     # - OAUTH_OIDC_LABEL=$DATABASEMENT_OAUTH_OIDC_LABEL
+  #     - ENABLE_QUEUE_WORKER=true
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost:2226/health"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #   labels:
+  #     - "traefik.enable=true"
+  #     - "traefik.http.routers.databasement.entryPoints=websecure"
+  #     - "traefik.http.routers.databasement.rule=Host(`databasement.$HOST`)"
+  #     - "traefik.http.routers.databasement.tls.certresolver=letsencrypt"
+  #     - "traefik.http.routers.databasement.tls=true"
+  #     - "traefik.http.services.databasement.loadbalancer.server.port=2226"
+  #     - "homepage.group=Platform"
+  #     - "homepage.name=Databasement"
+  #     - "homepage.icon=sh-databasement"
+  #     - "homepage.href=https://databasement.$HOST/"
+  #     - "homepage.description=Database backup management application for MySQL, PostgreSQL, and MariaDB"
 
   databasus:
     image: databasus/databasus:latest
