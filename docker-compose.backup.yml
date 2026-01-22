@@ -26,11 +26,11 @@ services:
     command:
        # It tells whoami to start listening on 2226 instead of 80
        - --port=2226
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:2226/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+    # healthcheck:
+    #   test: ["CMD", "curl", "-f", "http://localhost:2226/health"]
+    #   interval: 10s
+    #   timeout: 5s
+    #   retries: 5
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.databasement.entryPoints=websecure"
@@ -44,30 +44,30 @@ services:
       - "homepage.href=https://databasement.$HOST/"
       - "homepage.description=Database backup management application for MySQL, PostgreSQL, and MariaDB"
 
-  worker:
-    image: davidcrty/databasement:latest
-    container_name: databasement-worker
-    restart: unless-stopped
-    command: sh -c "php artisan db:wait --check-migrations && php artisan queue:work --queue=backups,default --tries=3 --timeout=3600 --sleep=3 --max-jobs=1000"
-    volumes:
-      - $JOHNCLOUD_ROOT/databasement/data:/data
-    environment:
-      - APP_URL=https://databasement.$HOST
-      - APP_KEY=$DATABASEMENT_KEY
-      - TZ=$TZ
-      - DB_CONNECTION=sqlite
-      - DB_DATABASE=/data/database.sqlite
-      - TRUSTED_PROXIES=$TRAEFIK_NET.0/24
-      - OAUTH_OIDC_ENABLED=$DATABASEMENT_OAUTH_OIDC_ENABLED
-      - OAUTH_OIDC_CLIENT_ID=$DATABASEMENT_OAUTH_OIDC_CLIENT_ID
-      - OAUTH_OIDC_CLIENT_SECRET=$DATABASEMENT_OAUTH_OIDC_CLIENT_SECRET
-      - OAUTH_OIDC_BASE_URL=$DATABASEMENT_OAUTH_OIDC_BASE_URL
-      - OAUTH_OIDC_LABEL=$DATABASEMENT_OAUTH_OIDC_LABEL
-    networks:
-      - database
-    depends_on:
-      app:
-        condition: service_healthy
+  # worker:
+  #   image: davidcrty/databasement:latest
+  #   container_name: databasement-worker
+  #   restart: unless-stopped
+  #   command: sh -c "php artisan db:wait --check-migrations && php artisan queue:work --queue=backups,default --tries=3 --timeout=3600 --sleep=3 --max-jobs=1000"
+  #   volumes:
+  #     - $JOHNCLOUD_ROOT/databasement/data:/data
+  #   environment:
+  #     - APP_URL=https://databasement.$HOST
+  #     - APP_KEY=$DATABASEMENT_KEY
+  #     - TZ=$TZ
+  #     - DB_CONNECTION=sqlite
+  #     - DB_DATABASE=/data/database.sqlite
+  #     - TRUSTED_PROXIES=$TRAEFIK_NET.0/24
+  #     - OAUTH_OIDC_ENABLED=$DATABASEMENT_OAUTH_OIDC_ENABLED
+  #     - OAUTH_OIDC_CLIENT_ID=$DATABASEMENT_OAUTH_OIDC_CLIENT_ID
+  #     - OAUTH_OIDC_CLIENT_SECRET=$DATABASEMENT_OAUTH_OIDC_CLIENT_SECRET
+  #     - OAUTH_OIDC_BASE_URL=$DATABASEMENT_OAUTH_OIDC_BASE_URL
+  #     - OAUTH_OIDC_LABEL=$DATABASEMENT_OAUTH_OIDC_LABEL
+  #   networks:
+  #     - database
+  #   depends_on:
+  #     app:
+  #       condition: service_healthy
           
 networks:
   frontend:
