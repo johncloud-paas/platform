@@ -52,11 +52,11 @@ services:
       - "traefik.http.routers.duplicati.entrypoints=websecure"
       - "traefik.http.routers.duplicati.tls.certresolver=letsencrypt"
       - "traefik.http.services.duplicati.loadbalancer.server.port=8200"
-      - "homepage.group=$HOME_GROUP"
-      - "homepage.name=$HOME_NAME"
-      - "homepage.icon=$HOME_ICON"
+      - "homepage.group=Platform"
+      - "homepage.name=Duplicati"
+      - "homepage.icon=duplicati.png"
       - "homepage.href=https://duplicati.$HOST/ngclient/"
-      - "homepage.description=$HOME_DESCRIPTION"
+      - "homepage.description=Secure backup solution for managed service providers"
 
 networks:
   frontend:
