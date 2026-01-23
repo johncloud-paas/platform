@@ -5,7 +5,6 @@ services:
     image: tecnativa/docker-socket-proxy
     networks:
       frontend:
-        ipv4_address: docker-socket-proxy
     privileged: true
     environment:
       LOG_LEVEL: info
