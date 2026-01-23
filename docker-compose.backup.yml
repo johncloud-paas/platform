@@ -4,7 +4,7 @@ services:
   databasus:
     image: databasus/databasus:latest
     restart: unless-stopped
-    user: 100:102
+    # user: 100:102
     volumes:
       - $JOHNCLOUD_ROOT/databasus/data:/databasus-data
     networks:
