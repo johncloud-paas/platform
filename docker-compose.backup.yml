@@ -55,11 +55,11 @@ services:
       - database
     labels:
       - "traefik.enable=true"
-      - "traefik.docker.network=frontend"
       - "traefik.http.routers.databasus.entryPoints=websecure"
       - "traefik.http.routers.databasus.rule=Host(`databasus.$HOST`)"
       - "traefik.http.routers.databasus.tls.certresolver=letsencrypt"
       - "traefik.http.routers.databasus.tls=true"
+      - "traefik.http.routers.databasus.service=databasus"
       - "traefik.http.services.databasus.loadbalancer.server.port=4005"
       - "homepage.group=Platform"
       - "homepage.name=Databasus"
