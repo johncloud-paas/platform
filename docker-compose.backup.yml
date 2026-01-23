@@ -23,6 +23,41 @@ services:
       - "homepage.href=https://databasus.$HOST/"
       - "homepage.description=Database backup management application for MySQL, PostgreSQL, and MariaDB"
 
+  duplicati:
+    image: 'lscr.io/linuxserver/duplicati:latest'
+    restart: unless-stopped
+    environment:
+      - PUID=0
+      - PGID=0
+      - 'TZ=${TZ:-Europe/London}'
+      - 'SETTINGS_ENCRYPTION_KEY=${DUPLICATI_PASSWORD_ENCRYPT}'
+      - 'DUPLICATI__WEBSERVICE_PASSWORD=${DUPLICATI_PASSWORD_WEB}'
+    volumes:
+      - '$JOHNCLOUD_ROOT/duplicati/config:/config'
+      - '$JOHNCLOUD_ROOT:/source'
+    networks:
+      frontend:
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - '-f'
+        - 'http://127.0.0.1:8200'
+      interval: 2s
+      timeout: 10s
+      retries: 15
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.duplicati.rule=Host(`duplicati.$HOST`)"
+      - "traefik.http.routers.duplicati.entrypoints=websecure"
+      - "traefik.http.routers.duplicati.tls.certresolver=letsencrypt"
+      - "traefik.http.services.duplicati.loadbalancer.server.port=8200"
+      - "homepage.group=$HOME_GROUP"
+      - "homepage.name=$HOME_NAME"
+      - "homepage.icon=$HOME_ICON"
+      - "homepage.href=https://duplicati.$HOST/ngclient/"
+      - "homepage.description=$HOME_DESCRIPTION"
+
 networks:
   frontend:
     external: true
