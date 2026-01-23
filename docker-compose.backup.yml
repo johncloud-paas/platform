@@ -51,6 +51,7 @@ services:
       - "traefik.http.routers.duplicati.rule=Host(`duplicati.$HOST`)"
       - "traefik.http.routers.duplicati.entrypoints=websecure"
       - "traefik.http.routers.duplicati.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.duplicati.service=duplicati"
       - "traefik.http.services.duplicati.loadbalancer.server.port=8200"
       - "homepage.group=Platform"
       - "homepage.name=Duplicati"
