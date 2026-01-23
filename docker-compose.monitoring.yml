@@ -36,7 +36,7 @@ services:
       retries: 3
       start_period: 30s  # Increased to allow agent to fully start
     networks:
-      backend:
+      frontend:
 
   # Traefik Log Dashboard - Next.js web UI
   traefik-dashboard:
@@ -68,21 +68,17 @@ services:
         condition: service_healthy
     networks:
       frontend:
-      backend:
-      socket_ro:
-      tailscale:
-        ipv4_address: $TAILSCALE_NET.111
     labels:
-      # - "traefik.enable=true"
-      # - "traefik.http.routers.traefik-logs.rule=Host(`traefik-logs.$HOST`)"
-      # - "traefik.http.routers.traefik-logs.service=api@internal"
-      # - "traefik.http.routers.traefik-logs.entrypoints=websecure"
-      # - "traefik.http.routers.traefik-logs.tls.certresolver=letsencrypt"
-      # - "traefik.http.routers.traefik-logs.middlewares=authentik@file"
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik-logs.rule=Host(`traefik-logs.$HOST`)"
+      - "traefik.http.routers.traefik-logs.service=api@internal"
+      - "traefik.http.routers.traefik-logs.entrypoints=websecure"
+      - "traefik.http.routers.traefik-logs.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.traefik-logs.middlewares=authentik@file"
       - "homepage.group=Platform"
       - "homepage.name=Traefik Logs Dashboard"
       - "homepage.icon=traefik.svg"
-      - "homepage.href=http://$TAILSCALE_NET.111:3000/dashboard"
+      - "homepage.href=http://traefik-logs.$HOST/dashboard"
       - "homepage.description=Traefik Log Dashboard"
 
   atlas:
@@ -92,31 +88,27 @@ services:
     - NET_ADMIN
     networks:
       frontend:
-      backend:
-      socket_ro:
-      tailscale:
-        ipv4_address: $TAILSCALE_NET.121
     environment:
       - ATLAS_UI_PORT=8884
       - ATLAS_API_PORT=8885
       - FASTSCAN_INTERVAL=3600
       - DOCKERSCAN_INTERVAL=3600
       - DEEPSCAN_INTERVAL=7200
-      - SCAN_SUBNETS="$TRAEFIK_NET.0/24,$PROXY_NET.0/24,$TAILSCALE_NET.0/24"
+      - SCAN_SUBNETS="$TRAEFIK_NET.0/24"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     labels:
-      # - "traefik.enable=true"
-      # - "traefik.http.routers.atlas.rule=Host(`atlas.$HOST`)"
-      # - "traefik.http.routers.atlas.service=api@internal"
-      # - "traefik.http.routers.atlas.entrypoints=websecure"
-      # - traefik.http.services.atlas.loadbalancer.server.port=8884
-      # - "traefik.http.routers.atlas.tls.certresolver=letsencrypt"
-      # - "traefik.http.routers.atlas.middlewares=authentik@file"
+      - "traefik.enable=true"
+      - "traefik.http.routers.atlas.rule=Host(`atlas.$HOST`)"
+      - "traefik.http.routers.atlas.service=api@internal"
+      - "traefik.http.routers.atlas.entrypoints=websecure"
+      - traefik.http.services.atlas.loadbalancer.server.port=8884
+      - "traefik.http.routers.atlas.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.atlas.middlewares=authentik@file"
       - "homepage.group=Platform"
       - "homepage.name=Atlas"
       - "homepage.icon=mdi-web"
-      - "homepage.href=http://$TAILSCALE_NET.121:8884"
+      - "homepage.href=https://atlas.$HOST"
       - "homepage.description=Network discovery, visualization, and monitoring"
   
   pdc:
@@ -125,7 +117,7 @@ services:
     container_name: pdc
     restart: unless-stopped
     networks:
-      - backend
+      - frontend
     depends_on:
       - prometheus
       - loki
@@ -138,8 +130,7 @@ services:
     container_name: loki
     user: "0:0"
     networks:
-      - backend
-      - database
+      - frontend
     volumes:
       - $JOHNCLOUD_ROOT/loki/data:/loki
       - $JOHNCLOUD_ROOT/loki:/etc/loki-custom
@@ -156,10 +147,7 @@ services:
     depends_on:
       - pdc
     networks:
-      tailscale:
-        ipv4_address: $TAILSCALE_NET.110
-      backend:
-      socket_ro:
+      frontend:
     volumes:
       - $JOHNCLOUD_ROOT/alloy/config.alloy:/etc/alloy/config.alloy
       - $JOHNCLOUD_ROOT/alloy/data:/var/lib/alloy/data
@@ -198,9 +186,7 @@ services:
     volumes:
         - $JOHNCLOUD_ROOT/speedtest/data:/config
     networks:
-      backend:
-      tailscale:
-        ipv4_address: $TAILSCALE_NET.120
+      frontend:
     # labels:
     #   # - traefik.enable=true
     #   # - traefik.http.routers.speedtest.entrypoints=websecure
@@ -223,8 +209,7 @@ services:
     depends_on:
       - speedtest
     networks:
-      - backend
-      - database
+      - frontend
     volumes:
       - $JOHNCLOUD_ROOT/prometheus/:/etc/prometheus/
       - $JOHNCLOUD_ROOT/prometheus/db:/prometheus
@@ -245,15 +230,4 @@ networks:
   frontend:
     external: true
     name: $TRAEFIK_NETWORK
-  backend:
-    driver: bridge
-  socket_ro:
-    external: true
-    name: $PROXY_NETWORK
-  tailscale:
-    external: true
-    name: $TAILSCALE_NETWORK
-  database:
-    external: true
-    name: $DATABASE_NETWORK
     

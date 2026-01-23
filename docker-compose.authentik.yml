@@ -33,7 +33,6 @@ services:
       - redis
       - authentik_worker
     networks:
-      # - backend
       - frontend
     labels:
       - traefik.enable=true
@@ -78,7 +77,6 @@ services:
       SERVICE_PASSWORD_64_AUTHENTIKSERVER: '${AUTHENTIK_SERVICE_PASSWORD_64}'
     user: root
     networks:
-      # - backend
       - frontend
     volumes:
       - '$JOHNCLOUD_ROOT/authentik/media:/media'
@@ -100,9 +98,7 @@ services:
     #   timeout: 10s
     #   retries: 15
     networks:
-      - backend
       - frontend
-      - database
     volumes:
       - '$JOHNCLOUD_ROOT/authentik/db:/var/lib/postgresql/data'
     environment:
@@ -118,7 +114,7 @@ services:
       - TZ=$TZ
       - ENABLE_OVERCOMMIT_MEMORY=true
     networks:
-      - backend
+      - frontend
     labels:
       - "traefik.enable=false"
 
@@ -126,9 +122,4 @@ networks:
   frontend:
     external: true
     name: $TRAEFIK_NETWORK
-  backend:
-    driver: bridge
-  database:
-    external: true
-    name: $DATABASE_NETWORK
     

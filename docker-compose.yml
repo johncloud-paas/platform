@@ -37,7 +37,6 @@ services:
     image: traefik:v3
     networks:
       frontend:
-        ipv4_address: $TRAEFIK_NET.100
     depends_on:
       - docker-socket-proxy
     ports:
@@ -143,31 +142,8 @@ services:
     labels:
       - "traefik.enable=false"
 
-  tailscale:
-    image: tailscale/tailscale
-    environment:
-      - TS_AUTHKEY=$TS_AUTHKEY
-      - TS_STATE_DIR=/var/lib/tailscale
-      - TS_USERSPACE=false
-      - TS_HOSTNAME=$TS_HOSTNAME
-      - TS_ROUTES=$TAILSCALE_NET.0/24
-    networks:
-      tailscale:
-    volumes:
-      - $JOHNCLOUD_ROOT/tailscale:/var/lib/tailscale
-      - /dev/net/tun:/dev/net/tun
-    cap_add:
-      - NET_ADMIN
-    restart: unless-stopped
-
 networks:
   frontend:
     external: true
     name: $TRAEFIK_NETWORK
-  tailscale:
-    external: true
-    name: $TAILSCALE_NETWORK
-  database:
-    external: true
-    name: $DATABASE_NETWORK
     

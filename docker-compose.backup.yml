@@ -9,7 +9,6 @@ services:
       - $JOHNCLOUD_ROOT/databasus/data:/databasus-data
     networks:
       - frontend
-      - database
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.databasus.entryPoints=websecure"
@@ -28,7 +27,4 @@ networks:
   frontend:
     external: true
     name: $TRAEFIK_NETWORK
-  database:
-    external: true
-    name: $DATABASE_NETWORK
     
