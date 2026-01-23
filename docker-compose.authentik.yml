@@ -1,3 +1,5 @@
+name: authentik
+
 services:
   authentik_server:
     image: 'ghcr.io/goauthentik/server:${AUTHENTIK_TAG:-2025.6.4}'
