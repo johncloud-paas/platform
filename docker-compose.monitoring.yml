@@ -78,7 +78,7 @@ services:
       - "homepage.group=Platform"
       - "homepage.name=Traefik Logs Dashboard"
       - "homepage.icon=traefik.svg"
-      - "homepage.href=http://traefik-logs.$HOST/dashboard"
+      - "homepage.href=https://traefik-logs.$HOST/dashboard"
       - "homepage.description=Traefik Log Dashboard"
 
   atlas:
