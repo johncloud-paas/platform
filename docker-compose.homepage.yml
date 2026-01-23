@@ -9,8 +9,6 @@ services:
       - HOMEPAGE_ALLOWED_HOSTS=home.$HOST
     networks:
       - frontend
-      - socket_ro
-      - tailscale
     volumes:
       - $JOHNCLOUD_ROOT/homepage/config:/app/config # Make sure your local config directory exists
     labels:
@@ -24,16 +22,4 @@ networks:
   frontend:
     external: true
     name: $TRAEFIK_NETWORK
-  backend:
-    driver: bridge
-  socket_ro:
-    external: true
-    name: $PROXY_NETWORK
-  tailscale:
-    external: true
-    name: $TAILSCALE_NETWORK
-  database:
-    external: true
-    name: $DATABASE_NETWORK
     
-

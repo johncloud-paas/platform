@@ -4,8 +4,8 @@ services:
   docker-socket-proxy:
     image: tecnativa/docker-socket-proxy
     networks:
-      socket_ro:
-        ipv4_address: 173.16.238.101
+      frontend:
+        ipv4_address: $TRAEFIK_NET.101
     privileged: true
     environment:
       LOG_LEVEL: info
@@ -38,10 +38,7 @@ services:
     image: traefik:v3
     networks:
       frontend:
-      backend:
-      socket_ro:
-      tailscale:
-        ipv4_address: $TAILSCALE_NET.100
+        ipv4_address: $TRAEFIK_NET.100
     depends_on:
       - docker-socket-proxy
     ports:
@@ -67,7 +64,7 @@ services:
       - --entrypoints.websecure.proxyprotocol=true
       - --entrypoints.websecure.proxyprotocol.trustedips=$TRAEFIK_NET.0/24
       - --providers.docker=true
-      - --providers.docker.endpoint=http://173.16.238.101:2375
+      - --providers.docker.endpoint=http://$TRAEFIK_NET.101:2375
       - --providers.docker.exposedByDefault=false
       - --providers.file.directory=conf.d
       - --providers.file.watch=true
@@ -90,20 +87,19 @@ services:
       - $JOHNCLOUD_ROOT/traefik/letsencrypt:/letsencrypt
       - $JOHNCLOUD_ROOT/traefik/plugins:/plugins-storage
     labels:
-      # - "traefik.enable=true"
-      # - "traefik.http.routers.traefik.rule=Host(`traefik.$HOST`)"
-      # - "traefik.http.routers.traefik.service=api@internal"
-      # - "traefik.http.routers.traefik.entrypoints=websecure"
-      # - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
-      # - "traefik.http.routers.traefik.middlewares=authentik@file"
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.$HOST`)"
+      - "traefik.http.routers.traefik.service=api@internal"
+      - "traefik.http.routers.traefik.entrypoints=websecure"
+      - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.traefik.middlewares=authentik@file"
       - "homepage.group=Platform"
       - "homepage.name=Traefik"
       - "homepage.icon=traefik.svg"
-      - "homepage.href=http://$TAILSCALE_NET.100:8080/dashboard/"
-      # - "homepage.href=https://traefik.$HOST/dashboard/"
+      - "homepage.href=https://traefik.$HOST/dashboard/"
       - "homepage.description=Traefik reverse proxy"
       - "homepage.widget.type=traefik"
-      - "homepage.widget.url=http://$TAILSCALE_NET.100:8080"
+      - "homepage.widget.url=http://$TRAEFIK_NET.100:8080"
   
   certdumper:
     image: ghcr.io/kereis/traefik-certs-dumper:latest
@@ -111,7 +107,7 @@ services:
     depends_on:
       - traefik
     networks:
-      - backend
+      - frontend
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - $JOHNCLOUD_ROOT/traefik/letsencrypt:/traefik:ro
@@ -122,8 +118,6 @@ services:
     restart: unless-stopped
     user: 0:0
     networks:
-      # tailscale:
-      #   ipv4_address: $TAILSCALE_NET.102
       frontend:
     volumes:
       - $JOHNCLOUD_ROOT/dockhand/data:/app/data
@@ -137,7 +131,6 @@ services:
       - "homepage.group=Platform"
       - "homepage.name=Dockhand"
       - "homepage.icon=https://dockhand.pro/images/logo-dark.webp"
-      # - "homepage.href=http://$TAILSCALE_NET.102:3000"
       - "homepage.href=https://dockhand.$HOST"
       - "homepage.description=Modern Docker management for everyone"
 
@@ -147,7 +140,7 @@ services:
       - TZ=$TZ
       - ENABLE_OVERCOMMIT_MEMORY=true
     networks:
-      - backend
+      - frontend
     labels:
       - "traefik.enable=false"
 
@@ -172,11 +165,6 @@ networks:
   frontend:
     external: true
     name: $TRAEFIK_NETWORK
-  backend:
-    driver: bridge
-  socket_ro:
-    external: true
-    name: $PROXY_NETWORK
   tailscale:
     external: true
     name: $TAILSCALE_NETWORK
