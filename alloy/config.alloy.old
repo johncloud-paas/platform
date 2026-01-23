@@ -151,7 +151,7 @@ prometheus.scrape "node" {
 // Host Cadvisor on the Docker socket to expose container metrics.
 prometheus.exporter.cadvisor "docker" {
   // docker_only = true
-  docker_host = "tcp://192.168.203.101:2375"
+  docker_host = "tcp://docker-socket-proxy:2375"
 }
 
 discovery.relabel "docker" {

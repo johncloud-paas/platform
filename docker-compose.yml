@@ -5,7 +5,7 @@ services:
     image: tecnativa/docker-socket-proxy
     networks:
       frontend:
-        ipv4_address: $TRAEFIK_NET.101
+        ipv4_address: docker-socket-proxy
     privileged: true
     environment:
       LOG_LEVEL: info
@@ -64,7 +64,7 @@ services:
       - --entrypoints.websecure.proxyprotocol=true
       - --entrypoints.websecure.proxyprotocol.trustedips=$TRAEFIK_NET.0/24
       - --providers.docker=true
-      - --providers.docker.endpoint=http://$TRAEFIK_NET.101:2375
+      - --providers.docker.endpoint=http://docker-socket-proxy:2375
       - --providers.docker.exposedByDefault=false
       - --providers.file.directory=conf.d
       - --providers.file.watch=true
