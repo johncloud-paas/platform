@@ -8,3 +8,6 @@ traefik/
 *.ref.yml
 *.mmdb
 *.gz
+pangolin/GeoLite2/
+pangolin/db/
+pangolin/key
