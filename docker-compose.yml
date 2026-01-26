@@ -39,7 +39,8 @@ services:
     volumes:
       - ./pangolin:/app/config
     environment:
-      SERVER_SECRET: $PANGOLIN_SERVER_SECRET
+      - EMAIL_SMTP_PASS=$EMAIL_SMTP_PASS
+      - SERVER_SECRET=$PANGOLIN_SERVER_SECRET
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3001/api/v1/"]
       interval: "3s"
@@ -53,7 +54,8 @@ services:
       pangolin:
         condition: service_healthy
     environment:
-      SERVER_SECRET: $PANGOLIN_SERVER_SECRET
+      - EMAIL_SMTP_PASS=$EMAIL_SMTP_PASS
+      - SERVER_SECRET=$PANGOLIN_SERVER_SECRET
     command:
       - --reachableAt=http://gerbil:3004
       - --generateAndSaveKeyTo=/var/config/key
@@ -76,6 +78,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - DOCKER_SOCKET=unix:///var/run/docker.sock
+      - EMAIL_SMTP_PASS=$EMAIL_SMTP_PASS
       # - PANGOLIN_ENDPOINT=http://pangolin:3001
       - PANGOLIN_ENDPOINT=$PANGOLIN_ENDPOINT
       - NEWT_ID=$NEWT_ID

@@ -17,3 +17,9 @@ flags:
   require_email_verification: false
   disable_signup_without_invite: true
   disable_user_create_org: true
+
+# email:
+#   smtp_host: 
+#   smtp_port: 
+#   smtp_user: 
+#   smtp_secure: 
