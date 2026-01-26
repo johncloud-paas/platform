@@ -51,7 +51,7 @@ loki.process "add_geoip" {
 
   // Add GeoIP information for source IP
   stage.geoip {
-    db      = "/geoip/GeoLite2-City.mmdb"
+    db      = "/usr/share/GeoIP/GeoLite2-City.mmdb"
     source  = "src_ip"
     db_type = "city"
   }
@@ -71,7 +71,7 @@ loki.process "add_geoip" {
 
   // Add GeoIP information for destination IP
   stage.geoip {
-    db      = "/geoip/GeoLite2-City.mmdb"
+    db      = "/usr/share/GeoIP/GeoLite2-City.mmdb"
     source  = "dst_ip"
     db_type = "city"
   }

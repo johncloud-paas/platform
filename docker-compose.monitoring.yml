@@ -152,6 +152,7 @@ services:
       - $JOHNCLOUD_ROOT/alloy/config.alloy:/etc/alloy/config.alloy
       - $JOHNCLOUD_ROOT/alloy/data:/var/lib/alloy/data
       - $JOHNCLOUD_ROOT/alloy/geoip:/geoip:ro
+      - ./pangolin/GeoLite2:/usr/share/GeoIP
       - /var/log:/var/log:ro
       - /var/log/snort:/var/log/snort:ro
       - /var/lib/docker:/var/lib/docker:ro
