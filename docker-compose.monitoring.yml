@@ -75,6 +75,7 @@ services:
       - "traefik.http.routers.traefik-logs.entrypoints=websecure"
       - "traefik.http.routers.traefik-logs.tls.certresolver=letsencrypt"
       - "traefik.http.routers.traefik-logs.middlewares=authentik@file"
+      - "traefik.http.services.traefik-logs.loadbalancer.server.port=3000"
       - "homepage.group=Platform"
       - "homepage.name=Traefik Logs Dashboard"
       - "homepage.icon=traefik.svg"
