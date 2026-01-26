@@ -71,7 +71,6 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.traefik-logs.rule=Host(`traefik-logs.$HOST`)"
-      - "traefik.http.routers.traefik-logs.service=api@internal"
       - "traefik.http.routers.traefik-logs.entrypoints=websecure"
       - "traefik.http.routers.traefik-logs.tls.certresolver=letsencrypt"
       - "traefik.http.routers.traefik-logs.middlewares=authentik@file"
