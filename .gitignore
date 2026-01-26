@@ -8,4 +8,3 @@ traefik/
 *.ref.yml
 *.mmdb
 *.gz
-pangolin/

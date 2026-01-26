@@ -1,0 +1,18 @@
+app:
+  dashboard_url: "https://pangolin.hippias.fr"
+
+domains:
+  domain1:
+    base_domain: "pangolin.hippias.fr"
+    cert_resolver: "letsencrypt"
+
+server:
+  secret: "your-strong-secret"
+
+gerbil:
+  base_endpoint: "pangolin.hippias.fr"
+
+flags:
+  require_email_verification: false
+  disable_signup_without_invite: true
+  disable_user_create_org: true
