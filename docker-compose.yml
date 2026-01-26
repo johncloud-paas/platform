@@ -76,6 +76,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - DOCKER_SOCKET=unix:///var/run/docker.sock
+      # - PANGOLIN_ENDPOINT=http://pangolin:3001
       - PANGOLIN_ENDPOINT=$PANGOLIN_ENDPOINT
       - NEWT_ID=$NEWT_ID
       - NEWT_SECRET=$NEWT_SECRET
