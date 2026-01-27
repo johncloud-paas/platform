@@ -1,33 +1,73 @@
 http:
   middlewares:
-    # Recommended default middleware for most of the services
-    default:
-      chain:
-        middlewares:
-          - default-security-headers
-          - gzip
-          
-    # Add automatically some security headers
-    default-security-headers:
-      headers:
-        browserXssFilter: true                            # X-XSS-Protection=1; mode=block
-        contentTypeNosniff: true                          # X-Content-Type-Options=nosniff
-        customResponseHeaders:
-          X-Robots-Tag: "noindex, nofollow"
-        forceSTSHeader: true                              # Add the Strict-Transport-Security header even when the connection is HTTP
-        frameDeny: true                                   # X-Frame-Options=deny
-        referrerPolicy: "strict-origin-when-cross-origin"
-        stsIncludeSubdomains: true                        # Add includeSubdomains to the Strict-Transport-Security header
-        stsPreload: true                                  # Add preload flag appended to the Strict-Transport-Security header
-        stsSeconds: 63072000                              # Set the max-age of the Strict-Transport-Security header (63072000 = 2 years)
-        customFrameOptionsValue: "sameorigin"
+    badger:
+      plugin:
+        badger:
+          disableForwardAuth: true
+    redirect-to-https:
+      redirectScheme:
+        scheme: https
 
-    # Enable GZIP compression
-    gzip:
-      compress: {}
+  routers:
+    # HTTP to HTTPS redirect router
+    main-app-router-redirect:
+      rule: "Host(`pangolin.hippias.fr`)"
+      service: next-service
+      entryPoints:
+        - web
+      middlewares:
+        - redirect-to-https
+        - badger
 
-tls:
-  options:
-    default:
-      sniStrict: true
-      
+    # Next.js router (handles everything except API and WebSocket paths)
+    next-router:
+      rule: "Host(`pangolin.hippias.fr`) && !PathPrefix(`/api/v1`)"
+      service: next-service
+      entryPoints:
+        - websecure
+      middlewares:
+        - badger
+      tls:
+        certResolver: letsencrypt
+
+    # API router (handles /api/v1 paths)
+    api-router:
+      rule: "Host(`pangolin.hippias.fr`) && PathPrefix(`/api/v1`)"
+      service: api-service
+      entryPoints:
+        - websecure
+      middlewares:
+        - badger
+      tls:
+        certResolver: letsencrypt
+
+    # WebSocket router
+    ws-router:
+      rule: "Host(`pangolin.hippias.fr`)"
+      service: api-service
+      entryPoints:
+        - websecure
+      middlewares:
+        - badger
+      tls:
+        certResolver: letsencrypt
+
+  services:
+    next-service:
+      loadBalancer:
+        servers:
+          - url: "http://pangolin:3002"  # Next.js server
+
+    api-service:
+      loadBalancer:
+        servers:
+          - url: "http://pangolin:3000"  # API/WebSocket server
+
+tcp:
+  serversTransports:
+    pp-transport-v1:
+      proxyProtocol:
+        version: 1
+    pp-transport-v2:
+      proxyProtocol:
+        version: 2
