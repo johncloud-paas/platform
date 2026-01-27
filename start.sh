@@ -6,6 +6,7 @@ set -a; source .env; set +a
     git pull &&
     sudo docker compose pull &&
     sudo docker compose down &&
+    envsubst < pangolin/config.yml.template > pangolin/config.yml &&
     sudo mkdir -p $JOHNCLOUD_ROOT/traefik/agent/positions $JOHNCLOUD_ROOT/traefik/dashboard $JOHNCLOUD_ROOT/traefik/plugins $JOHNCLOUD_ROOT/traefik/conf.d $JOHNCLOUD_ROOT/alloy/geoip $JOHNCLOUD_ROOT/alloy/data $JOHNCLOUD_ROOT/prometheus/db &&
     sudo cp ./traefik/* $JOHNCLOUD_ROOT/traefik/conf.d &&
     sudo cp ./alloy/* $JOHNCLOUD_ROOT/alloy &&

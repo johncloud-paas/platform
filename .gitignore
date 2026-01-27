@@ -11,3 +11,4 @@ traefik/
 pangolin/GeoLite2/
 pangolin/db/
 pangolin/key
+pangolin/config.yml
