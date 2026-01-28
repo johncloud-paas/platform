@@ -168,20 +168,20 @@ services:
       - ./pangolin/traefik/logs:/var/log/traefik
       - $JOHNCLOUD_ROOT/traefik/letsencrypt:/letsencrypt
       # - $JOHNCLOUD_ROOT/traefik/plugins:/plugins-storage
-    # labels:
-    #   - "traefik.enable=true"
-    #   - "traefik.http.routers.traefik.rule=Host(`traefik.$HOST`)"
-    #   - "traefik.http.routers.traefik.service=api@internal"
-    #   - "traefik.http.routers.traefik.entrypoints=websecure"
-    #   - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
-    #   - "traefik.http.routers.traefik.middlewares=authentik@file"
-    #   - "homepage.group=Platform"
-    #   - "homepage.name=Traefik"
-    #   - "homepage.icon=traefik.svg"
-    #   - "homepage.href=https://traefik.$HOST/dashboard/"
-    #   - "homepage.description=Traefik reverse proxy"
-    #   - "homepage.widget.type=traefik"
-    #   - "homepage.widget.url=http://traefik:8080"
+    labels:
+      # - "traefik.enable=true"
+      # - "traefik.http.routers.traefik.rule=Host(`traefik.$HOST`)"
+      # - "traefik.http.routers.traefik.service=api@internal"
+      # - "traefik.http.routers.traefik.entrypoints=websecure"
+      # - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
+      # - "traefik.http.routers.traefik.middlewares=authentik@file"
+      - "homepage.group=Platform"
+      - "homepage.name=Traefik"
+      - "homepage.icon=traefik.svg"
+      - "homepage.href=https://traefik.$HOST/dashboard/"
+      - "homepage.description=Traefik reverse proxy"
+      - "homepage.widget.type=traefik"
+      - "homepage.widget.url=http://traefik:8080"
   
   certdumper:
     image: ghcr.io/kereis/traefik-certs-dumper:latest
@@ -205,11 +205,12 @@ services:
       - $JOHNCLOUD_ROOT/dockhand/data:/app/data
       - /var/run/docker.sock:/var/run/docker.sock
     labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.dockhand.rule=Host(`dockhand.$HOST`)"
-      - "traefik.http.routers.dockhand.entrypoints=websecure"
-      - "traefik.http.routers.dockhand.tls.certresolver=letsencrypt"
-      - "traefik.http.services.dockhand.loadbalancer.server.port=3000"
+      - pangolin.public-resources.dockhand.name=dockhand
+      - pangolin.public-resources.dockhand.full-domain=dockhand.$HOST
+      - pangolin.public-resources.dockhand.protocol=http
+      - pangolin.public-resources.dockhand.ssl=true
+      - pangolin.public-resources.dockhand.targets[0].method=http
+      - pangolin.public-resources.dockhand.targets[0].port=3000
       - "homepage.group=Platform"
       - "homepage.name=Dockhand"
       - "homepage.icon=https://dockhand.pro/images/logo-dark.webp"
