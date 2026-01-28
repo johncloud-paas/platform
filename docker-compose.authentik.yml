@@ -35,12 +35,12 @@ services:
     networks:
       - frontend
     labels:
-      - traefik.enable=true
-      - traefik.http.routers.authentik.entryPoints=websecure
-      - 'traefik.http.routers.authentik.rule=Host(`authentik.$HOST`) && PathPrefix(`/`)'
-      - traefik.http.routers.authentik.tls.certresolver=letsencrypt
-      - traefik.http.routers.authentik.tls=true
-      - traefik.http.services.authentik.loadbalancer.server.port=9000
+      - pangolin.public-resources.authentik.name=authentik
+      - pangolin.public-resources.authentik.full-domain=authentik.$HOST
+      - pangolin.public-resources.authentik.protocol=http
+      - pangolin.public-resources.authentik.ssl=true
+      - pangolin.public-resources.authentik.targets[0].method=http
+      - pangolin.public-resources.authentik.targets[0].port=9000
       - "homepage.group=Platform"
       - "homepage.name=Authentik"
       - "homepage.icon=authentik.png"
@@ -115,8 +115,6 @@ services:
       - ENABLE_OVERCOMMIT_MEMORY=true
     networks:
       - frontend
-    labels:
-      - "traefik.enable=false"
 
 networks:
   frontend:

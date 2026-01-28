@@ -12,11 +12,12 @@ services:
     volumes:
       - $JOHNCLOUD_ROOT/homepage/config:/app/config # Make sure your local config directory exists
     labels:
-        - "traefik.enable=true"
-        - "traefik.http.routers.homepage.rule=Host(`home.$HOST`)"
-        - "traefik.http.routers.homepage.entrypoints=websecure"
-        - "traefik.http.routers.homepage.tls.certresolver=letsencrypt"
-        - "traefik.http.routers.homepage.middlewares=authentik@file"
+      - pangolin.public-resources.homepage.name=homepage
+      - pangolin.public-resources.homepage.full-domain=home.$HOST
+      - pangolin.public-resources.homepage.protocol=http
+      - pangolin.public-resources.homepage.ssl=true
+      - pangolin.public-resources.homepage.targets[0].method=http
+      - pangolin.public-resources.homepage.targets[0].port=80
 
 networks:
   frontend:
