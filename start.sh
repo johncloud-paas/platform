@@ -2,7 +2,7 @@
 
 set -a; source .env; set +a
 
-(
+cd $1 && (
     git pull &&
     sudo docker compose pull &&
     sudo docker compose down &&
@@ -17,5 +17,5 @@ set -a; source .env; set +a
     sudo chown 0:0 -R $JOHNCLOUD_ROOT/dockhand/* &&
     sudo chown 1001:1001 -R $JOHNCLOUD_ROOT/traefik/dashboard &&
     sudo chown 1001:1001 -R  $JOHNCLOUD_ROOT/traefik/agent/positions &&
-    sudo docker compose logs -f $1
+    sudo docker compose logs -f
 )
