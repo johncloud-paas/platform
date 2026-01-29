@@ -6,8 +6,6 @@ services:
     container_name: traefik-agent
     restart: unless-stopped
     user: "1001:1001"
-    # ports:
-    #   - "5000:5000"
     volumes:
       - $JOHNCLOUD_ROOT/traefik/agent/positions:/data
       - /var/log/traefik:/logs:ro
@@ -15,18 +13,13 @@ services:
       # Log Paths
       - TRAEFIK_LOG_DASHBOARD_ACCESS_PATH=/logs/access.log
       - TRAEFIK_LOG_DASHBOARD_ERROR_PATH=/logs/access.log
-
       # Authentication - REPLACE WITH YOUR TOKEN
       - TRAEFIK_LOG_DASHBOARD_AUTH_TOKEN=$TRAEFIK_LOG_DASHBOARD_AUTH_TOKEN
-
       # System Monitoring
       - TRAEFIK_LOG_DASHBOARD_SYSTEM_MONITORING=true
-
       # REFACTOR: GeoIP removed - Dashboard handles GeoIP locally
-
       # Log Format
       - TRAEFIK_LOG_DASHBOARD_LOG_FORMAT=json
-
       # Server Port
       - PORT=5000
     healthcheck:
@@ -44,8 +37,6 @@ services:
     container_name: traefik-dashboard
     restart: unless-stopped
     user: "1001:1001"
-    # ports:
-    #   - "3000:3000"
     volumes:
       - $JOHNCLOUD_ROOT/traefik/dashboard:/app/data
     environment:
@@ -53,15 +44,12 @@ services:
       - AGENT_API_URL=http://traefik-agent:5000
       - AGENT_API_TOKEN=$TRAEFIK_LOG_DASHBOARD_AUTH_TOKEN
       - AGENT_NAME=$PLATFORM_NAME
-
       # Node Environment
       - NODE_ENV=production
       - PORT=3000
-
       # Display Configuration
       - NEXT_PUBLIC_SHOW_DEMO_PAGE=true
       - NEXT_PUBLIC_MAX_LOGS_DISPLAY=500
-
       # GeoIP: Auto-downloaded by geolite2-redist, no config needed
     depends_on:
       traefik-agent:
@@ -69,12 +57,12 @@ services:
     networks:
       frontend:
     labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.traefik-logs.rule=Host(`traefik-logs.$HOST`)"
-      - "traefik.http.routers.traefik-logs.entrypoints=websecure"
-      - "traefik.http.routers.traefik-logs.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.traefik-logs.middlewares=authentik@file"
-      - "traefik.http.services.traefik-logs.loadbalancer.server.port=3000"
+      - pangolin.public-resources.traefik-logs.name=traefik-logs
+      - pangolin.public-resources.traefik-logs.full-domain=traefik-logs.$HOST
+      - pangolin.public-resources.traefik-logs.protocol=http
+      - pangolin.public-resources.traefik-logs.ssl=true
+      - pangolin.public-resources.traefik-logs.targets[0].method=http
+      - pangolin.public-resources.traefik-logs.targets[0].port=3000
       - "homepage.group=Platform"
       - "homepage.name=Traefik Logs Dashboard"
       - "homepage.icon=traefik.svg"
@@ -98,12 +86,12 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.atlas.rule=Host(`atlas.$HOST`)"
-      - "traefik.http.routers.atlas.service=atlas"
-      - "traefik.http.routers.atlas.entrypoints=websecure"
-      - traefik.http.services.atlas.loadbalancer.server.port=8884
-      - "traefik.http.routers.atlas.tls.certresolver=letsencrypt"
+      - pangolin.public-resources.atlas.name=atlas
+      - pangolin.public-resources.atlas.full-domain=atlas.$HOST
+      - pangolin.public-resources.atlas.protocol=http
+      - pangolin.public-resources.atlas.ssl=true
+      - pangolin.public-resources.atlas.targets[0].method=http
+      - pangolin.public-resources.atlas.targets[0].port=8884
       - "traefik.http.routers.atlas.middlewares=authentik@file"
       - "homepage.group=Platform"
       - "homepage.name=Atlas"
@@ -122,9 +110,7 @@ services:
       - prometheus
       - loki
     command: ["-token","$GRAFANA_PDC_TOKEN","-cluster","$GRAFANA_PDC_CLUSTER","-gcloud-hosted-grafana-id","$GRAFANA_PDC_GCP_ID"]
-    labels:
-      - "traefik.enable=false"
-
+    
   loki:
     image: grafana/loki
     container_name: loki
@@ -137,8 +123,6 @@ services:
     command: -config.file=/etc/loki-custom/config.yml
     environment:
       - TZ=$TZ
-    labels:
-      - "traefik.enable=false"
     
   alloy:
     image: grafana/alloy
@@ -152,6 +136,7 @@ services:
       - $JOHNCLOUD_ROOT/alloy/config.alloy:/etc/alloy/config.alloy
       - $JOHNCLOUD_ROOT/alloy/data:/var/lib/alloy/data
       - $JOHNCLOUD_ROOT/alloy/geoip:/geoip:ro
+      - ./pangolin/GeoLite2:/usr/share/GeoIP
       - /var/log:/var/log:ro
       - /var/log/snort:/var/log/snort:ro
       - /var/lib/docker:/var/lib/docker:ro
@@ -159,24 +144,8 @@ services:
       - /var/run:/var/run:ro
       - /sys:/sys:ro
       - /proc:/proc:ro
-      # - /var/run/docker.sock:/var/run/docker.sock:ro
-      # - /var/lib/docker:/var/lib/docker:ro
     command: 'run --server.http.listen-addr=0.0.0.0:12345 --storage.path=/var/lib/alloy/data /etc/alloy/config.alloy'
-    # labels:
-    #   # - traefik.enable=true
-    #   # - traefik.http.routers.alloy.entrypoints=websecure
-    #   # - traefik.http.routers.alloy.rule=Host(`alloy.$HOST`)
-    #   # - traefik.http.routers.alloy.tls.certresolver=letsencrypt
-    #   # - traefik.http.routers.alloy.tls=true
-    #   # - traefik.http.services.alloy.loadbalancer.server.port=12345
-    #   # - "traefik.http.routers.alloy.middlewares=authentik@file"
-    #   - "homepage.group=Platform"
-    #   - "homepage.name=Alloy"
-    #   - "homepage.icon=alloy.png"
-    #   - "homepage.href=http://$TAILSCALE_NET.110:12345"
-    #   # - "homepage.href=https://alloy.$HOST"
-    #   - "homepage.description=Flexible, high performance, vendor-neutral distribution of the OpenTelemetry Collector"
-
+    
   speedtest:
     image: kutovoys/speedtest-exporter
     container_name: speedtest
@@ -187,19 +156,6 @@ services:
         - $JOHNCLOUD_ROOT/speedtest/data:/config
     networks:
       frontend:
-    # labels:
-    #   # - traefik.enable=true
-    #   # - traefik.http.routers.speedtest.entrypoints=websecure
-    #   # - traefik.http.routers.speedtest.rule=Host(`speedtest.$HOST`)
-    #   # - traefik.http.routers.speedtest.tls.certresolver=letsencrypt
-    #   # - traefik.http.routers.speedtest.tls=true
-    #   # - traefik.http.services.speedtest.loadbalancer.server.port=9090
-    #   # - "traefik.http.routers.speedtest.middlewares=authentik@file"
-    #   - "homepage.group=Platform"
-    #   - "homepage.name=Speedtest"
-    #   - "homepage.icon=si-speedtest"
-    #   - "homepage.href=http://$TAILSCALE_NET.120:9090"
-    #   - "homepage.description=Monitor the performance and uptime of your internet connection"
 
   prometheus:
     image: ubuntu/prometheus

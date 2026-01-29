@@ -1,10 +1,11 @@
 .env
 *.ovpn
 .venv
-roundcube/
-stalwart/
-traefik/
 *.new.yml
 *.ref.yml
 *.mmdb
 *.gz
+pangolin/GeoLite2/
+pangolin/db/
+pangolin/key
+pangolin/config.yml

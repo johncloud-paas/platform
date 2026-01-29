@@ -4,19 +4,17 @@ services:
   databasus:
     image: databasus/databasus:latest
     restart: unless-stopped
-    # user: 100:102
     volumes:
       - $JOHNCLOUD_ROOT/databasus/data:/databasus-data
     networks:
       - frontend
     labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.databasus.entryPoints=websecure"
-      - "traefik.http.routers.databasus.rule=Host(`databasus.$HOST`)"
-      - "traefik.http.routers.databasus.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.databasus.tls=true"
-      - "traefik.http.routers.databasus.service=databasus"
-      - "traefik.http.services.databasus.loadbalancer.server.port=4005"
+      - pangolin.public-resources.databasus.name=databasus
+      - pangolin.public-resources.databasus.full-domain=databasus.$HOST
+      - pangolin.public-resources.databasus.protocol=http
+      - pangolin.public-resources.databasus.ssl=true
+      - pangolin.public-resources.databasus.targets[0].method=http
+      - pangolin.public-resources.databasus.targets[0].port=4005
       - "homepage.group=Platform"
       - "homepage.name=Databasus"
       - "homepage.icon=sh-databasus"

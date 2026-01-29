@@ -1,0 +1,25 @@
+app:
+  dashboard_url: "https://pangolin.$HOST"
+
+domains:
+  domain1:
+    base_domain: "pangolin.$HOST"
+    cert_resolver: "letsencrypt"
+
+server:
+  maxmind_asn_path: "/app/config/GeoLite2/GeoLite2-ASN.mmdb"
+  maxmind_db_path:  "/app/config/GeoLite2/GeoLite2-Country.mmdb"
+
+gerbil:
+  base_endpoint: "pangolin.$HOST"
+
+flags:
+  require_email_verification: false
+  disable_signup_without_invite: true
+  disable_user_create_org: true
+
+email:
+  smtp_host: $EMAIL_HOST
+  smtp_port: $EMAIL_PORT
+  smtp_user: $EMAIL_USERNAME
+  smtp_secure: true

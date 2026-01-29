@@ -4,14 +4,9 @@ Using Hardened docker images. First authenticate :
 
 https://hub.docker.com/r/wallarm/gotestwaf#quick-start-with-docker
 
-Google OAuth setup: https://www.libe.net/en-traefik-auth
-
 First create the networks:
 
     sudo docker network create -d bridge --subnet=192.168.203.0/24 traefik-proxy 
-    sudo docker network create -d bridge --subnet=173.16.238.0/24 hippias-docker-proxy
-    sudo docker network create -d bridge --subnet=11.16.238.0/24 hippias-tailscale
-    sudo docker network create -d bridge --subnet=12.16.238.0/24 hippias-databases
 
 Define the root data folder in a .env file, 
 

@@ -14,14 +14,14 @@ services:
       AUTHENTIK_POSTGRESQL__PASSWORD: '${AUTHENTIK_PASSWORD_POSTGRESQL}'
       AUTHENTIK_SECRET_KEY: '${AUTHENTIK_SERVICE_PASSWORD_64}'
       AUTHENTIK_ERROR_REPORTING__ENABLED: true
-      AUTHENTIK_EMAIL__HOST: '${AUTHENTIK_EMAIL__HOST}'
-      AUTHENTIK_EMAIL__PORT: '${AUTHENTIK_EMAIL__PORT}'
-      AUTHENTIK_EMAIL__USERNAME: '${AUTHENTIK_EMAIL__USERNAME}'
-      AUTHENTIK_EMAIL__PASSWORD: '${AUTHENTIK_EMAIL__PASSWORD}'
-      AUTHENTIK_EMAIL__USE_TLS: '${AUTHENTIK_EMAIL__USE_TLS}'
-      AUTHENTIK_EMAIL__USE_SSL: '${AUTHENTIK_EMAIL__USE_SSL}'
-      AUTHENTIK_EMAIL__TIMEOUT: '${AUTHENTIK_EMAIL__TIMEOUT}'
-      AUTHENTIK_EMAIL__FROM: '${AUTHENTIK_EMAIL__FROM}'
+      AUTHENTIK_EMAIL__HOST: '${EMAIL_HOST}'
+      AUTHENTIK_EMAIL__PORT: '${EMAIL_PORT}'
+      AUTHENTIK_EMAIL__USERNAME: '${EMAIL_USERNAME}'
+      AUTHENTIK_EMAIL__PASSWORD: '${EMAIL_PASSWORD}'
+      AUTHENTIK_EMAIL__USE_TLS: '${EMAIL_USE_TLS}'
+      AUTHENTIK_EMAIL__USE_SSL: '${EMAIL_USE_SSL}'
+      AUTHENTIK_EMAIL__TIMEOUT: '${EMAIL_TIMEOUT}'
+      AUTHENTIK_EMAIL__FROM: '${EMAIL_FROM}'
       SERVICE_USER_POSTGRESQL: 'postgres'
       SERVICE_PASSWORD_POSTGRESQL: '${AUTHENTIK_PASSWORD_POSTGRESQL}'
       SERVICE_PASSWORD_64_AUTHENTIKSERVER: '${AUTHENTIK_SERVICE_PASSWORD_64}'
@@ -35,12 +35,12 @@ services:
     networks:
       - frontend
     labels:
-      - traefik.enable=true
-      - traefik.http.routers.authentik.entryPoints=websecure
-      - 'traefik.http.routers.authentik.rule=Host(`authentik.$HOST`) && PathPrefix(`/`)'
-      - traefik.http.routers.authentik.tls.certresolver=letsencrypt
-      - traefik.http.routers.authentik.tls=true
-      - traefik.http.services.authentik.loadbalancer.server.port=9000
+      - pangolin.public-resources.authentik.name=authentik
+      - pangolin.public-resources.authentik.full-domain=authentik.$HOST
+      - pangolin.public-resources.authentik.protocol=http
+      - pangolin.public-resources.authentik.ssl=true
+      - pangolin.public-resources.authentik.targets[0].method=http
+      - pangolin.public-resources.authentik.targets[0].port=9000
       - "homepage.group=Platform"
       - "homepage.name=Authentik"
       - "homepage.icon=authentik.png"
@@ -64,14 +64,14 @@ services:
       AUTHENTIK_POSTGRESQL__PASSWORD: '${AUTHENTIK_PASSWORD_POSTGRESQL}'
       AUTHENTIK_SECRET_KEY: '${AUTHENTIK_SERVICE_PASSWORD_64}'
       AUTHENTIK_ERROR_REPORTING__ENABLED: true
-      AUTHENTIK_EMAIL__HOST: '${AUTHENTIK_EMAIL__HOST}'
-      AUTHENTIK_EMAIL__PORT: '${AUTHENTIK_EMAIL__PORT}'
-      AUTHENTIK_EMAIL__USERNAME: '${AUTHENTIK_EMAIL__USERNAME}'
-      AUTHENTIK_EMAIL__PASSWORD: '${AUTHENTIK_EMAIL__PASSWORD}'
-      AUTHENTIK_EMAIL__USE_TLS: '${AUTHENTIK_EMAIL__USE_TLS}'
-      AUTHENTIK_EMAIL__USE_SSL: '${AUTHENTIK_EMAIL__USE_SSL}'
-      AUTHENTIK_EMAIL__TIMEOUT: '${AUTHENTIK_EMAIL__TIMEOUT}'
-      AUTHENTIK_EMAIL__FROM: '${AUTHENTIK_EMAIL__FROM}'
+      AUTHENTIK_EMAIL__HOST: '${EMAIL_HOST}'
+      AUTHENTIK_EMAIL__PORT: '${EMAIL_PORT}'
+      AUTHENTIK_EMAIL__USERNAME: '${EMAIL_USERNAME}'
+      AUTHENTIK_EMAIL__PASSWORD: '${EMAIL_PASSWORD}'
+      AUTHENTIK_EMAIL__USE_TLS: '${EMAIL_USE_TLS}'
+      AUTHENTIK_EMAIL__USE_SSL: '${EMAIL_USE_SSL}'
+      AUTHENTIK_EMAIL__TIMEOUT: '${EMAIL_TIMEOUT}'
+      AUTHENTIK_EMAIL__FROM: '${EMAIL_FROM}'
       SERVICE_USER_POSTGRESQL: 'postgres'
       SERVICE_PASSWORD_POSTGRESQL: '${AUTHENTIK_PASSWORD_POSTGRESQL}'
       SERVICE_PASSWORD_64_AUTHENTIKSERVER: '${AUTHENTIK_SERVICE_PASSWORD_64}'
@@ -115,8 +115,6 @@ services:
       - ENABLE_OVERCOMMIT_MEMORY=true
     networks:
       - frontend
-    labels:
-      - "traefik.enable=false"
 
 networks:
   frontend:
