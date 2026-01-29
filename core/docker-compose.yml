@@ -143,16 +143,6 @@ services:
       - "homepage.href=https://dockhand.$HOST"
       - "homepage.description=Modern Docker management for everyone"
 
-  redis:
-    image: redis:8
-    environment:
-      - TZ=$TZ
-      - ENABLE_OVERCOMMIT_MEMORY=true
-    networks:
-      - frontend
-    labels:
-      - "traefik.enable=false"
-
 networks:
   frontend:
     external: true
