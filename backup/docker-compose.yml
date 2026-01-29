@@ -45,12 +45,12 @@ services:
       timeout: 10s
       retries: 15
     labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.duplicati.rule=Host(`duplicati.$HOST`)"
-      - "traefik.http.routers.duplicati.entrypoints=websecure"
-      - "traefik.http.routers.duplicati.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.duplicati.service=duplicati"
-      - "traefik.http.services.duplicati.loadbalancer.server.port=8200"
+      - pangolin.public-resources.duplicati.name=duplicati
+      - pangolin.public-resources.duplicati.full-domain=duplicati.$HOST
+      - pangolin.public-resources.duplicati.protocol=http
+      - pangolin.public-resources.duplicati.ssl=true
+      - pangolin.public-resources.duplicati.targets[0].method=http
+      - pangolin.public-resources.duplicati.targets[0].port=8200
       - "homepage.group=Platform"
       - "homepage.name=Duplicati"
       - "homepage.icon=duplicati.png"
