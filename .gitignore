@@ -5,7 +5,10 @@
 *.ref.yml
 *.mmdb
 *.gz
-pangolin/GeoLite2/
-pangolin/db/
-pangolin/key
-pangolin/config.yml
+core/pangolin/GeoLite2/
+core/pangolin/config.yml
+core/pangolin/db/
+core/pangolin/key
+core/pangolin/traefik/
+core/traefik/dynamic_config.yml
+monitoring/alloy/config_chatgpt.alloy
