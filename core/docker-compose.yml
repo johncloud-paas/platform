@@ -121,16 +121,13 @@ services:
       - "homepage.group=Platform"
       - "homepage.name=Middleware Manager"
       - "homepage.icon=pangolin.svg"
-      - "homepage.href=https://mwmanager.$HOST"
+      - "homepage.href=http://mwmanager.$HOST:3456"
       - "homepage.description=Add custom middleware to Pangolin / Traefik resources"
-      - pangolin.public-resources.mwmanager.name=mwmanager
-      - pangolin.public-resources.mwmanager.full-domain=mwmanager.$HOST
-      - pangolin.public-resources.mwmanager.protocol=http
-      - pangolin.public-resources.mwmanager.ssl=true
-      - pangolin.public-resources.mwmanager.auth.sso-enabled=true
-      - pangolin.public-resources.mwmanager.auth.sso-roles[0]=Member
-      - pangolin.public-resources.mwmanager.targets[0].method=http
-      - pangolin.public-resources.mwmanager.targets[0].port=3456
+      - pangolin.private-resources.mwmanager.name=mwmanager
+      - pangolin.private-resources.mwmanager.mode=host
+      - pangolin.private-resources.mwmanager.destination=core-mwmanager-1
+      - pangolin.private-resources.mwmanager.site=bogus-long-nosed-bandicoot
+      - pangolin.private-resources.mwmanager.alias=mwmanager.$HOST
       
   traefik:
     image: traefik:v3.6.7
