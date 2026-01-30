@@ -49,6 +49,12 @@ services:
       interval: "3s"
       timeout: "3s"
       retries: 15
+    labels:
+      - "homepage.group=Platform"
+      - "homepage.name=Pangolin"
+      - "homepage.icon=pangolin.svg"
+      - "homepage.href=https://pangolin.$HOST"
+      - "homepage.description=Remote access to anything, anywhere"
 
   gerbil:
     image: docker.io/fosrl/gerbil:1.3.0
