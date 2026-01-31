@@ -11,4 +11,5 @@ core/pangolin/db/
 core/pangolin/key
 core/pangolin/traefik/
 core/traefik/dynamic_config.yml
+core/traefik/static_config.yml
 monitoring/alloy/config_chatgpt.alloy

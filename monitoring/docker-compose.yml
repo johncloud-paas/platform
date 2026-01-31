@@ -63,6 +63,8 @@ services:
       - pangolin.public-resources.traefik-logs.ssl=true
       - pangolin.public-resources.traefik-logs.targets[0].method=http
       - pangolin.public-resources.traefik-logs.targets[0].port=3000
+      - pangolin.public-resources.traefik-logs.auth.sso-enabled=true
+      - pangolin.public-resources.traefik-logs.auth.sso-roles[0]=Member
       - "homepage.group=Platform"
       - "homepage.name=Traefik Logs Dashboard"
       - "homepage.icon=traefik.svg"
@@ -92,6 +94,8 @@ services:
       - pangolin.public-resources.atlas.ssl=true
       - pangolin.public-resources.atlas.targets[0].method=http
       - pangolin.public-resources.atlas.targets[0].port=8884
+      - pangolin.public-resources.atlas.auth.sso-enabled=true
+      - pangolin.public-resources.atlas.auth.sso-roles[0]=Member
       - "traefik.http.routers.atlas.middlewares=authentik@file"
       - "homepage.group=Platform"
       - "homepage.name=Atlas"

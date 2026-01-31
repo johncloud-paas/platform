@@ -15,6 +15,8 @@ services:
       - pangolin.public-resources.databasus.ssl=true
       - pangolin.public-resources.databasus.targets[0].method=http
       - pangolin.public-resources.databasus.targets[0].port=4005
+      - pangolin.public-resources.databasus.auth.sso-enabled=true
+      - pangolin.public-resources.databasus.auth.sso-roles[0]=Member
       - "homepage.group=Platform"
       - "homepage.name=Databasus"
       - "homepage.icon=sh-databasus"
@@ -51,6 +53,8 @@ services:
       - pangolin.public-resources.duplicati.ssl=true
       - pangolin.public-resources.duplicati.targets[0].method=http
       - pangolin.public-resources.duplicati.targets[0].port=8200
+      - pangolin.public-resources.duplicati.auth.sso-enabled=true
+      - pangolin.public-resources.duplicati.auth.sso-roles[0]=Member
       - "homepage.group=Platform"
       - "homepage.name=Duplicati"
       - "homepage.icon=duplicati.png"
