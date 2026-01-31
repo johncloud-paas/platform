@@ -103,36 +103,36 @@
       volumes:
         - './pangolin/GeoLite2:/usr/share/GeoIP'
 
-    mwmanager:
-      image: hhftechnology/middleware-manager:latest
-      restart: unless-stopped
-      depends_on:
-        pangolin:
-          condition: service_healthy
-      ports:
-        - 3456:3456
-      volumes:
-        - $JOHNCLOUD_ROOT/middleware-manager/data:/data
-        - $JOHNCLOUD_ROOT/traefik/conf.d:/conf
-        - $JOHNCLOUD_ROOT/middleware-manager/config/middleware-manager/templates.yaml:/app/config/templates.yaml  # Optional custom templates
-      environment:
-        - PANGOLIN_API_URL=http://pangolin:3001/api/v1
-        - TRAEFIK_CONF_DIR=/conf/rules/
-        - DB_PATH=/data/middleware.db
-        - PORT=3456
-        - ACTIVE_DATA_SOURCE=pangolin
-        - TRAEFIK_STATIC_CONFIG_PATH=/conf/static_config.yml
-      labels:
-        - "homepage.group=Platform"
-        - "homepage.name=Middleware Manager"
-        - "homepage.icon=pangolin.svg"
-        - "homepage.href=http://mwmanager.$HOST:3456"
-        - "homepage.description=Add custom middleware to Pangolin / Traefik resources"
-        - pangolin.private-resources.mwmanager.name=mwmanager
-        - pangolin.private-resources.mwmanager.mode=host
-        - pangolin.private-resources.mwmanager.destination=core-mwmanager-1
-        - pangolin.private-resources.mwmanager.site=bogus-long-nosed-bandicoot
-        - pangolin.private-resources.mwmanager.alias=mwmanager.$HOST
+    # mwmanager:
+    #   image: hhftechnology/middleware-manager:latest
+    #   restart: unless-stopped
+    #   depends_on:
+    #     pangolin:
+    #       condition: service_healthy
+    #   ports:
+    #     - 3456:3456
+    #   volumes:
+    #     - $JOHNCLOUD_ROOT/middleware-manager/data:/data
+    #     - $JOHNCLOUD_ROOT/traefik/conf.d:/conf
+    #     - $JOHNCLOUD_ROOT/middleware-manager/config/middleware-manager/templates.yaml:/app/config/templates.yaml  # Optional custom templates
+    #   environment:
+    #     - PANGOLIN_API_URL=http://pangolin:3001/api/v1
+    #     - TRAEFIK_CONF_DIR=/conf/rules/
+    #     - DB_PATH=/data/middleware.db
+    #     - PORT=3456
+    #     - ACTIVE_DATA_SOURCE=pangolin
+    #     - TRAEFIK_STATIC_CONFIG_PATH=/conf/static_config.yml
+    #   labels:
+    #     - "homepage.group=Platform"
+    #     - "homepage.name=Middleware Manager"
+    #     - "homepage.icon=pangolin.svg"
+    #     - "homepage.href=http://mwmanager.$HOST:3456"
+    #     - "homepage.description=Add custom middleware to Pangolin / Traefik resources"
+    #     - pangolin.private-resources.mwmanager.name=mwmanager
+    #     - pangolin.private-resources.mwmanager.mode=host
+    #     - pangolin.private-resources.mwmanager.destination=core-mwmanager-1
+    #     - pangolin.private-resources.mwmanager.site=bogus-long-nosed-bandicoot
+    #     - pangolin.private-resources.mwmanager.alias=mwmanager.$HOST
         
     traefik:
       image: traefik:v3.6.7
