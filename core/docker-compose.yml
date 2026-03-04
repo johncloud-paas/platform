@@ -32,7 +32,7 @@
         - /var/lib/docker:/var/lib/docker:ro
     
     pangolin:
-      image: docker.io/fosrl/pangolin:ee-1.15.1
+      image: docker.io/fosrl/pangolin:ee-1.16.2
       restart: unless-stopped
       # ports:
       #   - "3002:3002"  # Temporary for setup
@@ -80,7 +80,7 @@
         - 80:80
 
     newt:
-      image: fosrl/newt:1.8.1
+      image: fosrl/newt:1.10.1
       restart: unless-stopped
       volumes:
         - /var/run/docker.sock:/var/run/docker.sock
