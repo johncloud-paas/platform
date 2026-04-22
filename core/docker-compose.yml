@@ -32,7 +32,7 @@
         - /var/lib/docker:/var/lib/docker:ro
     
     pangolin:
-      image: docker.io/fosrl/pangolin:ee-1.17.0
+      image: docker.io/fosrl/pangolin:ee-1.17
       restart: unless-stopped
       # ports:
       #   - "3002:3002"  # Temporary for setup
@@ -135,7 +135,7 @@
     #     - pangolin.private-resources.mwmanager.alias=mwmanager.$HOST
         
     traefik:
-      image: traefik:v3.6.13
+      image: traefik:latest
       depends_on:
         docker-socket-proxy:
           condition: service_started

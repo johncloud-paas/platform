@@ -7,7 +7,7 @@ http:
     redirect-to-https:
       redirectScheme:
         scheme: https
-
+        
   routers:
     # HTTP to HTTPS redirect router
     main-app-router-redirect:
