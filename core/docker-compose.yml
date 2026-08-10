@@ -100,7 +100,7 @@
       environment:
         - 'GEOIPUPDATE_ACCOUNT_ID=$GEOIPUPDATE_ACCOUNT_ID'							# Account ID
         - 'GEOIPUPDATE_LICENSE_KEY=$GEOIPUPDATE_LICENSE_KEY'							# API key
-        - 'GEOIPUPDATE_EDITION_IDS=GeoLite2-Country GeoLite2-ASN'	# Which dbs should be downloaded
+        - 'GEOIPUPDATE_EDITION_IDS=GeoLite2-Country GeoLite2-City GeoLite2-ASN'	# Which dbs should be downloaded
         - 'GEOIPUPDATE_FREQUENCY=72'							# Update intervall in hours
       volumes:
         - '$JOHNCLOUD_ROOT/traefik/GeoLite2:/usr/share/GeoIP'
