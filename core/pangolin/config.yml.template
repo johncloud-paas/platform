@@ -3,7 +3,10 @@ app:
 
 domains:
   domain1:
-    base_domain: "pangolin.$HOST"
+    base_domain: "$HOST"
+    cert_resolver: "letsencrypt"
+  domain2:
+    base_domain: "sauron.$HOST"
     cert_resolver: "letsencrypt"
 
 server:

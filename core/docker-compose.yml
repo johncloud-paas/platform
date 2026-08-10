@@ -32,12 +32,14 @@
         - /var/lib/docker:/var/lib/docker:ro
     
     pangolin:
-      image: docker.io/fosrl/pangolin:ee-1.17
+      image: docker.io/fosrl/pangolin:ee-latest
+      user: 0:0
       restart: unless-stopped
       # ports:
       #   - "3002:3002"  # Temporary for setup
       volumes:
         - ./pangolin:/app/config
+        - $JOHNCLOUD_ROOT/traefik/letsencrypt:/app/config/letsencrypt:ro
       environment:
         - NODE_ENV=prod
         - EMAIL_SMTP_PASS=$EMAIL_PASSWORD
@@ -55,7 +57,7 @@
         - "homepage.description=Remote access to anything, anywhere"
 
     gerbil:
-      image: docker.io/fosrl/gerbil:1.3.1
+      image: docker.io/fosrl/gerbil:latest
       restart: unless-stopped
       depends_on:
         pangolin:
@@ -80,7 +82,7 @@
         - 80:80
 
     newt:
-      image: fosrl/newt:1.11
+      image: fosrl/newt:latest
       restart: unless-stopped
       volumes:
         - /var/run/docker.sock:/var/run/docker.sock
@@ -101,7 +103,7 @@
         - 'GEOIPUPDATE_EDITION_IDS=GeoLite2-Country GeoLite2-ASN'	# Which dbs should be downloaded
         - 'GEOIPUPDATE_FREQUENCY=72'							# Update intervall in hours
       volumes:
-        - './pangolin/GeoLite2:/usr/share/GeoIP'
+        - '$JOHNCLOUD_ROOT/traefik/GeoLite2:/usr/share/GeoIP'
 
     # mwmanager:
     #   image: hhftechnology/middleware-manager:latest
@@ -136,6 +138,7 @@
         
     traefik:
       image: traefik:latest
+      user: 0:0
       depends_on:
         docker-socket-proxy:
           condition: service_started
@@ -201,6 +204,25 @@
         - "homepage.href=https://dockhand.$HOST"
         - "homepage.description=Modern Docker management for everyone"
 
+    # portainer:
+    #   image: portainer/portainer-ee:latest
+    #  restart: unless-stopped
+    #  volumes:
+    #    - /var/run/docker.sock:/var/run/docker.sock
+    #    - $JOHNCLOUD_ROOT/portainer:/data
+    #  labels:
+    #    - "pangolin.public-resources.portainer.name=portainer"
+    #    - "pangolin.public-resources.portainer.full-domain=portainer.$HOST"
+    #    - "pangolin.public-resources.portainer.protocol=http"
+    #    - "pangolin.public-resources.portainer.ssl=true"
+    #    - "pangolin.public-resources.portainer.targets[0].method=http"
+    #    - "pangolin.public-resources.portainer.targets[0].port=9000"
+    #    - "homepage.group=Platform"
+    #    - "homepage.name=Portainer"
+    #    - "homepage.icon=portainer.svg"
+    #    - "homepage.href=https://portainer.$HOST"
+    #    - "homepage.description=Modern Docker management for everyone"
+        
   networks:
     default:
       external: true
