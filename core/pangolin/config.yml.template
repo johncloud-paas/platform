@@ -8,6 +8,9 @@ domains:
   domain2:
     base_domain: "sauron.$HOST"
     cert_resolver: "letsencrypt"
+  domain3:
+    base_domain: "ecoledessarments.com"
+    cert_resolver: "letsencrypt"
 
 server:
   maxmind_asn_path: "/app/config/GeoLite2/GeoLite2-ASN.mmdb"

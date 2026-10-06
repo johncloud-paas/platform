@@ -1,0 +1,100 @@
+# Thyrea policy catalog.
+#
+# Mounted read-only into the engine container at /etc/thyrea/policies.yaml
+# (override with THYREA_POLICY_FILE). The engine loads and validates this file at
+# startup — it fails closed on any error — and hot-reloads it when the file
+# changes.
+#
+# Model: OWASP-CRS-style cumulative scoring. Each request is scored against every
+# policy; the summed score is compared to the thresholds below (reach `block` ->
+# blocked, reach `tag` -> tagged-and-forwarded). A policy may also force an action
+# with `action: block|tag` regardless of score.
+#
+# Every policy MUST have:
+#   - a unique `id`
+#   - at least one `mitre` ATT&CK technique (id validated as T#### / T####.###)
+# The Sigma-style `attack.tXXXX` tags are derived from `mitre` automatically.
+schema: thyrea.policies/1
+
+defaults:
+  scoreThreshold:
+    tag: 3
+    block: 5
+  maxPathLen: 4096
+  maxHeaderBytes: 32768
+  allowMethods: [GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD]
+  allowIPs: []
+  denyIPs: []
+  securityHeaders:
+    X-Content-Type-Options: nosniff
+    X-Frame-Options: DENY
+    Referrer-Policy: no-referrer
+  stripHeaders: [Server, X-Powered-By]
+
+policies:
+  - id: P0000001
+    name: SQL injection — boolean OR tautology
+    description: Classic ' OR 1=1 tautology in the query string.
+    severity: high
+    target: query
+    type: regex
+    match: "(?i)'\\s*or\\s+\\d+=\\d+"
+    score: 5
+    mitre:
+      - technique: T1190
+        name: Exploit Public-Facing Application
+        tactic: initial-access
+    references:
+      - https://owasp.org/Top10/A03_2021-Injection/
+    tags: [owasp.a03, sqli]
+
+  - id: P0000002
+    name: SQL injection — UNION SELECT
+    description: UNION-based SQL injection in the query string.
+    severity: high
+    target: query
+    type: substr
+    match: "union select"
+    score: 5
+    mitre:
+      - technique: T1190
+        name: Exploit Public-Facing Application
+        tactic: initial-access
+    references:
+      - https://owasp.org/Top10/A03_2021-Injection/
+    tags: [owasp.a03, sqli]
+
+  - id: P0000003
+    name: Path traversal
+    description: Directory traversal sequence (../) in the request path.
+    severity: high
+    target: path
+    type: substr
+    match: "../"
+    score: 5
+    mitre:
+      - technique: T1083
+        name: File and Directory Discovery
+        tactic: discovery
+      - technique: T1190
+        name: Exploit Public-Facing Application
+        tactic: initial-access
+    references:
+      - https://owasp.org/Top10/A01_2021-Broken_Access_Control/
+    tags: [owasp.a01, traversal]
+
+  - id: P0000004
+    name: Reflected XSS — script tag
+    description: An inline <script tag in the query string.
+    severity: medium
+    target: query
+    type: substr
+    match: "<script"
+    score: 3
+    mitre:
+      - technique: T1059.007
+        name: "Command and Scripting Interpreter: JavaScript"
+        tactic: execution
+    references:
+      - https://owasp.org/Top10/A03_2021-Injection/
+    tags: [owasp.a03, xss]
