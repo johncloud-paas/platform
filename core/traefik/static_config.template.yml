@@ -1,11 +1,11 @@
 api:
-  insecure: true
+  insecure: false
   dashboard: true
 
 providers:
   http:
-    endpoint: "http://pangolin:3001/api/v1/traefik-config"
-    # endpoint: "http://mwmanager:3456/api/v1/traefik-config"
+    # endpoint: "http://pangolin:3001/api/v1/traefik-config"
+    endpoint: "http://mwmanager:3456/api/v1/traefik-config"
     pollInterval: "5s"
   file:
     directory: "/conf.d/rules"
@@ -18,17 +18,24 @@ experimental:
       version: "v1.3.1"
 # - --experimental.plugins.mtlswhitelist.moduleName=github.com/smerschjohann/mtlswhitelist
 # - --experimental.plugins.mtlswhitelist.version=v0.0.4
-    # thyrea:
-    #   moduleName: "github.com/thyrea/thyrea-traefik-shim"
-    #   version: "v0.1.0"
+  localPlugins:
+    thyrea:
+      moduleName: "github.com/thyrea/thyrea-traefik-shim"
 
 log:
   level: "INFO"
-  format: "common"
-  maxSize: 100
-  maxBackups: 3
-  maxAge: 3
-  compress: true
+  format: "json"
+
+accessLog:
+  filePath: "/var/log/traefik/access.log"
+  format: "json"
+  bufferingSize: 100
+  fields:
+    headers:
+      defaultMode: drop
+      names:
+        User-Agent: keep
+        Authorization: redact
 
 certificatesResolvers:
   letsencrypt:
