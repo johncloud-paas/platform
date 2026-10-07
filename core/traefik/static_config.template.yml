@@ -4,8 +4,8 @@ api:
 
 providers:
   http:
-    # endpoint: "http://pangolin:3001/api/v1/traefik-config"
-    endpoint: "http://mwmanager:3456/api/v1/traefik-config"
+    endpoint: "http://pangolin:3001/api/v1/traefik-config"
+    # endpoint: "http://mwmanager:3456/api/v1/traefik-config"
     pollInterval: "5s"
   file:
     directory: "/conf.d/rules"
@@ -55,6 +55,8 @@ entryPoints:
       respondingTimeouts:
         readTimeout: "30m"
     http:
+      middlewares:
+        - thyrea@file
       tls:
         certResolver: "letsencrypt"
       encodedCharacters:

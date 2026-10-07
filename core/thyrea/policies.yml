@@ -1,3 +1,13 @@
+# Thyrea full policy catalog (hand-written + generated CrowdSec Hub / OWASP CRS).
+#
+# This is the catalog mounted into the engine (docker-compose). It exercises the
+# composite rule DSL: when/all/any condition trees; body/cookies/url/filenames/
+# *_names zones; equals/prefix/suffix/gte/pm/libinjection match operators; and
+# transform pipelines (urldecode, lowercase, normalize_path, cmdline, count, …).
+#
+# Regenerate with build_policies.py --base policies.yaml -o policies.crowdsec.yaml;
+# policies.yaml holds just the hand-written base the generator preserves on top.
+#
 # Thyrea policy catalog.
 #
 # Mounted read-only into the engine container at /etc/thyrea/policies.yaml
