@@ -18,6 +18,9 @@ experimental:
       version: "v1.3.1"
 # - --experimental.plugins.mtlswhitelist.moduleName=github.com/smerschjohann/mtlswhitelist
 # - --experimental.plugins.mtlswhitelist.version=v0.0.4
+    # thyrea:
+    #   moduleName: "github.com/thyrea/thyrea-traefik-shim"
+    #   version: "v0.1.0"
 
 log:
   level: "INFO"
