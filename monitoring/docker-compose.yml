@@ -1,155 +1,80 @@
 name: monitoring
 
 services:
-  traefik-agent:
-    image: hhftechnology/traefik-log-dashboard-agent:dev-dashboard
-    container_name: traefik-agent
-    restart: unless-stopped
-    user: "1001:1001"
-    volumes:
-      - $JOHNCLOUD_ROOT/traefik/agent/positions:/data
-      - /var/log/traefik:/logs:ro
-    environment:
-      # Log Paths
-      - TRAEFIK_LOG_DASHBOARD_ACCESS_PATH=/logs/access.log
-      - TRAEFIK_LOG_DASHBOARD_ERROR_PATH=/logs/access.log
-      # Authentication - REPLACE WITH YOUR TOKEN
-      - TRAEFIK_LOG_DASHBOARD_AUTH_TOKEN=$TRAEFIK_LOG_DASHBOARD_AUTH_TOKEN
-      # System Monitoring
-      - TRAEFIK_LOG_DASHBOARD_SYSTEM_MONITORING=true
-      # REFACTOR: GeoIP removed - Dashboard handles GeoIP locally
-      # Log Format
-      - TRAEFIK_LOG_DASHBOARD_LOG_FORMAT=json
-      # Server Port
-      - PORT=5000
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000/api/logs/status"]
-      interval: 2m  # PERFORMANCE FIX: Increased from 30s to 2min to reduce load
-      timeout: 10s
-      retries: 3
-      start_period: 30s  # Increased to allow agent to fully start
-    networks:
-      frontend:
-
-  # # Traefik Log Dashboard - Next.js web UI
-  # traefik-dashboard:
-  #   image: hhftechnology/traefik-log-dashboard:dev-dashboard
-  #   container_name: traefik-dashboard
-  #   restart: unless-stopped
-  #   user: "1001:1001"
-  #   volumes:
-  #     - $JOHNCLOUD_ROOT/traefik/dashboard:/app/data
-  #   environment:
-  #     # Agent Configuration - REPLACE WITH YOUR TOKEN
-  #     - AGENT_API_URL=http://traefik-agent:5000
-  #     - AGENT_API_TOKEN=$TRAEFIK_LOG_DASHBOARD_AUTH_TOKEN
-  #     - AGENT_NAME=$PLATFORM_NAME
-  #     # Node Environment
-  #     - NODE_ENV=production
-  #     - PORT=3000
-  #     # Display Configuration
-  #     - NEXT_PUBLIC_SHOW_DEMO_PAGE=true
-  #     - NEXT_PUBLIC_MAX_LOGS_DISPLAY=500
-  #     # GeoIP: Auto-downloaded by geolite2-redist, no config needed
-  #   depends_on:
-  #     traefik-agent:
-  #       condition: service_healthy
-  #   networks:
-  #     frontend:
-  #   labels:
-  #     - pangolin.public-resources.traefik-logs.name=traefik-logs
-  #     - pangolin.public-resources.traefik-logs.full-domain=traefik-logs.$HOST
-  #     - pangolin.public-resources.traefik-logs.protocol=http
-  #     - pangolin.public-resources.traefik-logs.ssl=true
-  #     - pangolin.public-resources.traefik-logs.targets[0].method=http
-  #     - pangolin.public-resources.traefik-logs.targets[0].port=3000
-  #     - pangolin.public-resources.traefik-logs.auth.sso-enabled=true
-  #     - pangolin.public-resources.traefik-logs.auth.sso-roles[0]=Member
-  #     - "homepage.group=Platform"
-  #     - "homepage.name=Traefik Logs Dashboard"
-  #     - "homepage.icon=traefik.svg"
-  #     - "homepage.href=https://traefik-logs.$HOST/dashboard"
-  #     - "homepage.description=Traefik Log Dashboard"
-
-  # atlas:
-  #   image: keinstien/atlas:latest
-  #   cap_add:
-  #   - NET_RAW
-  #   - NET_ADMIN
-  #   networks:
-  #     frontend:
-  #   environment:
-  #     - ATLAS_UI_PORT=8884
-  #     - ATLAS_API_PORT=8885
-  #     - FASTSCAN_INTERVAL=3600
-  #     - DOCKERSCAN_INTERVAL=3600
-  #     - DEEPSCAN_INTERVAL=7200
-  #     - SCAN_SUBNETS="$TRAEFIK_NET.0/24"
-  #   volumes:
-  #     - /var/run/docker.sock:/var/run/docker.sock:ro
-  #   labels:
-  #     - pangolin.public-resources.atlas.name=atlas
-  #     - pangolin.public-resources.atlas.full-domain=atlas.$HOST
-  #     - pangolin.public-resources.atlas.protocol=http
-  #     - pangolin.public-resources.atlas.ssl=true
-  #     - pangolin.public-resources.atlas.targets[0].method=http
-  #     - pangolin.public-resources.atlas.targets[0].port=8884
-  #     - pangolin.public-resources.atlas.auth.sso-enabled=true
-  #     - pangolin.public-resources.atlas.auth.sso-roles[0]=Member
-  #     - "traefik.http.routers.atlas.middlewares=authentik@file"
-  #     - "homepage.group=Platform"
-  #     - "homepage.name=Atlas"
-  #     - "homepage.icon=mdi-web"
-  #     - "homepage.href=https://atlas.$HOST"
-  #     - "homepage.description=Network discovery, visualization, and monitoring"
-  
   pdc:
     # https://grafana.com/docs/grafana-cloud/connect-externally-hosted/private-data-source-connect/#private-data-source-connect-pdc-concepts
     image: grafana/pdc-agent:latest
     container_name: pdc
     restart: unless-stopped
-    networks:
-      - frontend
-    depends_on:
-      - prometheus
-      - loki
     command: ["-token","$GRAFANA_PDC_TOKEN","-cluster","$GRAFANA_PDC_CLUSTER","-gcloud-hosted-grafana-id","$GRAFANA_PDC_GCP_ID"]
     
-  loki:
-    image: grafana/loki
-    container_name: loki
+  victorialogs:
+    image: victoriametrics/victoria-logs:latest
+    container_name: victorialogs
     user: "0:0"
-    networks:
-      - frontend
+    restart: unless-stopped
     volumes:
-      - $JOHNCLOUD_ROOT/loki/data:/loki
-      - $JOHNCLOUD_ROOT/loki:/etc/loki-custom
-    command: -config.file=/etc/loki-custom/config.yml
+      - $JOHNCLOUD_ROOT/victorialogs/data:/vlogs
+    command:
+      - "-storageDataPath=/vlogs"
+      - "-httpListenAddr=:9428"
     environment:
       - TZ=$TZ
-    
-  alloy:
-    image: grafana/alloy
+
+  victoriatraces:
+    image: victoriametrics/victoria-traces:latest
     restart: unless-stopped
-    container_name: alloy
+    container_name: victoriatraces
     depends_on:
       - pdc
-    networks:
-      frontend:
     volumes:
-      - $JOHNCLOUD_ROOT/alloy/config.alloy:/etc/alloy/config.alloy
-      - $JOHNCLOUD_ROOT/alloy/data:/var/lib/alloy/data
-      - $JOHNCLOUD_ROOT/alloy/geoip:/geoip:ro
-      - $JOHNCLOUD_ROOT/traefik/GeoLite2:/usr/share/GeoIP
-      - /var/log:/var/log:ro
-      - /var/log/snort:/var/log/snort:ro
-      - /var/lib/docker:/var/lib/docker:ro
-      - /:/rootfs:ro,rslave
+      - $JOHNCLOUD_ROOT/victoriatraces/data:/vtraces
+    command:
+      - "-storageDataPath=/vtraces"
+      - "-httpListenAddr=:9481"
+    environment:
+      - TZ=$TZ
+
+  fluent-bit:
+    image: fluent/fluent-bit:latest
+    container_name: fluent-bit
+    restart: unless-stopped
+    depends_on:
+      - victorialogs
+    volumes:
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - $JOHNCLOUD_ROOT/fluent-bit/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
+      - $JOHNCLOUD_ROOT/fluent-bit/container_name.lua:/fluent-bit/etc/container_name.lua:ro
+    environment:
+      - TZ=$TZ
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    restart: unless-stopped
+    pid: host
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - "--path.procfs=/host/proc"
+      - "--path.sysfs=/host/sys"
+      - "--path.rootfs=/rootfs"
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor
+    restart: unless-stopped
+    privileged: true
+    volumes:
+      - /:/rootfs:ro
       - /var/run:/var/run:ro
       - /sys:/sys:ro
-      - /proc:/proc:ro
-    command: 'run --server.http.listen-addr=0.0.0.0:12345 --storage.path=/var/lib/alloy/data /etc/alloy/config.alloy'
-    
+      - /var/lib/docker:/var/lib/docker:ro
+      - /dev/disk:/dev/disk:ro
+
   speedtest:
     image: kutovoys/speedtest-exporter
     container_name: speedtest
@@ -158,36 +83,31 @@ services:
         - UPDATE_INTERVAL=60
     volumes:
         - $JOHNCLOUD_ROOT/speedtest/data:/config
-    networks:
-      frontend:
 
-  prometheus:
-    image: ubuntu/prometheus
-    container_name: prometheus
+  victoriametrics:
+    image: victoriametrics/victoria-metrics:latest
+    container_name: victoriametrics
     user: "0:0"
     restart: unless-stopped
     depends_on:
+      - node-exporter
+      - cadvisor
       - speedtest
-    networks:
-      - frontend
     volumes:
-      - $JOHNCLOUD_ROOT/prometheus/:/etc/prometheus/
-      - $JOHNCLOUD_ROOT/prometheus/db:/prometheus
+      - $JOHNCLOUD_ROOT/prometheus/:/etc/victoriametrics/
+      - $JOHNCLOUD_ROOT/prometheus/data:/vmdata
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
     command:
-      - "--web.route-prefix=/"
-      - "--web.enable-remote-write-receiver"
-      - "--config.file=/etc/prometheus/prometheus.yml"
-      - "--storage.tsdb.path=/prometheus"
-      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
-      - "--web.console.templates=/usr/share/prometheus/consoles"
-      - "--web.enable-lifecycle"
+      - "-promscrape.config=/etc/victoriametrics/prometheus.yml"
+      - "-storageDataPath=/vmdata"
+      - "-httpListenAddr=:8428"
+      - "-retentionPeriod=12"
     environment:
       - TZ=$TZ
 
 networks:
-  frontend:
+  default:
     external: true
     name: $TRAEFIK_NETWORK
     
