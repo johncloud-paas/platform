@@ -16,11 +16,6 @@ experimental:
     badger:
       moduleName: "github.com/fosrl/badger"
       version: "v1.3.1"
-# - --experimental.plugins.mtlswhitelist.moduleName=github.com/smerschjohann/mtlswhitelist
-# - --experimental.plugins.mtlswhitelist.version=v0.0.4
-  # localPlugins:
-  #   thyrea:
-  #     moduleName: "github.com/thyrea/thyrea-traefik-shim"
 
 log:
   level: "INFO"
@@ -55,8 +50,6 @@ entryPoints:
       respondingTimeouts:
         readTimeout: "30m"
     http:
-      # middlewares:
-      #   - thyrea@file
       tls:
         certResolver: "letsencrypt"
       encodedCharacters:

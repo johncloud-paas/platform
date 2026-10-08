@@ -7,9 +7,6 @@ http:
     redirect-to-https:
       redirectScheme:
         scheme: https
-    # thyrea:
-    #   plugin:
-    #     thyrea: {}
         
   routers:
     # HTTP to HTTPS redirect router
@@ -20,8 +17,6 @@ http:
         - web
       middlewares:
         - redirect-to-https
-        # - badger
-        - thyrea
 
     # Next.js router (handles everything except API and WebSocket paths)
     next-router:
@@ -31,7 +26,6 @@ http:
         - websecure
       middlewares:
         - badger
-        - thyrea
       tls:
         certResolver: letsencrypt
 
@@ -43,7 +37,6 @@ http:
         - websecure
       middlewares:
         - badger
-        - thyrea
       tls:
         certResolver: letsencrypt
 
