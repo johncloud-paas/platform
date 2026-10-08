@@ -97,12 +97,12 @@ services:
       - cadvisor
       - speedtest
     volumes:
-      - $JOHNCLOUD_ROOT/prometheus/:/etc/victoriametrics/
-      - $JOHNCLOUD_ROOT/prometheus/data:/vmdata
+      - $JOHNCLOUD_ROOT/victoriametrics/:/etc/victoriametrics/
+      - $JOHNCLOUD_ROOT/victoriametrics/data:/vmdata
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
     command:
-      - "-promscrape.config=/etc/victoriametrics/prometheus.yml"
+      - "-promscrape.config=/etc/victoriametrics/victoriametrics.yml"
       - "-storageDataPath=/vmdata"
       - "-httpListenAddr=:8428"
       - "-retentionPeriod=12"

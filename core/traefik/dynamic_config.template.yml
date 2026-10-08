@@ -7,9 +7,9 @@ http:
     redirect-to-https:
       redirectScheme:
         scheme: https
-    thyrea:
-      plugin:
-        thyrea: {}
+    # thyrea:
+    #   plugin:
+    #     thyrea: {}
         
   routers:
     # HTTP to HTTPS redirect router
