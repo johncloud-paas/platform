@@ -39,6 +39,7 @@ services:
     volumes:
       - ./pangolin:/app/config
       - $JOHNCLOUD_ROOT/traefik/letsencrypt:/app/config/letsencrypt:ro
+      - $JOHNCLOUD_ROOT/traefik/GeoLite2:/app/config/GeoLite2:ro
     environment:
       - NODE_ENV=prod
       - EMAIL_SMTP_PASS=$EMAIL_PASSWORD
