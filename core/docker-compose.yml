@@ -1,282 +1,283 @@
-  name: core
+name: core
 
-  services:
-    docker-socket-proxy:
-      image: tecnativa/docker-socket-proxy
-      privileged: true
-      environment:
-        LOG_LEVEL: warning
-        # Core info & inspection
-        INFO: 1
-        VERSION: 1
-        EVENTS: 1
-        PING: 1
-        # Containers (read-only operations)
-        CONTAINERS: 1
-        # Images (list & inspect)
-        IMAGES: 1
-        # Volumes (list & inspect)
-        VOLUMES: 1
-        # Networks (list & inspect)
-        NETWORKS: 1
-        # Nodes & Swarm info (read-only)
-        NODES: 0
-        SERVICES: 0
-        TASKS: 0
-        # System-wide data
-        SYSTEM: 0
-        EXEC: 0
-        POST: 0
-      volumes:
-        - /var/run/docker.sock:/var/run/docker.sock:ro
-        - /var/lib/docker:/var/lib/docker:ro
-    
-    thyrea-engine:
-      image: ydethe/thyrea-engine
-      container_name: thyrea-engine        # must resolve as thyrea-engine
-      environment:
-        THYREA_ENGINE_ADDR: ":9090"
-        THYREA_POLICY_FILE: "/etc/thyrea/policies.yaml"
-        # Country database for the live-monitoring map. Written by the geoipupdate
-        # service into ./deploy; the engine runs fine (map just stays empty) if it
-        # is not yet present. A GeoLite2-City DB also works here.
-        THYREA_GEOIP_FILE: "/etc/thyrea/geoip/GeoLite2-Country.mmdb"
-        THYREA_POLICY_PRIVATE_KEY: $THYREA_POLICY_PRIVATE_KEY
-        THYREA_TRUSTED_PROXIES: "172.21.0.0/16"
-      volumes:
-        - ./thyrea/policies.yml:/etc/thyrea/policies.yaml:ro
-        - $JOHNCLOUD_ROOT/traefik/GeoLite2:/etc/thyrea/geoip:ro
-      labels:
-        - pangolin.public-resources.thyrea.name=thyrea
-        - pangolin.public-resources.thyrea.full-domain=thyrea.$HOST
-        - pangolin.public-resources.thyrea.protocol=http
-        - pangolin.public-resources.thyrea.ssl=true
-        - pangolin.public-resources.thyrea.targets[0].method=http
-        - pangolin.public-resources.thyrea.targets[0].port=9090
-        - pangolin.public-resources.thyrea.targets[0].healthcheck.enabled=true
-        - pangolin.public-resources.thyrea.targets[0].healthcheck.hostname=thyrea-engine
-        - pangolin.public-resources.thyrea.targets[0].healthcheck.port=9090
-        - pangolin.public-resources.thyrea.targets[0].healthcheck.path=/
-        - pangolin.public-resources.thyrea.targets[0].healthcheck.method=GET
-        - pangolin.public-resources.thyrea.targets[0].healthcheck.status=200
+services:
+  docker-socket-proxy:
+    image: tecnativa/docker-socket-proxy
+    privileged: true
+    environment:
+      LOG_LEVEL: warning
+      # Core info & inspection
+      INFO: 1
+      VERSION: 1
+      EVENTS: 1
+      PING: 1
+      # Containers (read-only operations)
+      CONTAINERS: 1
+      # Images (list & inspect)
+      IMAGES: 1
+      # Volumes (list & inspect)
+      VOLUMES: 1
+      # Networks (list & inspect)
+      NETWORKS: 1
+      # Nodes & Swarm info (read-only)
+      NODES: 0
+      SERVICES: 0
+      TASKS: 0
+      # System-wide data
+      SYSTEM: 0
+      EXEC: 0
+      POST: 0
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker:/var/lib/docker:ro
+  
+  thyrea-engine:
+    image: ydethe/thyrea-engine
+    container_name: thyrea-engine        # must resolve as thyrea-engine
+    environment:
+      THYREA_ENGINE_ADDR: ":9090"
+      THYREA_POLICY_FILE: "/etc/thyrea/policies.yaml"
+      # Country database for the live-monitoring map. Written by the geoipupdate
+      # service into ./deploy; the engine runs fine (map just stays empty) if it
+      # is not yet present. A GeoLite2-City DB also works here.
+      THYREA_GEOIP_FILE: "/etc/thyrea/geoip/GeoLite2-City.mmdb"
+      THYREA_POLICY_PRIVATE_KEY: $THYREA_POLICY_PRIVATE_KEY
+      THYREA_TRUSTED_PROXIES: "172.21.0.0/16"
+      THYREA_VICTORIALOGS_URL: "http://victorialogs:9428"
+    volumes:
+      - ./thyrea/policies.yml:/etc/thyrea/policies.yaml:ro
+      - $JOHNCLOUD_ROOT/traefik/GeoLite2:/etc/thyrea/geoip:ro
+    labels:
+      - pangolin.public-resources.thyrea.name=thyrea
+      - pangolin.public-resources.thyrea.full-domain=thyrea.$HOST
+      - pangolin.public-resources.thyrea.protocol=http
+      - pangolin.public-resources.thyrea.ssl=true
+      - pangolin.public-resources.thyrea.targets[0].method=http
+      - pangolin.public-resources.thyrea.targets[0].port=9090
+      - pangolin.public-resources.thyrea.targets[0].healthcheck.enabled=true
+      - pangolin.public-resources.thyrea.targets[0].healthcheck.hostname=thyrea-engine
+      - pangolin.public-resources.thyrea.targets[0].healthcheck.port=9090
+      - pangolin.public-resources.thyrea.targets[0].healthcheck.path=/
+      - pangolin.public-resources.thyrea.targets[0].healthcheck.method=GET
+      - pangolin.public-resources.thyrea.targets[0].healthcheck.status=200
 
-        # Page de maintenance en mode automatique
-        - pangolin.public-resources.thyrea.maintenance.enabled=true
-        - pangolin.public-resources.thyrea.maintenance.type=automatic
-        - pangolin.public-resources.thyrea.maintenance.title=Maintenance en cours
-        - pangolin.public-resources.thyrea.maintenance.message=Le service est temporairement indisponible.
-        
-        - "homepage.group=Platform"
-        - "homepage.name=Thyrea Monitoring"
-        - "homepage.icon=grafana.svg"
-        - "homepage.href=https://thyrea.$HOST/"
-        - "homepage.description=Monitoring"
+      # Page de maintenance en mode automatique
+      - pangolin.public-resources.thyrea.maintenance.enabled=true
+      - pangolin.public-resources.thyrea.maintenance.type=automatic
+      - pangolin.public-resources.thyrea.maintenance.title=Maintenance en cours
+      - pangolin.public-resources.thyrea.maintenance.message=Le service est temporairement indisponible.
       
-    pangolin:
-      image: docker.io/fosrl/pangolin:ee-latest
-      user: 0:0
-      restart: unless-stopped
-      # ports:
-      #   - "3002:3002"  # Temporary for setup
-      volumes:
-        - ./pangolin:/app/config
-        - $JOHNCLOUD_ROOT/traefik/letsencrypt:/app/config/letsencrypt:ro
-      environment:
-        - NODE_ENV=prod
-        - EMAIL_SMTP_PASS=$EMAIL_PASSWORD
-        - SERVER_SECRET=$PANGOLIN_SERVER_SECRET
-      healthcheck:
-        test: ["CMD", "curl", "-f", "http://localhost:3001/api/v1"]
-        interval: "3s"
-        timeout: "3s"
-        retries: 15
-      labels:
-        - "homepage.group=Platform"
-        - "homepage.name=Pangolin"
-        - "homepage.icon=pangolin.svg"
-        - "homepage.href=https://pangolin.$HOST"
-        - "homepage.description=Remote access to anything, anywhere"
-
-    gerbil:
-      image: docker.io/fosrl/gerbil:latest
-      restart: unless-stopped
-      depends_on:
-        pangolin:
-          condition: service_healthy
-      # environment:
-      #   - EMAIL_SMTP_PASS=$EMAIL_PASSWORD
-      #   - SERVER_SECRET=$PANGOLIN_SERVER_SECRET
-      command:
-        - --reachableAt=http://gerbil:3004
-        - --generateAndSaveKeyTo=/var/config/key
-        - --remoteConfig=http://pangolin:3001/api/v1/
-      volumes:
-        - ./pangolin/:/var/config
-      cap_add:
-        - NET_ADMIN
-        - SYS_MODULE
-      ports:
-        - 127.0.0.1:8081:8080
-        - 51820:51820/udp
-        - 21820:21820/udp
-        - 443:443
-        - 80:80
-
-    newt:
-      image: fosrl/newt:latest
-      restart: unless-stopped
-      volumes:
-        - /var/run/docker.sock:/var/run/docker.sock
-      environment:
-        - DOCKER_SOCKET=unix:///var/run/docker.sock
-        - EMAIL_SMTP_PASS=$EMAIL_PASSWORD
-        - SERVER_SECRET=$PANGOLIN_SERVER_SECRET
-        - PANGOLIN_ENDPOINT=http://pangolin:3000
-        - NEWT_ID=$NEWT_ID
-        - NEWT_SECRET=$NEWT_SECRET
-
-    geoipupdate:
-      image: ghcr.io/maxmind/geoipupdate
-      restart: unless-stopped
-      environment:
-        - 'GEOIPUPDATE_ACCOUNT_ID=$GEOIPUPDATE_ACCOUNT_ID'							# Account ID
-        - 'GEOIPUPDATE_LICENSE_KEY=$GEOIPUPDATE_LICENSE_KEY'							# API key
-        - 'GEOIPUPDATE_EDITION_IDS=GeoLite2-Country GeoLite2-City GeoLite2-ASN'	# Which dbs should be downloaded
-        - 'GEOIPUPDATE_FREQUENCY=72'							# Update intervall in hours
-      volumes:
-        - '$JOHNCLOUD_ROOT/traefik/GeoLite2:/usr/share/GeoIP'
-
-    # mwmanager:
-    #   image: hhftechnology/middleware-manager:latest
-    #   restart: unless-stopped
-    #   depends_on:
-    #     pangolin:
-    #       condition: service_healthy
-    #   ports:
-    #     - 3456:3456
-    #   volumes:
-    #     - $JOHNCLOUD_ROOT/middleware-manager/data:/data
-    #     - $JOHNCLOUD_ROOT/traefik/conf.d:/conf
-    #     # - $JOHNCLOUD_ROOT/middleware-manager/config/middleware-manager/templates.yaml:/app/config/templates.yaml  # Optional custom templates
-    #   environment:
-    #     - PANGOLIN_API_URL=http://pangolin:3001/api/v1
-    #     - TRAEFIK_CONF_DIR=/conf/rules/
-    #     - DB_PATH=/data/middleware.db
-    #     - PORT=3456
-    #     - ACTIVE_DATA_SOURCE=pangolin
-    #     - TRAEFIK_STATIC_CONFIG_PATH=/conf/static_config.yml
-    #   labels:
-    #     - "homepage.group=Platform"
-    #     - "homepage.name=Middleware Manager"
-    #     - "homepage.icon=pangolin.svg"
-    #     - "homepage.href=http://mwmanager.$HOST"
-    #     - "homepage.description=Add custom middleware to Pangolin / Traefik resources"
-    #     - pangolin.public-resources.mwmanager.name=mwmanager
-    #     - pangolin.public-resources.mwmanager.full-domain=mwmanager.$HOST
-    #     - pangolin.public-resources.mwmanager.protocol=http
-    #     - pangolin.public-resources.mwmanager.ssl=true
-    #     - pangolin.public-resources.mwmanager.targets[0].method=http
-    #     - pangolin.public-resources.mwmanager.targets[0].port=3456
-    #     - pangolin.public-resources.mwmanager.auth.sso-enabled=true
-    #     - pangolin.public-resources.mwmanager.auth.sso-roles[0]=Member
-        
-    traefik:
-      image: traefik:latest
-      user: 0:0
-      depends_on:
-        docker-socket-proxy:
-          condition: service_started
-        gerbil:
-          condition: service_started
-        pangolin:
-          condition: service_healthy
-      network_mode: service:gerbil # Ports appear on the gerbil service
-      restart: unless-stopped
-      environment:
-      # https://www.ovh.com/auth/api/createToken
-      # https://eu.api.ovh.com/console/?section=%2Fme&branch=v1#delete-/me/api/application/-applicationId-
-        - "TZ=$TZ"
-      command:
-        - --configFile=/conf.d/static_config.yml
-      volumes:
-        - ./pangolin/traefik/logs:/var/log/traefik
-        - $JOHNCLOUD_ROOT/traefik/letsencrypt:/letsencrypt
-        # - $JOHNCLOUD_ROOT/traefik/plugins:/plugins-storage
-        - $JOHNCLOUD_ROOT/traefik/conf.d:/conf.d
-        - /home/yann/repos/thyrea/thyrea-traefik-shim:/plugins-local/src/github.com/thyrea/thyrea-traefik-shim:ro
-      labels:
-        - "homepage.group=Platform"
-        - "homepage.name=Traefik"
-        - "homepage.icon=traefik.svg"
-        - "homepage.href=https://traefik.$HOST/dashboard/"
-        - "homepage.description=Traefik reverse proxy"
-        - "homepage.widget.type=traefik"
-        - "homepage.widget.url=http://traefik:8080"
+      - "homepage.group=Platform"
+      - "homepage.name=Thyrea Monitoring"
+      - "homepage.icon=grafana.svg"
+      - "homepage.href=https://thyrea.$HOST/"
+      - "homepage.description=Monitoring"
     
-    certdumper:
-      image: ghcr.io/kereis/traefik-certs-dumper:latest
-      restart: unless-stopped
-      depends_on:
-        - traefik
-      volumes:
-        - /etc/localtime:/etc/localtime:ro
-        - $JOHNCLOUD_ROOT/traefik/letsencrypt:/traefik:ro
-        - $JOHNCLOUD_ROOT/traefik/certs:/output
-        
-    dockhand:
-      image: fnsys/dockhand:latest
-      restart: unless-stopped
-      user: 0:0
-      volumes:
-        - $JOHNCLOUD_ROOT/dockhand/data:/app/data
-        - /var/run/docker.sock:/var/run/docker.sock
-      labels:
-        - pangolin.public-resources.dockhand.name=dockhand
-        - pangolin.public-resources.dockhand.full-domain=dockhand.$HOST
-        - pangolin.public-resources.dockhand.protocol=http
-        - pangolin.public-resources.dockhand.ssl=true
-        - pangolin.public-resources.dockhand.targets[0].method=http
-        - pangolin.public-resources.dockhand.targets[0].port=3000
-        - pangolin.public-resources.dockhand.targets[0].healthcheck.enabled=true
-        - pangolin.public-resources.dockhand.targets[0].healthcheck.hostname=core-dockhand-1
-        - pangolin.public-resources.dockhand.targets[0].healthcheck.port=3000
-        - pangolin.public-resources.dockhand.targets[0].healthcheck.path=/health
-        - pangolin.public-resources.dockhand.targets[0].healthcheck.method=GET
-        - pangolin.public-resources.dockhand.targets[0].healthcheck.status=200
+  pangolin:
+    image: docker.io/fosrl/pangolin:ee-latest
+    user: 0:0
+    restart: unless-stopped
+    # ports:
+    #   - "3002:3002"  # Temporary for setup
+    volumes:
+      - ./pangolin:/app/config
+      - $JOHNCLOUD_ROOT/traefik/letsencrypt:/app/config/letsencrypt:ro
+    environment:
+      - NODE_ENV=prod
+      - EMAIL_SMTP_PASS=$EMAIL_PASSWORD
+      - SERVER_SECRET=$PANGOLIN_SERVER_SECRET
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/api/v1"]
+      interval: "3s"
+      timeout: "3s"
+      retries: 15
+    labels:
+      - "homepage.group=Platform"
+      - "homepage.name=Pangolin"
+      - "homepage.icon=pangolin.svg"
+      - "homepage.href=https://pangolin.$HOST"
+      - "homepage.description=Remote access to anything, anywhere"
 
-        # Page de maintenance en mode automatique
-        - pangolin.public-resources.dockhand.maintenance.enabled=true
-        - pangolin.public-resources.dockhand.maintenance.type=automatic
-        - pangolin.public-resources.dockhand.maintenance.title=Maintenance en cours
-        - pangolin.public-resources.dockhand.maintenance.message=Le service est temporairement indisponible.
+  gerbil:
+    image: docker.io/fosrl/gerbil:latest
+    restart: unless-stopped
+    depends_on:
+      pangolin:
+        condition: service_healthy
+    # environment:
+    #   - EMAIL_SMTP_PASS=$EMAIL_PASSWORD
+    #   - SERVER_SECRET=$PANGOLIN_SERVER_SECRET
+    command:
+      - --reachableAt=http://gerbil:3004
+      - --generateAndSaveKeyTo=/var/config/key
+      - --remoteConfig=http://pangolin:3001/api/v1/
+    volumes:
+      - ./pangolin/:/var/config
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    ports:
+      - 127.0.0.1:8081:8080
+      - 51820:51820/udp
+      - 21820:21820/udp
+      - 443:443
+      - 80:80
 
-        - "homepage.group=Platform"
-        - "homepage.name=Dockhand"
-        - "homepage.icon=https://dockhand.pro/images/logo-dark.webp"
-        - "homepage.href=https://dockhand.$HOST"
-        - "homepage.description=Modern Docker management for everyone"
+  newt:
+    image: fosrl/newt:latest
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - DOCKER_SOCKET=unix:///var/run/docker.sock
+      - EMAIL_SMTP_PASS=$EMAIL_PASSWORD
+      - SERVER_SECRET=$PANGOLIN_SERVER_SECRET
+      - PANGOLIN_ENDPOINT=http://pangolin:3000
+      - NEWT_ID=$NEWT_ID
+      - NEWT_SECRET=$NEWT_SECRET
 
-    # portainer:
-    #   image: portainer/portainer-ee:latest
-    #  restart: unless-stopped
-    #  volumes:
-    #    - /var/run/docker.sock:/var/run/docker.sock
-    #    - $JOHNCLOUD_ROOT/portainer:/data
-    #  labels:
-    #    - "pangolin.public-resources.portainer.name=portainer"
-    #    - "pangolin.public-resources.portainer.full-domain=portainer.$HOST"
-    #    - "pangolin.public-resources.portainer.protocol=http"
-    #    - "pangolin.public-resources.portainer.ssl=true"
-    #    - "pangolin.public-resources.portainer.targets[0].method=http"
-    #    - "pangolin.public-resources.portainer.targets[0].port=9000"
-    #    - "homepage.group=Platform"
-    #    - "homepage.name=Portainer"
-    #    - "homepage.icon=portainer.svg"
-    #    - "homepage.href=https://portainer.$HOST"
-    #    - "homepage.description=Modern Docker management for everyone"
-        
-  networks:
-    default:
-      external: true
-      name: $TRAEFIK_NETWORK
+  geoipupdate:
+    image: ghcr.io/maxmind/geoipupdate
+    restart: unless-stopped
+    environment:
+      - 'GEOIPUPDATE_ACCOUNT_ID=$GEOIPUPDATE_ACCOUNT_ID'							# Account ID
+      - 'GEOIPUPDATE_LICENSE_KEY=$GEOIPUPDATE_LICENSE_KEY'							# API key
+      - 'GEOIPUPDATE_EDITION_IDS=GeoLite2-Country GeoLite2-City GeoLite2-ASN'	# Which dbs should be downloaded
+      - 'GEOIPUPDATE_FREQUENCY=72'							# Update intervall in hours
+    volumes:
+      - '$JOHNCLOUD_ROOT/traefik/GeoLite2:/usr/share/GeoIP'
+
+  # mwmanager:
+  #   image: hhftechnology/middleware-manager:latest
+  #   restart: unless-stopped
+  #   depends_on:
+  #     pangolin:
+  #       condition: service_healthy
+  #   ports:
+  #     - 3456:3456
+  #   volumes:
+  #     - $JOHNCLOUD_ROOT/middleware-manager/data:/data
+  #     - $JOHNCLOUD_ROOT/traefik/conf.d:/conf
+  #     # - $JOHNCLOUD_ROOT/middleware-manager/config/middleware-manager/templates.yaml:/app/config/templates.yaml  # Optional custom templates
+  #   environment:
+  #     - PANGOLIN_API_URL=http://pangolin:3001/api/v1
+  #     - TRAEFIK_CONF_DIR=/conf/rules/
+  #     - DB_PATH=/data/middleware.db
+  #     - PORT=3456
+  #     - ACTIVE_DATA_SOURCE=pangolin
+  #     - TRAEFIK_STATIC_CONFIG_PATH=/conf/static_config.yml
+  #   labels:
+  #     - "homepage.group=Platform"
+  #     - "homepage.name=Middleware Manager"
+  #     - "homepage.icon=pangolin.svg"
+  #     - "homepage.href=http://mwmanager.$HOST"
+  #     - "homepage.description=Add custom middleware to Pangolin / Traefik resources"
+  #     - pangolin.public-resources.mwmanager.name=mwmanager
+  #     - pangolin.public-resources.mwmanager.full-domain=mwmanager.$HOST
+  #     - pangolin.public-resources.mwmanager.protocol=http
+  #     - pangolin.public-resources.mwmanager.ssl=true
+  #     - pangolin.public-resources.mwmanager.targets[0].method=http
+  #     - pangolin.public-resources.mwmanager.targets[0].port=3456
+  #     - pangolin.public-resources.mwmanager.auth.sso-enabled=true
+  #     - pangolin.public-resources.mwmanager.auth.sso-roles[0]=Member
       
+  traefik:
+    image: traefik:latest
+    user: 0:0
+    depends_on:
+      docker-socket-proxy:
+        condition: service_started
+      gerbil:
+        condition: service_started
+      pangolin:
+        condition: service_healthy
+    network_mode: service:gerbil # Ports appear on the gerbil service
+    restart: unless-stopped
+    environment:
+    # https://www.ovh.com/auth/api/createToken
+    # https://eu.api.ovh.com/console/?section=%2Fme&branch=v1#delete-/me/api/application/-applicationId-
+      - "TZ=$TZ"
+    command:
+      - --configFile=/conf.d/static_config.yml
+    volumes:
+      - ./pangolin/traefik/logs:/var/log/traefik
+      - $JOHNCLOUD_ROOT/traefik/letsencrypt:/letsencrypt
+      # - $JOHNCLOUD_ROOT/traefik/plugins:/plugins-storage
+      - $JOHNCLOUD_ROOT/traefik/conf.d:/conf.d
+      - /home/yann/repos/thyrea/thyrea-traefik-shim:/plugins-local/src/github.com/thyrea/thyrea-traefik-shim:ro
+    labels:
+      - "homepage.group=Platform"
+      - "homepage.name=Traefik"
+      - "homepage.icon=traefik.svg"
+      - "homepage.href=https://traefik.$HOST/dashboard/"
+      - "homepage.description=Traefik reverse proxy"
+      - "homepage.widget.type=traefik"
+      - "homepage.widget.url=http://traefik:8080"
+  
+  certdumper:
+    image: ghcr.io/kereis/traefik-certs-dumper:latest
+    restart: unless-stopped
+    depends_on:
+      - traefik
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - $JOHNCLOUD_ROOT/traefik/letsencrypt:/traefik:ro
+      - $JOHNCLOUD_ROOT/traefik/certs:/output
+      
+  dockhand:
+    image: fnsys/dockhand:latest
+    restart: unless-stopped
+    user: 0:0
+    volumes:
+      - $JOHNCLOUD_ROOT/dockhand/data:/app/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    labels:
+      - pangolin.public-resources.dockhand.name=dockhand
+      - pangolin.public-resources.dockhand.full-domain=dockhand.$HOST
+      - pangolin.public-resources.dockhand.protocol=http
+      - pangolin.public-resources.dockhand.ssl=true
+      - pangolin.public-resources.dockhand.targets[0].method=http
+      - pangolin.public-resources.dockhand.targets[0].port=3000
+      - pangolin.public-resources.dockhand.targets[0].healthcheck.enabled=true
+      - pangolin.public-resources.dockhand.targets[0].healthcheck.hostname=core-dockhand-1
+      - pangolin.public-resources.dockhand.targets[0].healthcheck.port=3000
+      - pangolin.public-resources.dockhand.targets[0].healthcheck.path=/health
+      - pangolin.public-resources.dockhand.targets[0].healthcheck.method=GET
+      - pangolin.public-resources.dockhand.targets[0].healthcheck.status=200
+
+      # Page de maintenance en mode automatique
+      - pangolin.public-resources.dockhand.maintenance.enabled=true
+      - pangolin.public-resources.dockhand.maintenance.type=automatic
+      - pangolin.public-resources.dockhand.maintenance.title=Maintenance en cours
+      - pangolin.public-resources.dockhand.maintenance.message=Le service est temporairement indisponible.
+
+      - "homepage.group=Platform"
+      - "homepage.name=Dockhand"
+      - "homepage.icon=https://dockhand.pro/images/logo-dark.webp"
+      - "homepage.href=https://dockhand.$HOST"
+      - "homepage.description=Modern Docker management for everyone"
+
+  # portainer:
+  #   image: portainer/portainer-ee:latest
+  #  restart: unless-stopped
+  #  volumes:
+  #    - /var/run/docker.sock:/var/run/docker.sock
+  #    - $JOHNCLOUD_ROOT/portainer:/data
+  #  labels:
+  #    - "pangolin.public-resources.portainer.name=portainer"
+  #    - "pangolin.public-resources.portainer.full-domain=portainer.$HOST"
+  #    - "pangolin.public-resources.portainer.protocol=http"
+  #    - "pangolin.public-resources.portainer.ssl=true"
+  #    - "pangolin.public-resources.portainer.targets[0].method=http"
+  #    - "pangolin.public-resources.portainer.targets[0].port=9000"
+  #    - "homepage.group=Platform"
+  #    - "homepage.name=Portainer"
+  #    - "homepage.icon=portainer.svg"
+  #    - "homepage.href=https://portainer.$HOST"
+  #    - "homepage.description=Modern Docker management for everyone"
+      
+networks:
+  default:
+    external: true
+    name: $TRAEFIK_NETWORK
+    
