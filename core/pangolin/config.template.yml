@@ -5,9 +5,6 @@ domains:
   domain1:
     base_domain: "$HOST"
     cert_resolver: "letsencrypt"
-  domain2:
-    base_domain: "sauron.$HOST"
-    cert_resolver: "letsencrypt"
   domain3:
     base_domain: "ecoledessarments.com"
     cert_resolver: "letsencrypt"
