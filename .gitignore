@@ -13,4 +13,4 @@ core/pangolin/traefik/
 core/traefik/dynamic_config.yml
 core/traefik/dashboard.yml
 core/traefik/static_config.yml
-monitoring/alloy/config_chatgpt.alloy
+monitoring/suricata/suricata.yaml

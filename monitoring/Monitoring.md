@@ -151,7 +151,8 @@ write a small `eve.json` → `nft` watcher, and give up timed expiry/persistence
 
 - **[Suricata-Setup.md](./Suricata-Setup.md)** — install the Suricata sensor in
   af-packet IDS mode, capturing the uplink **and** all Docker bridges. Implemented
-  in [`suricata/`](./suricata/) (`./startstack.sh ./suricata`).
+  as a service in the `monitoring/` stack (config in
+  [`monitoring/suricata/`](./suricata/); `./startstack.sh ./monitoring`).
 - **[Traefik-Log-Analysis.md](./Traefik-Log-Analysis.md)** — recover the TLS /
   WireGuard-tunnelled application layer that Suricata can't read, via Traefik's
   JSON access log shipped into the existing VictoriaLogs/Grafana stack.
@@ -160,8 +161,10 @@ write a small `eve.json` → `nft` watcher, and give up timed expiry/persistence
 
 - [x] Confirm host interface carrying traffic — uplink is `eth0`; Docker bridges
       (`br-*`) auto-discovered by the sensor.
-- [x] Add `suricata` service (`network_mode: host`, `NET_ADMIN`/`NET_RAW`),
-      config + rules under `suricata/` → `$JOHNCLOUD_ROOT/suricata/`.
+- [x] Add `suricata` service (`network_mode: host`, `NET_ADMIN`/`NET_RAW`) to the
+      `monitoring/` stack; config + rules under `monitoring/suricata/` →
+      `$JOHNCLOUD_ROOT/suricata/`. Entrypoint assigns a unique af-packet
+      `cluster-id` per captured interface.
 - [x] Wire ET Open ruleset (`suricata-update`, fetched by `setup_before_up.sh`)
       + `local.rules`. (Daily cron = Suricata-Setup.md §10.)
 - [x] Ship Traefik access log → VictoriaLogs for TLS / tunnel analysis

@@ -8,10 +8,15 @@ This guide is tailored to **this host**: single-node Ubuntu, Docker Compose,
 Pangolin + Gerbil + Traefik. It is written so Suricata sees **both** the external
 edge **and** traffic to/between Docker containers.
 
-> **Already implemented in this repo.** The config files below live in
-> [`suricata/`](./suricata/) and deploy like every other stack:
-> `./startstack.sh ./suricata`. `setup_before_up.sh` copies the config to
-> `$JOHNCLOUD_ROOT/suricata/` and fetches ET Open on first run. The sections
+> **Already implemented in this repo.** Suricata ships as a service **inside the
+> `monitoring/` stack** ([`monitoring/docker-compose.yml`](./docker-compose.yml)),
+> not as a standalone stack. Its config lives in
+> [`monitoring/suricata/`](./suricata/) plus the
+> [`monitoring/entrypoint.sh`](./entrypoint.sh) capture wrapper. Deploy the whole
+> stack with `./startstack.sh ./monitoring`. On the way up, `setup_before_up.sh`
+> renders `suricata.template.yaml` → `suricata.yaml` (via `envsubst`, injecting
+> `$PUBLIC_IP_ADDRESS`), copies the config + entrypoint to
+> `$JOHNCLOUD_ROOT/suricata/`, and fetches ET Open on first run. The sections
 > below explain each file and how to verify/tune it — host-side paths therefore
 > point at `$JOHNCLOUD_ROOT/suricata/…`, not the repo tree.
 
@@ -67,38 +72,49 @@ br-36efebd6c58f   DOWN  172.19.0.1/16      (revika-ipfs_default)
 
 `eth0` is the uplink. The discovery script below handles all the bridges, so you
 only need to confirm the **uplink name** here (`eth0`). If yours differs
-(`ens3`, `enp1s0`…), set `SURICATA_UPLINK` in the compose file in step 6.
+(`ens3`, `enp1s0`…), set `SURICATA_UPLINK` in `monitoring/.env` (see step 6).
 
 ---
 
 ## 2. Directory layout
 
-Tracked config lives in the repo under `suricata/`; runtime config + data are
-provisioned to `$JOHNCLOUD_ROOT/suricata/` by `setup_before_up.sh` (same pattern
-as the `monitoring/` stack), so logs/rules never land in the git tree.
+Tracked config lives in the repo under `monitoring/`; runtime config + data are
+provisioned to `$JOHNCLOUD_ROOT/suricata/` by `monitoring/setup_before_up.sh`, so
+logs/rules never land in the git tree.
 
 ```
-suricata/                       # in the repo (tracked)
-├── docker-compose.yml          # the Suricata service (step 6)
-├── setup_before_up.sh          # copies config to $JOHNCLOUD_ROOT + fetches ET Open
-├── entrypoint.sh               # multi-interface discovery wrapper (step 5)
-└── etc/
-    ├── suricata.yaml           # main config (step 3)
-    └── local.rules             # your own rules (step 4)
+monitoring/                             # in the repo (tracked)
+├── docker-compose.yml                  # suricata is one service here (step 6)
+├── setup_before_up.sh                  # renders template + copies config + fetches ET Open
+├── entrypoint.sh                       # multi-interface discovery wrapper (step 5)
+└── suricata/
+    ├── suricata.template.yaml          # main config template, $PUBLIC_IP_ADDRESS placeholder (step 3)
+    ├── suricata.yaml                   # rendered by setup_before_up.sh (envsubst) — not edited by hand
+    └── local.rules                     # your own rules (step 4)
 
-$JOHNCLOUD_ROOT/suricata/       # on the host (runtime, not in git)
+$JOHNCLOUD_ROOT/suricata/               # on the host (runtime, not in git)
 ├── suricata.yaml  local.rules  entrypoint.sh   # copies, bind-mounted read-only
-├── rules/                      # suricata-update writes suricata.rules here
-└── logs/                       # eve.json, stats.log, fast.log → Fail2ban/EveBox
+├── rules/                              # suricata-update writes suricata.rules here
+└── logs/                               # eve.json, stats.log, fast.log → Fail2ban/EveBox
 ```
+
+> **Edit the template, not the rendered file.** `suricata.yaml` is regenerated
+> from `suricata.template.yaml` every time the stack comes up. Put your public IP
+> in `.env` as `PUBLIC_IP_ADDRESS` (see `sample.env`); `envsubst` substitutes it
+> into `HOME_NET` at render time.
 
 ---
 
-## 3. `suricata/etc/suricata.yaml`
+## 3. `suricata/suricata.template.yaml`
 
-A minimal, IDS-focused config. Interfaces are passed on the command line by the
+An IDS-focused config. Interfaces are passed on the command line by the
 entrypoint, so the `af-packet` block here only needs the **`default`** stanza
-that supplies tuning for every `-i` interface.
+that supplies tuning for every `-i` interface. `$PUBLIC_IP_ADDRESS` is a shell
+placeholder that `setup_before_up.sh` substitutes via `envsubst` when it renders
+`suricata.yaml`.
+
+Abridged (see the file for the full address/port-group list the ET Open ruleset
+references):
 
 ```yaml
 %YAML 1.1
@@ -106,20 +122,28 @@ that supplies tuning for every `-i` interface.
 # ---- Address groups --------------------------------------------------------
 vars:
   address-groups:
-    # Everything we consider "ours": the public IP, all RFC1918 Docker ranges,
-    # the Pangolin bridge, and our IPv6 /64.
-    HOME_NET: "[80.241.220.240/32,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,2a02:c207:2337:7562::/64]"
+    # "Ours": public IP, all Docker/RFC1918 ranges, proxy/tailscale nets, IPv6 /64.
+    HOME_NET: "[$PUBLIC_IP_ADDRESS/32,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,173.16.238.0/24,11.16.238.0/24,2a02:c207:2337:7562::/64]"
     EXTERNAL_NET: "!$HOME_NET"
     HTTP_SERVERS: "$HOME_NET"
     DNS_SERVERS: "$HOME_NET"
+    SMTP_SERVERS: "$HOME_NET"
+    # … plus SQL_SERVERS, TELNET_SERVERS, MODBUS_*, ENIP_*, etc. (point at HOME_NET)
   port-groups:
     HTTP_PORTS: "80"
     SHELLCODE_PORTS: "!80"
+    SSH_PORTS: "22"
+    # … plus ORACLE_PORTS, DNP3_PORTS, FTP_PORTS, VXLAN_PORTS, etc.
 
 # ---- Capture defaults (applied to every -i interface) ----------------------
+# NOTE: this `default` stanza supplies the shared tuning. At container start the
+# entrypoint APPENDS one stanza per interface to this af-packet list, each with a
+# UNIQUE cluster-id (see step 5) — a shared cluster-id makes the 2nd+ interface
+# fail af-packet fanout with EINVAL. Those per-interface stanzas inherit every
+# other setting (cluster-type, ring-size, …) from this `default`.
 af-packet:
   - interface: default
-    cluster-type: cluster_flow   # keep both directions of a flow on one thread
+    cluster-type: cluster_flow   # keep both directions of a flow on one worker
     cluster-id: 99
     defrag: yes
     use-mmap: yes
@@ -177,6 +201,13 @@ app-layer:
       enabled: yes
     http:
       enabled: yes
+    ssh:
+      enabled: yes
+    dns:
+      tcp:
+        enabled: yes
+      udp:
+        enabled: yes
 ```
 
 > `HOME_NET` includes the Docker RFC1918 ranges on purpose — so rules that care
@@ -184,29 +215,35 @@ app-layer:
 
 ---
 
-## 4. `suricata/etc/local.rules`
+## 4. `suricata/local.rules`
 
-Start with two **test** rules so you can prove capture works on both wires
-(`sid:1000001` fires on the edge, `sid:1000002` on the bridge). Keep or remove
-them later.
+Local rules use the reserved SID range `1000000-1999999`. Start with a smoke-test
+rule so you can prove capture works, then a few useful starters:
 
 ```
-# Fires on any ICMP echo request — easy end-to-end smoke test.
+# --- Smoke tests (verify capture on both wires, then disable if noisy) ------
+# Fires on any ICMP echo request — easy end-to-end test. in_iface tells you the wire.
 alert icmp any any -> any any (msg:"LOCAL ICMP echo request seen"; itype:8; sid:1000001; rev:1;)
 
-# Fires on inbound SSH connection attempts (example of a real, useful local rule).
+# --- Useful starters --------------------------------------------------------
+# Inbound SSH connection attempts to the host.
 alert tcp $EXTERNAL_NET any -> $HOME_NET 22 (msg:"LOCAL inbound SSH attempt"; flow:to_server; flags:S; sid:1000002; rev:1;)
+
+# Legacy TLS (<1.2) negotiated to any of our services — correlate with Traefik logs.
+alert tls $EXTERNAL_NET any -> $HOME_NET any (msg:"LOCAL legacy TLS 1.0 handshake"; ssl_version:tls1.0; sid:1000010; rev:1;)
+alert tls $EXTERNAL_NET any -> $HOME_NET any (msg:"LOCAL legacy TLS 1.1 handshake"; ssl_version:tls1.1; sid:1000011; rev:1;)
 ```
 
 ET Open (~50k rules) is added in step 8 via `suricata-update`; it writes to
-`suricata/rules/suricata.rules`.
+`$JOHNCLOUD_ROOT/suricata/rules/suricata.rules`.
 
 ---
 
-## 5. `suricata/entrypoint.sh` — capture uplink + every active bridge
+## 5. `entrypoint.sh` — capture uplink + every active bridge
 
 This is the piece that makes Suricata **Docker-aware**. It builds a `-i` flag for
-`eth0` and for each **UP** `br-*` / `docker0` bridge at startup.
+`eth0` and for each **UP** `br-*` / `docker0` bridge at startup — and gives each
+interface its **own `cluster-id`**.
 
 ```sh
 #!/bin/sh
@@ -224,59 +261,99 @@ for path in /sys/class/net/br-* /sys/class/net/docker0; do
     IFACES="$IFACES $dev"
 done
 
-# Assemble the -i arguments.
+# Give each interface its OWN cluster-id by APPENDING a per-interface af-packet
+# stanza (interface + cluster-id; everything else inherited from `default`) to a
+# runtime copy of the config. We render a copy rather than use the
+# `--set af-packet.N.*` CLI because that form SEGFAULTS Suricata 8.0.7 (exit 139)
+# while building the synthetic sequence entries. The mounted config is read-only,
+# so the merged copy goes to a writable path.
+BASE=/etc/suricata/suricata.yaml
+RUNTIME=/tmp/suricata.runtime.yaml
+
+stanzas=""
+cid=99
+for i in $IFACES; do
+    stanzas="${stanzas}  - interface: ${i}
+    cluster-id: ${cid}
+"
+    cid=$((cid + 1))
+done
+
+# Inject the stanzas just before the first top-level key/comment after
+# `af-packet:`, preserving the template's `default` stanza.
+awk -v stanzas="$stanzas" '
+    /^af-packet:/        { print; inblock=1; next }
+    inblock && /^[^[:space:]]/ { printf "%s", stanzas; inblock=0 }
+    { print }
+' "$BASE" > "$RUNTIME"
+
 set --
-for i in $IFACES; do set -- "$@" -i "$i"; done
+for i in $IFACES; do
+    set -- "$@" -i "$i"
+done
 
 echo "[entrypoint] Suricata capturing on:$(printf ' %s' $IFACES)"
-exec suricata -c /etc/suricata/suricata.yaml "$@" -v
+exec suricata -c "$RUNTIME" "$@" -v
 ```
 
-```bash
-chmod +x suricata/entrypoint.sh
-```
+> **Why per-interface cluster-ids?** `cluster_flow` uses Linux `PACKET_FANOUT`.
+> A fanout group is keyed by `cluster-id` *and bound to the device of its first
+> socket*. If every `-i` interface shared `cluster-id: 99` (the template
+> default), the first interface (`eth0`) would claim group 99 and every later
+> bridge would fail to join it with `failed to set fanout mode: Invalid argument`
+> → `failed to init socket for interface`. So the entrypoint appends one af-packet
+> stanza per interface — `eth0`=99, the next bridge=100, and so on. Each
+> per-interface stanza only sets `interface` + `cluster-id`; it inherits
+> `cluster-type`, `ring-size`, etc. from the `default` stanza.
+
+> **Why render a runtime config instead of `--set`?** The earlier version built
+> these stanzas on the command line with `--set af-packet.N.interface=…`. That
+> **segfaults Suricata 8.0.7** (container exits 139, restart-looping) the moment
+> it processes the injected entries — the crash lands right after a
+> `shortening device name` log line, which is an unrelated red herring. Writing
+> the stanzas into the YAML the engine loads avoids the buggy code path; a
+> `suricata -T` config-test of the rendered file passes clean.
 
 > **New app stack later?** Its bridge only gets picked up on the next Suricata
-> start. After bringing up a new network run `docker compose restart suricata`.
+> start (and assigned the next free cluster-id). After bringing up a new network
+> run `docker compose up -d --force-recreate suricata` from `monitoring/`.
 > (If you want it fully automatic, add a cron that diffs `ip -br link` and
 > restarts Suricata on change — optional; left out to keep this simple.)
 
 ---
 
-## 6. `suricata/docker-compose.yml`
+## 6. The `suricata` service (in `monitoring/docker-compose.yml`)
 
-`network_mode: host` so the container shares the host's network namespace and can
-therefore see `eth0` **and** every `br-*`. `NET_ADMIN`/`NET_RAW` are required for
-af-packet.
+Suricata is one service in the `monitoring` compose project. `network_mode: host`
+so the container shares the host's network namespace and can therefore see `eth0`
+**and** every `br-*`. `NET_ADMIN`/`NET_RAW` are required for af-packet; `SYS_NICE`
+lets it set worker thread priority. Volumes bind-mount the rendered config and
+rules from `$JOHNCLOUD_ROOT/suricata/` (populated by `setup_before_up.sh`).
 
 ```yaml
-name: suricata
-
-services:
   suricata:
     image: jasonish/suricata:latest      # OISF community image, ships suricata-update
-    container_name: suricata
     restart: unless-stopped
+    # Share the host network namespace so the sensor sees eth0 AND every br-* bridge.
     network_mode: host
     cap_add:
       - NET_ADMIN
       - NET_RAW
       - SYS_NICE
     environment:
-      - SURICATA_UPLINK=eth0             # change if your uplink isn't eth0
+      # Uplink interface to capture on. Bridges (br-*/docker0) are auto-discovered.
+      - SURICATA_UPLINK=${SURICATA_UPLINK:-eth0}
     entrypoint: ["/entrypoint.sh"]
     volumes:
-      - ./entrypoint.sh:/entrypoint.sh:ro
-      - ./etc/suricata.yaml:/etc/suricata/suricata.yaml:ro
-      - ./etc/local.rules:/etc/suricata/local.rules:ro
-      - ./rules:/var/lib/suricata/rules
-      - ./logs:/var/log/suricata
-    healthcheck:
-      test: ["CMD", "pgrep", "-x", "suricata"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
+      - $JOHNCLOUD_ROOT/suricata/entrypoint.sh:/entrypoint.sh:ro
+      - $JOHNCLOUD_ROOT/suricata/suricata.yaml:/etc/suricata/suricata.yaml:ro
+      - $JOHNCLOUD_ROOT/suricata/local.rules:/etc/suricata/local.rules:ro
+      - $JOHNCLOUD_ROOT/suricata/rules:/var/lib/suricata/rules
+      - $JOHNCLOUD_ROOT/suricata/logs:/var/log/suricata    # eve.json → Fail2ban / EveBox
 ```
+
+> `SURICATA_UPLINK` defaults to `eth0`; override it in `monitoring/.env` if your
+> uplink differs. See `monitoring/sample.env` for all the variables the stack reads.
 
 ---
 
@@ -327,26 +404,28 @@ sudo systemctl enable --now suricata-offloads.service
 ## 8. First start + fetch ET Open rules
 
 ```bash
-# From the repo root. startstack.sh runs setup_before_up.sh (copies config to
-# $JOHNCLOUD_ROOT/suricata, fetches ET Open), then compose up, then tails logs.
-./startstack.sh ./suricata suricata
+# From the repo root. startstack.sh runs setup_before_up.sh (renders the template,
+# copies config to $JOHNCLOUD_ROOT/suricata, fetches ET Open), compose up, then
+# tails the suricata logs.
+./startstack.sh ./monitoring suricata
 ```
 
 That's it — `setup_before_up.sh` already pulls the ET Open ruleset on first run.
 Watch for the entrypoint line `Suricata capturing on: eth0 br-2cb477635178 …` and
-`<Notice> - all N packet processing threads … initialized`.
+`<Notice> - all N packet processing threads … initialized`. You should **not** see
+any `failed to set fanout mode` errors (see step 5).
 
 Manual equivalents if you prefer:
 
 ```bash
-cd suricata
-sudo bash ./setup_before_up.sh "$(readlink -f .)"   # provision + fetch rules
-docker compose up -d
+cd monitoring
+sudo bash ./setup_before_up.sh "$(readlink -f .)"   # render + provision + fetch rules
+docker compose up -d --force-recreate suricata
 docker compose logs -f suricata
 ```
 
 Healthy startup shows the interface list from the entrypoint and
-`<Notice> - all 3 packet processing threads, 4 management threads initialized`
+`<Notice> - all N packet processing threads, M management threads initialized`
 (thread count varies with interface/CPU count).
 
 ---
@@ -409,7 +488,7 @@ restart / no dropped packets needed — Suricata reloads rules on `SIGUSR2`).
 ```bash
 sudo tee /etc/cron.daily/suricata-update >/dev/null <<'EOF'
 #!/bin/sh
-cd /home/yann/repos/johncloud/platform/suricata || exit 0
+cd /home/yann/repos/johncloud/platform/monitoring || exit 0
 docker compose run --rm --entrypoint suricata-update suricata >/var/log/suricata-update.log 2>&1
 # hot-reload rules without dropping capture:
 docker compose kill -s USR2 suricata 2>/dev/null || docker compose restart suricata
@@ -451,15 +530,15 @@ sudo chmod +x /etc/cron.daily/suricata-update
 ### Quick reference
 
 ```bash
-# status / logs
-docker compose -f suricata/docker-compose.yml ps
-docker compose -f suricata/docker-compose.yml logs -f suricata
+# status / logs   (run from monitoring/, or add -f monitoring/docker-compose.yml)
+docker compose -f monitoring/docker-compose.yml ps suricata
+docker compose -f monitoring/docker-compose.yml logs -f suricata
 
 # which interfaces are being captured right now
-docker compose -f suricata/docker-compose.yml logs suricata | grep 'capturing on'
+docker compose -f monitoring/docker-compose.yml logs suricata | grep 'capturing on'
 
 # live alerts
-docker compose -f suricata/docker-compose.yml exec suricata \
+docker compose -f monitoring/docker-compose.yml exec suricata \
   tail -f /var/log/suricata/fast.log
 
 # capture health (drops should stay ~0)
