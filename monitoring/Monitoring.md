@@ -694,11 +694,11 @@ Suricata to reopen its files. Because the entrypoint ends in `exec suricata …`
 reopens every log file — the OISF-recommended, lossless method (no
 `copytruncate` race, no dropped events for Fail2ban/forensics).
 
-**1. Install the logrotate config** (`$JOHNCLOUD_ROOT` = `/var/hippias` here):
+**1. Install the logrotate config** (Replace `$JOHNCLOUD_ROOT` by its value):
 
 ```bash
 sudo tee /etc/logrotate.d/suricata >/dev/null <<'EOF'
-/var/hippias/suricata/logs/*.log /var/hippias/suricata/logs/eve.json {
+$JOHNCLOUD_ROOT/suricata/logs/*.log $JOHNCLOUD_ROOT/suricata/logs/eve.json {
     daily
     rotate 7
     missingok
@@ -708,7 +708,7 @@ sudo tee /etc/logrotate.d/suricata >/dev/null <<'EOF'
     create 0640 root root
     sharedscripts
     postrotate
-        /usr/bin/docker kill --signal=HUP monitoring-suricata-1 >/dev/null 2>&1 || true
+        /usr/bin/docker kill --signal=HUP suricata >/dev/null 2>&1 || true
     endscript
 }
 EOF
@@ -719,7 +719,7 @@ EOF
 ```bash
 sudo logrotate -fv /etc/logrotate.d/suricata
 # then confirm Suricata reopened and is writing again:
-tail -n1 /var/hippias/suricata/logs/eve.json
+tail -n1 $JOHNCLOUD_ROOT/suricata/logs/eve.json
 ```
 
 Notes:

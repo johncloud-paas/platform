@@ -3,7 +3,7 @@ name: monitoring
 services:
   suricata:
     image: jasonish/suricata:latest      # OISF community image, ships suricata-update
-    # container_name: suricata
+    container_name: suricata
     restart: unless-stopped
     # Share the host network namespace so the sensor sees eth0 AND every br-* bridge.
     network_mode: host
