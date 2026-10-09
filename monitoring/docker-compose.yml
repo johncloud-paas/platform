@@ -68,6 +68,7 @@ services:
       - $JOHNCLOUD_ROOT/fluent-bit/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
       - $JOHNCLOUD_ROOT/fluent-bit/container_name.lua:/fluent-bit/etc/container_name.lua:ro
       - $TRAEFIK_LOG_DIR:/var/log/traefik:ro   # Traefik JSON access log (TLS analysis)
+      - $JOHNCLOUD_ROOT/suricata/logs:/var/log/suricata:ro
     environment:
       - TZ=$TZ
 

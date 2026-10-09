@@ -685,7 +685,60 @@ sudo chmod +x /etc/cron.daily/suricata-update
 
 ---
 
-## 11. Performance notes (single node, ~50k rules, several interfaces)
+## 11. Rotate the Suricata logs (logrotate + `SIGHUP`)
+
+`eve.json`, `fast.log` and `stats.log` grow fast under `$JOHNCLOUD_ROOT/suricata/logs/`.
+Rotate them on the **host** (they're a bind mount), and have `postrotate` tell
+Suricata to reopen its files. Because the entrypoint ends in `exec suricata …`,
+**Suricata is PID 1 in the container**, so `SIGHUP` reaches it directly and it
+reopens every log file — the OISF-recommended, lossless method (no
+`copytruncate` race, no dropped events for Fail2ban/forensics).
+
+**1. Install the logrotate config** (`$JOHNCLOUD_ROOT` = `/var/hippias` here):
+
+```bash
+sudo tee /etc/logrotate.d/suricata >/dev/null <<'EOF'
+/var/hippias/suricata/logs/*.log /var/hippias/suricata/logs/eve.json {
+    daily
+    rotate 7
+    missingok
+    notifempty
+    compress
+    delaycompress
+    create 0640 root root
+    sharedscripts
+    postrotate
+        /usr/bin/docker kill --signal=HUP monitoring-suricata-1 >/dev/null 2>&1 || true
+    endscript
+}
+EOF
+```
+
+**2. Test it** without waiting for the daily timer:
+
+```bash
+sudo logrotate -fv /etc/logrotate.d/suricata
+# then confirm Suricata reopened and is writing again:
+tail -n1 /var/hippias/suricata/logs/eve.json
+```
+
+Notes:
+- **`delaycompress`** is deliberate: between the rename and the `SIGHUP`,
+  Suricata still writes a few lines to the old fd (now `eve.json.1`). Delaying
+  compression one cycle guarantees it's closed first — no truncated/corrupt
+  archives.
+- **Fail2ban keeps working across rotation.** Its jail uses `backend = polling`,
+  which detects the inode change and re-follows `eve.json` automatically — no
+  config change. The fluent-bit tail (if enabled) handles rotation via its tail
+  DB the same way.
+- **Repo-integrated alternative** (matches the Fail2ban glue pattern): drop a
+  `monitoring/logrotate/suricata` template in the repo and have
+  `setup_before_up.sh` render `$JOHNCLOUD_ROOT` with `envsubst` and copy it to
+  `/etc/logrotate.d/`, guarded by the same root check used for the Fail2ban files.
+
+---
+
+## 12. Performance notes (single node, ~50k rules, several interfaces)
 
 - **Watch drops.** `grep kernel_drops $JOHNCLOUD_ROOT/suricata/logs/stats.log` — if non-zero and
   climbing, raise `ring-size` in `suricata.yaml` (×2 until it stops) and/or trim
@@ -694,16 +747,15 @@ sudo chmod +x /etc/cron.daily/suricata-update
   idle app bridges cost too much, narrow the discovery in `entrypoint.sh` to just
   `eth0` + the Traefik bridge (`br-2cb477635178`) and the bridges you actually
   care to inspect.
-- **Disk.** `eve.json` grows fast. Add logrotate for `$JOHNCLOUD_ROOT/suricata/logs/*.json`
-  / `*.log`, or switch `eve-log` rotation on. EveBox/Fail2ban tail the live file,
-  so rotate with `copytruncate` or Suricata's own rotation.
+- **Disk.** `eve.json` grows fast — rotate it via logrotate + `SIGHUP` (see
+  §11 above). EveBox/Fail2ban tail the live file and follow the rotation.
 - **Duplicate-ish alerts** for a flow seen on `eth0` (pre-NAT) and again on a
   bridge (post-NAT) are expected — different dst IPs, so different flows. Tune
   with rule thresholds if noisy.
 
 ---
 
-## 12. Next steps (per the design above)
+## 13. Next steps (per the design above)
 
 - **Fail2ban**: point a jail's `logpath` at `suricata/logs/eve.json` (there's a
   community `eve.json` filter) plus your Traefik logs under `pangolin/logs/`.
