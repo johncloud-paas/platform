@@ -10,7 +10,7 @@ vars:
   address-groups:
     # "Ours": public IP, all Docker/RFC1918 ranges, proxy/tailscale nets, IPv6 /64.
     # Adjust the public IPv4/IPv6 if this host's addressing changes.
-    HOME_NET: "[80.241.220.240/32,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,173.16.238.0/24,11.16.238.0/24,2a02:c207:2337:7562::/64]"
+    HOME_NET: "[$PUBLIC_IP_ADDRESS/32,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,173.16.238.0/24,11.16.238.0/24,2a02:c207:2337:7562::/64]"
     EXTERNAL_NET: "!$HOME_NET"
     HTTP_SERVERS: "$HOME_NET"
     DNS_SERVERS: "$HOME_NET"

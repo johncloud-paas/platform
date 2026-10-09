@@ -8,6 +8,7 @@ set -a; source .env; set +a
 SURICATA_DATA="$JOHNCLOUD_ROOT/suricata"
 
 (
+    envsubst < suricata/suricata.template.yaml > suricata/suricata.yaml &&
     mkdir -p $JOHNCLOUD_ROOT/victoriametrics/data $JOHNCLOUD_ROOT/victorialogs/data $JOHNCLOUD_ROOT/victoriatraces/data $JOHNCLOUD_ROOT/fluent-bit &&
     cp ./victoriametrics/* $JOHNCLOUD_ROOT/victoriametrics &&
     cp ./fluent-bit/* $JOHNCLOUD_ROOT/fluent-bit &&
