@@ -36,10 +36,24 @@ else
 fi
 
 # First-time rule fetch (ET Open ~50k rules). Refreshed daily by cron afterwards;
-# see Monitoring.md "Suricata Setup" §10.
+# see Monitoring.md "Suricata Setup" §10. suricata-update only downloads rules, so
+# the rootless daemon is fine here — no raw-socket access needed.
 if [ ! -s "$SURICATA_DATA/rules/suricata.rules" ]; then
     echo "[suricata] fetching ET Open ruleset (first run)..."
     docker run --rm -v "$SURICATA_DATA/rules:/var/lib/suricata/rules" \
         jasonish/suricata:latest suricata-update --no-test -o /var/lib/suricata/rules \
         || echo "[suricata] WARN: rule fetch failed; starting with local.rules only"
+fi
+
+# Suricata runs ROOTFUL (own compose) because sniffing the physical uplink needs
+# CAP_NET_RAW in the init user namespace, which rootless Docker can't grant. See
+# suricata/docker-compose.yml for the full explanation. Everything else in this
+# stack stays rootless; only this one container uses the system daemon.
+if systemctl list-unit-files docker.service >/dev/null 2>&1; then
+    sudo systemctl enable --now docker &&
+    sudo docker compose --env-file .env -f suricata/docker-compose.yml \
+        up -d --force-recreate --remove-orphans ||
+        echo "[suricata] WARN: rootful sensor failed to start; check 'sudo docker logs suricata'"
+else
+    echo "[suricata] WARN: no system docker.service; cannot start the rootful sensor"
 fi

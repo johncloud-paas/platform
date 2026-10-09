@@ -1,27 +1,11 @@
 name: monitoring
 
 services:
-  suricata:
-    image: jasonish/suricata:latest      # OISF community image, ships suricata-update
-    container_name: suricata
-    restart: unless-stopped
-    # Share the host network namespace so the sensor sees eth0 AND every br-* bridge.
-    network_mode: host
-    cap_add:
-      - NET_ADMIN
-      - NET_RAW
-      - SYS_NICE
-    environment:
-      # Uplink interface to capture on. Bridges (br-*/docker0) are auto-discovered.
-      - SURICATA_UPLINK=${SURICATA_UPLINK:-eth0}
-    entrypoint: ["/entrypoint.sh"]
-    volumes:
-      - $JOHNCLOUD_ROOT/suricata/entrypoint.sh:/entrypoint.sh:ro
-      - $JOHNCLOUD_ROOT/suricata/suricata.yaml:/etc/suricata/suricata.yaml:ro
-      - $JOHNCLOUD_ROOT/suricata/local.rules:/etc/suricata/local.rules:ro
-      - $JOHNCLOUD_ROOT/suricata/rules:/var/lib/suricata/rules
-      - $JOHNCLOUD_ROOT/suricata/logs:/var/log/suricata    # eve.json → Fail2ban / EveBox
-
+  # NOTE: Suricata is NOT here. Sniffing the physical uplink needs CAP_NET_RAW in
+  # the init user namespace, which rootless Docker cannot grant (socket() → EPERM).
+  # The sensor runs under the rootful daemon from suricata/docker-compose.yml;
+  # setup_before_up.sh brings it up. It writes eve.json to the shared logs dir that
+  # fluent-bit (below) and host Fail2ban tail.
   pdc:
     # https://grafana.com/docs/grafana-cloud/connect-externally-hosted/private-data-source-connect/#private-data-source-connect-pdc-concepts
     image: grafana/pdc-agent:latest

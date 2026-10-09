@@ -77,9 +77,10 @@ pangolin/logs/*.log ──────────────────► �
                                          └──────────────┘
 ```
 
-- **Suricata:** container with `network_mode: host` + `cap_add: [NET_ADMIN,
-  NET_RAW]`, watching the main interface. Rules in `./suricata/rules/`
-  (ET Open auto-updated + a `local.rules` we own).
+- **Suricata:** **rootful** container (own compose — rootless can't open an
+  af-packet socket on the host NIC) with `network_mode: host` +
+  `cap_add: [NET_ADMIN, NET_RAW]`, watching the main interface. Rules in
+  `./suricata/rules/` (ET Open auto-updated + a `local.rules` we own).
 - **Fail2ban:** container with `network_mode: host` + `NET_ADMIN`, action =
   nftables, reading `eve.json` and `./pangolin/logs/`.
 - **EveBox (optional, GPLv2):** web UI to browse Suricata alerts and
@@ -162,10 +163,11 @@ write a small `eve.json` → `nft` watcher, and give up timed expiry/persistence
 
 - [x] Confirm host interface carrying traffic — uplink is `eth0`; Docker bridges
       (`br-*`) auto-discovered by the sensor.
-- [x] Add `suricata` service (`network_mode: host`, `NET_ADMIN`/`NET_RAW`) to the
-      `monitoring/` stack; config + rules under `monitoring/suricata/` →
-      `$JOHNCLOUD_ROOT/suricata/`. Entrypoint assigns a unique af-packet
-      `cluster-id` per captured interface.
+- [x] Add `suricata` service (`network_mode: host`, `NET_ADMIN`/`NET_RAW`) in its
+      own **rootful** compose (`monitoring/suricata/docker-compose.yml`) — rootless
+      Docker can't grant `CAP_NET_RAW` on the host NIC; config + rules under
+      `monitoring/suricata/` → `$JOHNCLOUD_ROOT/suricata/`. Entrypoint assigns a
+      unique af-packet `cluster-id` per captured interface.
 - [x] Wire ET Open ruleset (`suricata-update`, fetched by `setup_before_up.sh`)
       + `local.rules`. (Daily cron = Suricata §10 below.)
 - [x] Ship Traefik access log → VictoriaLogs for TLS / tunnel analysis
@@ -195,17 +197,23 @@ This guide is tailored to **this host**: single-node Ubuntu, Docker Compose,
 Pangolin + Gerbil + Traefik. It is written so Suricata sees **both** the external
 edge **and** traffic to/between Docker containers.
 
-> **Already implemented in this repo.** Suricata ships as a service **inside the
-> `monitoring/` stack** ([`monitoring/docker-compose.yml`](./docker-compose.yml)),
-> not as a standalone stack. Its config lives in
-> [`monitoring/suricata/`](./suricata/) plus the
-> [`monitoring/entrypoint.sh`](./entrypoint.sh) capture wrapper. Deploy the whole
+> **Already implemented in this repo.** Suricata has its **own rootful compose**
+> ([`monitoring/suricata/docker-compose.yml`](./suricata/docker-compose.yml)),
+> separate from the otherwise-rootless `monitoring/` stack. It **must** run under
+> the system (rootful) Docker daemon: sniffing the physical uplink needs
+> `CAP_NET_RAW` in the *init* user namespace, and rootless Docker confines every
+> container to its own user namespace, so a rootless sensor gets
+> `af-packet … socket: Operation not permitted` even with `network_mode: host` and
+> `NET_RAW`. Its config lives in [`monitoring/suricata/`](./suricata/) plus the
+> [`entrypoint.sh`](./suricata/entrypoint.sh) capture wrapper. Deploy the whole
 > stack with `./startstack.sh ./monitoring`. On the way up, `setup_before_up.sh`
 > renders `suricata.template.yaml` → `suricata.yaml` (via `envsubst`, injecting
 > `$PUBLIC_IP_ADDRESS`), copies the config + entrypoint to
-> `$JOHNCLOUD_ROOT/suricata/`, and fetches ET Open on first run. The sections
-> below explain each file and how to verify/tune it — host-side paths therefore
-> point at `$JOHNCLOUD_ROOT/suricata/…`, not the repo tree.
+> `$JOHNCLOUD_ROOT/suricata/`, fetches ET Open on first run, enables the rootful
+> `docker.service`, and brings the sensor up with
+> `sudo docker compose --env-file .env -f suricata/docker-compose.yml up -d`. The
+> sections below explain each file and how to verify/tune it — host-side paths
+> therefore point at `$JOHNCLOUD_ROOT/suricata/…`, not the repo tree.
 
 ---
 

@@ -1,0 +1,42 @@
+# Rootful Suricata sensor — runs under the SYSTEM (rootful) Docker daemon, NOT
+# the per-user rootless daemon the rest of the monitoring stack uses.
+#
+# Why it can't be rootless:
+# Opening an AF_PACKET capture socket on the physical uplink requires CAP_NET_RAW
+# in the *init* user namespace. Rootless Docker confines every container to its
+# own user namespace, so even with network_mode: host + NET_RAW the socket() call
+# on the host-owned eth0 returns EPERM ("failed to create AF_PACKET socket:
+# Operation not permitted"). Running the sensor rootful is the only way to sniff
+# the real NIC.
+#
+# Launch (from the monitoring/ directory — setup_before_up.sh does this for you):
+#   sudo systemctl enable --now docker       # one-time: start the rootful daemon
+#   sudo docker compose --env-file .env -f suricata/docker-compose.yml up -d \
+#        --force-recreate --remove-orphans
+#
+# Paths below point at the deployed copies under $JOHNCLOUD_ROOT/suricata that
+# setup_before_up.sh populates. eve.json lands in .../suricata/logs, the same dir
+# the rootless fluent-bit and host Fail2ban already tail — no other wiring changes.
+name: suricata
+
+services:
+  suricata:
+    image: jasonish/suricata:latest      # OISF community image, ships suricata-update
+    container_name: suricata
+    restart: unless-stopped
+    # Real host network namespace: sees eth0 AND every br-*/docker0 bridge.
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+      - SYS_NICE
+    environment:
+      # Uplink interface to capture on. Bridges (br-*/docker0) are auto-discovered.
+      - SURICATA_UPLINK=${SURICATA_UPLINK:-eth0}
+    entrypoint: ["/entrypoint.sh"]
+    volumes:
+      - ${JOHNCLOUD_ROOT}/suricata/entrypoint.sh:/entrypoint.sh:ro
+      - ${JOHNCLOUD_ROOT}/suricata/suricata.yaml:/etc/suricata/suricata.yaml:ro
+      - ${JOHNCLOUD_ROOT}/suricata/local.rules:/etc/suricata/local.rules:ro
+      - ${JOHNCLOUD_ROOT}/suricata/rules:/var/lib/suricata/rules
+      - ${JOHNCLOUD_ROOT}/suricata/logs:/var/log/suricata    # eve.json → Fail2ban / EveBox
