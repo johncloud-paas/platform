@@ -66,6 +66,7 @@ services:
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - $JOHNCLOUD_ROOT/fluent-bit/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
+      - $JOHNCLOUD_ROOT/fluent-bit/parsers.conf:/fluent-bit/etc/parsers_custom.conf:ro
       - $JOHNCLOUD_ROOT/fluent-bit/container_name.lua:/fluent-bit/etc/container_name.lua:ro
       - $TRAEFIK_LOG_DIR:/var/log/traefik:ro   # Traefik JSON access log (TLS analysis)
       - $JOHNCLOUD_ROOT/suricata/logs:/var/log/suricata:ro

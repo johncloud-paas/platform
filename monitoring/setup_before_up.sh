@@ -8,6 +8,7 @@ set -a; source .env; set +a
 SURICATA_DATA="$JOHNCLOUD_ROOT/suricata"
 
 (
+    rm -rf $JOHNCLOUD_ROOT/victoriametrics $JOHNCLOUD_ROOT/victorialogs $JOHNCLOUD_ROOT/victoriatraces $JOHNCLOUD_ROOT/fluent-bit &&
     envsubst '$PUBLIC_IP_ADDRESS $JOHNCLOUD_ROOT' < fail2ban/jail.d/suricata.template.conf > fail2ban/jail.d/suricata.conf &&    
     envsubst '$PUBLIC_IP_ADDRESS' < suricata/suricata.template.yaml > suricata/suricata.yaml &&        
     mkdir -p $JOHNCLOUD_ROOT/victoriametrics/data $JOHNCLOUD_ROOT/victorialogs/data $JOHNCLOUD_ROOT/victoriatraces/data $JOHNCLOUD_ROOT/fluent-bit &&
