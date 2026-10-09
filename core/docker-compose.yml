@@ -135,8 +135,6 @@ services:
       - "homepage.icon=traefik.svg"
       - "homepage.href=https://traefik.$HOST/dashboard/"
       - "homepage.description=Traefik reverse proxy"
-      - "homepage.widget.type=traefik"
-      - "homepage.widget.url=http://traefik:8080"
   
   certdumper:
     image: ghcr.io/kereis/traefik-certs-dumper:latest

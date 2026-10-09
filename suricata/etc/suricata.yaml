@@ -1,0 +1,90 @@
+%YAML 1.1
+---
+# Suricata IDS config for this node (af-packet, passive). See Suricata-Setup.md.
+# Capture interfaces are supplied on the command line by entrypoint.sh (uplink +
+# every active Docker bridge), so the af-packet block below only needs the
+# `default` stanza that tunes every -i interface.
+
+# ---- Address groups --------------------------------------------------------
+vars:
+  address-groups:
+    # "Ours": public IP, all Docker/RFC1918 ranges, proxy/tailscale nets, IPv6 /64.
+    # Adjust the public IPv4/IPv6 if this host's addressing changes.
+    HOME_NET: "[80.241.220.240/32,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,173.16.238.0/24,11.16.238.0/24,2a02:c207:2337:7562::/64]"
+    EXTERNAL_NET: "!$HOME_NET"
+    HTTP_SERVERS: "$HOME_NET"
+    DNS_SERVERS: "$HOME_NET"
+    SMTP_SERVERS: "$HOME_NET"
+  port-groups:
+    HTTP_PORTS: "80"
+    SHELLCODE_PORTS: "!80"
+    SSH_PORTS: "22"
+
+# ---- Capture defaults (applied to every -i interface) ----------------------
+af-packet:
+  - interface: default
+    cluster-type: cluster_flow   # keep both directions of a flow on one worker
+    cluster-id: 99
+    defrag: yes
+    use-mmap: yes
+    tpacket-v3: yes
+    ring-size: 100000            # raise if capture.kernel_drops climbs in stats.log
+    block-size: 1048576
+
+# ---- Logging / outputs -----------------------------------------------------
+default-log-dir: /var/log/suricata/
+
+outputs:
+  - fast:                        # human-readable one-liners
+      enabled: yes
+      filename: fast.log
+  - eve-log:                     # THE file Fail2ban + EveBox consume
+      enabled: yes
+      filetype: regular
+      filename: eve.json
+      types:
+        - alert:
+            metadata: yes
+            tagged-packets: yes
+        - http:
+            extended: yes
+        - dns
+        - tls:
+            extended: yes
+        - flow                   # includes in_iface — proves which wire a flow came from
+        - anomaly
+  - stats:
+      enabled: yes
+      filename: stats.log
+      interval: 30               # watch capture.kernel_drops here
+
+# ---- Rules -----------------------------------------------------------------
+default-rule-path: /var/lib/suricata/rules
+rule-files:
+  - suricata.rules               # ET Open, written by suricata-update
+  - /etc/suricata/local.rules    # our own rules
+
+# ---- Housekeeping ----------------------------------------------------------
+stats:
+  enabled: yes
+  interval: 30
+
+logging:
+  default-log-level: notice
+  outputs:
+    - console:
+        enabled: yes
+
+app-layer:
+  protocols:
+    tls:
+      enabled: yes
+    http:
+      enabled: yes
+    ssh:
+      enabled: yes
+    dns:
+      tcp:
+        enabled: yes
+      udp:
+        enabled: yes

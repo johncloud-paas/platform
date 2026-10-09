@@ -147,16 +147,34 @@ write a small `eve.json` → `nft` watcher, and give up timed expiry/persistence
 | **Zeek** | Not needed | Excellent network analysis, but heavier and detection-focused; overkill for block-oriented goal |
 | **OPNsense / pfSense** | Out of scope | Gateway appliance, not a Docker Compose service on this node |
 
-## Implementation Checklist (not yet built)
+## Related implementation docs
 
-- [ ] Confirm host interface carrying traffic (`ip -br link`, usually `eth0` / `ens*`).
-- [ ] Add `suricata` service (`network_mode: host`, `NET_ADMIN`/`NET_RAW`),
-      config + rules under `./suricata/`.
-- [ ] Wire ET Open ruleset auto-update (`suricata-update`) + `local.rules`.
+- **[Suricata-Setup.md](./Suricata-Setup.md)** — install the Suricata sensor in
+  af-packet IDS mode, capturing the uplink **and** all Docker bridges. Implemented
+  in [`suricata/`](./suricata/) (`./startstack.sh ./suricata`).
+- **[Traefik-Log-Analysis.md](./Traefik-Log-Analysis.md)** — recover the TLS /
+  WireGuard-tunnelled application layer that Suricata can't read, via Traefik's
+  JSON access log shipped into the existing VictoriaLogs/Grafana stack.
+
+## Implementation Checklist
+
+- [x] Confirm host interface carrying traffic — uplink is `eth0`; Docker bridges
+      (`br-*`) auto-discovered by the sensor.
+- [x] Add `suricata` service (`network_mode: host`, `NET_ADMIN`/`NET_RAW`),
+      config + rules under `suricata/` → `$JOHNCLOUD_ROOT/suricata/`.
+- [x] Wire ET Open ruleset (`suricata-update`, fetched by `setup_before_up.sh`)
+      + `local.rules`. (Daily cron = Suricata-Setup.md §10.)
+- [x] Ship Traefik access log → VictoriaLogs for TLS / tunnel analysis
+      (fluent-bit input + `$TRAEFIK_LOG_DIR` mount).
+- [ ] Set real `$TRAEFIK_LOG_DIR` in `.env`; redeploy monitoring + suricata.
+- [ ] Install the NIC-offload systemd unit (Suricata-Setup.md §7); run first
+      `curl testmynids.org` smoke test (§9).
 - [ ] Add `fail2ban` service (`network_mode: host`, `NET_ADMIN`), nftables action,
       reading `eve.json` + `./pangolin/logs/`.
 - [ ] Start jails in detection-only mode; verify alerts land in `eve.json`.
 - [ ] (Optional) Add EveBox for alert review UI.
 - [ ] After tuning, enable automatic banning on trusted jails.
+- [ ] (Optional) WireGuard transport metrics: `wg-exporter` in Gerbil's netns →
+      VictoriaMetrics (Traefik-Log-Analysis.md §5).
 - [ ] (Optional) Cron free threat-intel blocklists (abuse.ch / FireHOL / Spamhaus
       DROP) into an nftables set to partly replace CrowdSec reputation.

@@ -7,8 +7,6 @@ services:
     restart: unless-stopped
     environment:
       - HOMEPAGE_ALLOWED_HOSTS=home.$HOST
-    networks:
-      - frontend
     volumes:
       - $JOHNCLOUD_ROOT/homepage/config:/app/config # Make sure your local config directory exists
     labels:
@@ -22,7 +20,7 @@ services:
       - pangolin.public-resources.homepage.auth.sso-roles[0]=Member
 
 networks:
-  frontend:
+  default:
     external: true
     name: $TRAEFIK_NETWORK
     

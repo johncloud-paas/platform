@@ -1,0 +1,15 @@
+# Local Suricata rules for this node. ET Open (~50k rules) is managed separately
+# by suricata-update in rules/suricata.rules. Keep custom + test rules here.
+# SID range 1000000-1999999 is reserved for local rules.
+
+# --- Smoke tests (verify capture on both wires, then disable if noisy) ------
+# Fires on any ICMP echo request — easy end-to-end test. in_iface tells you the wire.
+alert icmp any any -> any any (msg:"LOCAL ICMP echo request seen"; itype:8; sid:1000001; rev:1;)
+
+# --- Useful starters --------------------------------------------------------
+# Inbound SSH connection attempts to the host.
+alert tcp $EXTERNAL_NET any -> $HOME_NET 22 (msg:"LOCAL inbound SSH attempt"; flow:to_server; flags:S; sid:1000002; rev:1;)
+
+# Legacy TLS (<1.2) negotiated to any of our services — correlate with Traefik logs.
+alert tls $EXTERNAL_NET any -> $HOME_NET any (msg:"LOCAL legacy TLS 1.0 handshake"; ssl_version:tls1.0; sid:1000010; rev:1;)
+alert tls $EXTERNAL_NET any -> $HOME_NET any (msg:"LOCAL legacy TLS 1.1 handshake"; ssl_version:tls1.1; sid:1000011; rev:1;)
