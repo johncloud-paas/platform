@@ -1,6 +1,6 @@
 %YAML 1.1
 ---
-# Suricata IDS config for this node (af-packet, passive). See Suricata-Setup.md.
+# Suricata IDS config for this node (af-packet, passive). See Monitoring.md "Suricata Setup".
 # Capture interfaces are supplied on the command line by entrypoint.sh (uplink +
 # every active Docker bridge), so the af-packet block below only needs the
 # `default` stanza that tunes every -i interface.

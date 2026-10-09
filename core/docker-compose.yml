@@ -125,7 +125,7 @@ services:
     command:
       - --configFile=/conf.d/static_config.yml
     volumes:
-      - ./pangolin/traefik/logs:/var/log/traefik
+      - $JOHNCLOUD_ROOT/traefik/logs:/var/log/traefik
       - $JOHNCLOUD_ROOT/traefik/letsencrypt:/letsencrypt
       # - $JOHNCLOUD_ROOT/traefik/plugins:/plugins-storage
       - $JOHNCLOUD_ROOT/traefik/conf.d:/conf.d

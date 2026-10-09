@@ -19,7 +19,7 @@ SURICATA_DATA="$JOHNCLOUD_ROOT/suricata"
 )
 
 # First-time rule fetch (ET Open ~50k rules). Refreshed daily by cron afterwards;
-# see Suricata-Setup.md §10.
+# see Monitoring.md "Suricata Setup" §10.
 if [ ! -s "$SURICATA_DATA/rules/suricata.rules" ]; then
     echo "[suricata] fetching ET Open ruleset (first run)..."
     docker run --rm -v "$SURICATA_DATA/rules:/var/lib/suricata/rules" \
