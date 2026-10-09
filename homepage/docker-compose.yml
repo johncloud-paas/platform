@@ -3,12 +3,17 @@ name: homepage
 services:
   homepage:
     image: ghcr.io/gethomepage/homepage:latest
-    container_name: homepage
     restart: unless-stopped
     environment:
       - HOMEPAGE_ALLOWED_HOSTS=home.$HOST
     volumes:
       - $JOHNCLOUD_ROOT/homepage/config:/app/config # Make sure your local config directory exists
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     labels:
       - pangolin.public-resources.homepage.name=homepage
       - pangolin.public-resources.homepage.full-domain=home.$HOST
@@ -18,6 +23,19 @@ services:
       - pangolin.public-resources.homepage.targets[0].port=3000
       - pangolin.public-resources.homepage.auth.sso-enabled=true
       - pangolin.public-resources.homepage.auth.sso-roles[0]=Member
+      
+      # - pangolin.public-resources.homepage.targets[0].healthcheck.enabled=true
+      # - pangolin.public-resources.homepage.targets[0].healthcheck.hostname=homepage-homepage-1
+      # - pangolin.public-resources.homepage.targets[0].healthcheck.port=3000
+      # - pangolin.public-resources.homepage.targets[0].healthcheck.path=/api/healthcheck
+      # - pangolin.public-resources.homepage.targets[0].healthcheck.method=GET
+      # - pangolin.public-resources.homepage.targets[0].healthcheck.status=200
+
+      # # Page de maintenance en mode automatique
+      # - pangolin.public-resources.homepage.maintenance.enabled=true
+      # - pangolin.public-resources.homepage.maintenance.type=automatic
+      # - pangolin.public-resources.homepage.maintenance.title=Maintenance en cours
+      # - pangolin.public-resources.homepage.maintenance.message=Le service est temporairement indisponible.
 
 networks:
   default:
