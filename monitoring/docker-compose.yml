@@ -32,7 +32,6 @@ services:
   victorialogs:
     image: victoriametrics/victoria-logs:latest
     container_name: victorialogs
-    user: "0:0"
     restart: unless-stopped
     volumes:
       - $JOHNCLOUD_ROOT/victorialogs/data:/vlogs
@@ -63,13 +62,14 @@ services:
     depends_on:
       - victorialogs
     volumes:
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ${HOME}/.local/share/docker/containers:/var/lib/docker/containers:ro
+      - ${XDG_RUNTIME_DIR}/docker.sock:/var/run/docker.sock:ro
       - $JOHNCLOUD_ROOT/fluent-bit/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
       - $JOHNCLOUD_ROOT/fluent-bit/parsers.conf:/fluent-bit/etc/parsers_custom.conf:ro
       - $JOHNCLOUD_ROOT/fluent-bit/container_name.lua:/fluent-bit/etc/container_name.lua:ro
       - $TRAEFIK_LOG_DIR:/var/log/traefik:ro   # Traefik JSON access log (TLS analysis)
       - $JOHNCLOUD_ROOT/suricata/logs:/var/log/suricata:ro
+      - $JOHNCLOUD_ROOT/traefik/GeoLite2:/fluent-bit/etc/geoip:ro   # MaxMind GeoLite2 DBs (maintained by core's geoipupdate) for src_ip geo enrichment
     environment:
       - TZ=$TZ
 
@@ -96,7 +96,7 @@ services:
       - /:/rootfs:ro
       - /var/run:/var/run:ro
       - /sys:/sys:ro
-      - /var/lib/docker:/var/lib/docker:ro
+      - ${XDG_DATA_HOME:-$HOME/.local/share}/docker:/var/lib/docker:ro
       - /dev/disk:/dev/disk:ro
     command:
       - "--docker_only=true"
@@ -114,7 +114,6 @@ services:
   victoriametrics:
     image: victoriametrics/victoria-metrics:latest
     container_name: victoriametrics
-    user: "0:0"
     restart: unless-stopped
     depends_on:
       - node-exporter

@@ -28,12 +28,11 @@ services:
       EXEC: 0
       POST: 0
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /var/lib/docker:/var/lib/docker:ro
+      - ${XDG_RUNTIME_DIR}/docker.sock:/var/run/docker.sock:ro
+      - ${XDG_DATA_HOME:-$HOME/.local/share}/docker:/var/lib/docker:ro
 
   pangolin:
     image: docker.io/fosrl/pangolin:ee-latest
-    user: 0:0
     restart: unless-stopped
     # ports:
     #   - "3002:3002"  # Temporary for setup
@@ -86,7 +85,7 @@ services:
     image: fosrl/newt:latest
     restart: unless-stopped
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      - ${XDG_RUNTIME_DIR}/docker.sock:/var/run/docker.sock
     environment:
       - DOCKER_SOCKET=unix:///var/run/docker.sock
       - EMAIL_SMTP_PASS=$EMAIL_PASSWORD
@@ -108,7 +107,6 @@ services:
 
   traefik:
     image: traefik:latest
-    user: 0:0
     depends_on:
       docker-socket-proxy:
         condition: service_started
@@ -149,14 +147,9 @@ services:
   dockhand:
     image: fnsys/dockhand:latest
     restart: unless-stopped
-    environment:
-      - PUID=1000  # Your user ID (run: id -u)
-      - PGID=1000  # Your group ID (run: id -g)
-    group_add:
-      - "$DOCKER_GROUP_ID"  # Replace with your host's Docker GID
     volumes:
       - $JOHNCLOUD_ROOT/dockhand/data:/app/data
-      - /var/run/docker.sock:/var/run/docker.sock
+      - ${XDG_RUNTIME_DIR}/docker.sock:/var/run/docker.sock
     labels:
       - pangolin.public-resources.dockhand.name=dockhand
       - pangolin.public-resources.dockhand.full-domain=dockhand.$HOST
@@ -188,7 +181,7 @@ services:
   #   image: portainer/portainer-ee:latest
   #  restart: unless-stopped
   #  volumes:
-  #    - /var/run/docker.sock:/var/run/docker.sock
+  #    - ${XDG_RUNTIME_DIR}/docker.sock:/var/run/docker.sock
   #    - $JOHNCLOUD_ROOT/portainer:/data
   #  labels:
   #    - "pangolin.public-resources.portainer.name=portainer"

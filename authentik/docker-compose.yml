@@ -75,7 +75,6 @@ services:
       SERVICE_USER_POSTGRESQL: 'postgres'
       SERVICE_PASSWORD_POSTGRESQL: '${AUTHENTIK_PASSWORD_POSTGRESQL}'
       SERVICE_PASSWORD_64_AUTHENTIKSERVER: '${AUTHENTIK_SERVICE_PASSWORD_64}'
-    user: root
     networks:
       - frontend
     volumes:

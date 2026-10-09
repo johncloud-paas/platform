@@ -6,5 +6,5 @@ cd $1
 set -a; source .env; set +a
 
 (
-    chown 0:0 -R $JOHNCLOUD_ROOT/homepage/config/*
+    chown 1000:1000 -R $JOHNCLOUD_ROOT/homepage/config/*
 )

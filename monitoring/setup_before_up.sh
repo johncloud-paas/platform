@@ -8,7 +8,6 @@ set -a; source .env; set +a
 SURICATA_DATA="$JOHNCLOUD_ROOT/suricata"
 
 (
-    rm -rf $JOHNCLOUD_ROOT/victoriametrics $JOHNCLOUD_ROOT/victorialogs $JOHNCLOUD_ROOT/victoriatraces $JOHNCLOUD_ROOT/fluent-bit &&
     envsubst '$PUBLIC_IP_ADDRESS $JOHNCLOUD_ROOT' < fail2ban/jail.d/suricata.template.conf > fail2ban/jail.d/suricata.conf &&    
     envsubst '$PUBLIC_IP_ADDRESS' < suricata/suricata.template.yaml > suricata/suricata.yaml &&        
     mkdir -p $JOHNCLOUD_ROOT/victoriametrics/data $JOHNCLOUD_ROOT/victorialogs/data $JOHNCLOUD_ROOT/victoriatraces/data $JOHNCLOUD_ROOT/fluent-bit &&
@@ -24,10 +23,10 @@ SURICATA_DATA="$JOHNCLOUD_ROOT/suricata"
 # tails eve.json). Needs root; skipped with a warning if not available.
 if command -v fail2ban-client >/dev/null 2>&1; then
     if [ -w /etc/fail2ban/jail.d ] || [ "$(id -u)" = "0" ]; then
-        cp ./fail2ban/filter.d/suricata.conf   /etc/fail2ban/filter.d/ &&
-        cp ./fail2ban/action.d/suricata-raw.conf /etc/fail2ban/action.d/ &&
-        cp ./fail2ban/jail.d/suricata.conf     /etc/fail2ban/jail.d/ &&
-        fail2ban-client reload &&
+        sudo cp ./fail2ban/filter.d/suricata.conf   /etc/fail2ban/filter.d/ &&
+        sudo cp ./fail2ban/action.d/suricata-raw.conf /etc/fail2ban/action.d/ &&
+        sudo cp ./fail2ban/jail.d/suricata.conf     /etc/fail2ban/jail.d/ &&
+        sudo fail2ban-client reload &&
         echo "[fail2ban] suricata jail installed & reloaded"
     else
         echo "[fail2ban] WARN: need root to install jail; run setup as root or copy ./fail2ban/* into /etc/fail2ban/ manually"
