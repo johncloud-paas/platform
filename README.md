@@ -1,3 +1,24 @@
+# JohnCloud Platform
+
+## Architecture du cœur (core)
+
+![Architecture du core](core/core-architecture.png)
+
+Le trafic entrant arrive sur **Gerbil** (passerelle WireGuard, ports `80`/`443`/`51820`),
+qui partage son namespace réseau avec **Traefik** (reverse proxy, provider HTTP + certdumper).
+Traefik obtient ses certificats TLS auprès de **Let's Encrypt** (ACME) et récupère sa
+configuration depuis **Pangolin**, le plan de contrôle (API `:3000`/`:3001`, dashboard `:3002`).
+L'agent de site **Newt** s'enregistre auprès de Pangolin et établit le tunnel.
+
+Côté exploitation (*Platform Ops*), **socket-proxy** expose une API Docker en lecture seule
+et **Dockhand** fournit l'interface de gestion des conteneurs, tous deux s'appuyant sur le
+`docker.sock` **rootless** de l'hôte.
+
+> Sources du diagramme : `core/core-architecture.html` (éditable), `core/core-architecture.svg`
+> et `core/core-architecture.png`.
+
+## Mise en place du Docker rootless
+
 **Arrêter le démon rootful**:
 
 ```bash
