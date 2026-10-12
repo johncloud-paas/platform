@@ -2,7 +2,7 @@
 
 ## Architecture de la plateforme
 
-![Architecture du core](platform-architecture.png)
+![Architecture du core](docs/platform-architecture.png)
 
 Le diagramme se lit autour d'un bloc central, **CORE · INGRESS + CONTROL PLANE**, qui
 regroupe l'ingress et le plan de contrôle.
