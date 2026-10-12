@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Core Stack — Architecture</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Noto+Serif:ital@0;1&family=Noto+Sans+KR:wght@400;500;600&family=Noto+Serif+KR:wght@400&family=Noto+Sans+TC:wght@400;500;600&family=Noto+Serif+TC:wght@400&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --color-paper:   #f5f5f5;
+      --color-ink:     #2d3142;
+      --color-muted:   #4f5d75;
+      --color-accent:  #eb6c36;
+      --font-sans:     'Geist', system-ui, sans-serif;
+      --font-serif:    'Instrument Serif', 'Noto Serif', 'Noto Serif KR', serif;
+      --font-mono:     'Geist Mono', ui-monospace, monospace;
+    }
+    body {
+      font-family: var(--font-sans);
+      background: var(--color-paper);
+      color: var(--color-ink);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 2rem;
+    }
+    .frame { max-width: 1240px; width: 100%; }
+    .diagram-container { width: 100%; overflow-x: auto; }
+    .eyebrow {
+      font-family: var(--font-mono);
+      font-size: 0.66rem;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+      margin-bottom: 0.5rem;
+    }
+    h1 {
+      font-family: var(--font-serif);
+      font-size: clamp(1.5rem, 2.4vw + 0.75rem, 2rem);
+      font-weight: 400;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      color: var(--color-ink);
+      margin-bottom: 1.5rem;
+    }
+    svg { width: 100%; min-width: 1020px; display: block; }
+    @media print {
+      .diagram-container { overflow-x: visible; }
+      svg { min-width: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <p class="eyebrow">Architecture · Diagram Design</p>
+    <h1>Core Stack — ingress, tunnel control plane &amp; platform ops</h1>
+
+    <div class="diagram-container">
+      <svg viewBox="0 0 1020 700" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="core-arch-title core-arch-desc">
+        <title id="core-arch-title">Core Stack Architecture</title>
+        <desc id="core-arch-desc">Public traffic enters through the Gerbil WireGuard gateway, is terminated by Traefik sharing Gerbil's network namespace, and is routed per configuration pulled from the Pangolin control plane; the Newt site agent and Docker management tools read the host Docker socket.</desc>
+        <defs>
+          <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker>
+          <marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#eb6c36"/></marker>
+          <marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#2e5aa8"/></marker>
+        </defs>
+
+        <rect width="100%" height="100%" fill="#f5f5f5"/>
+
+        <!-- ============ ZONES (drawn first) ============ -->
+        <!-- EDGE zone: Gerbil + Traefik share a network namespace -->
+        <rect x="250" y="152" width="200" height="272" rx="8" fill="rgba(45,49,66,0.02)" stroke="rgba(45,49,66,0.10)" stroke-width="0.8"/>
+        <rect x="282" y="156" width="136" height="12" rx="2" fill="#f5f5f5"/>
+        <text x="350" y="165" fill="rgba(45,49,66,0.40)" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.14em">EDGE · SHARED NETNS</text>
+
+        <!-- PLATFORM OPS zone: docker tooling -->
+        <rect x="784" y="152" width="200" height="340" rx="8" fill="rgba(45,49,66,0.02)" stroke="rgba(45,49,66,0.10)" stroke-width="0.8"/>
+        <rect x="836" y="156" width="96" height="12" rx="2" fill="#f5f5f5"/>
+        <text x="884" y="165" fill="rgba(45,49,66,0.40)" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.14em">PLATFORM OPS</text>
+
+        <!-- ============ ARROWS (drawn before nodes) ============ -->
+        <!-- A1 Internet -> Gerbil : HTTPS / WG (straight horizontal) -->
+        <line x1="198" y1="220" x2="266" y2="220" stroke="#2e5aa8" stroke-width="1.2" marker-end="url(#arrow-link)"/>
+        <rect x="206" y="206" width="54" height="11" rx="2" fill="#f5f5f5"/>
+        <text x="233" y="214" fill="#2e5aa8" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">HTTPS·WG</text>
+
+        <!-- A2 Gerbil -> Traefik : SHARED NETNS (straight vertical) -->
+        <line x1="350" y1="258" x2="350" y2="326" stroke="#4f5d75" stroke-width="1" marker-end="url(#arrow)"/>
+        <rect x="358" y="285" width="78" height="11" rx="2" fill="#f5f5f5"/>
+        <text x="362" y="293" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="start" letter-spacing="0.06em">SHARED NETNS</text>
+
+        <!-- A3 Traefik -> Pangolin : CONFIG / PROXY (elbow) -->
+        <path d="M430,366 H477 Q485,366 485,358 V228 Q485,220 493,220 H536" fill="none" stroke="#2e5aa8" stroke-width="1.2" marker-end="url(#arrow-link)"/>
+        <rect x="493" y="283" width="86" height="11" rx="2" fill="#f5f5f5"/>
+        <text x="497" y="291" fill="#2e5aa8" font-size="8" font-family="'Geist Mono', monospace" text-anchor="start" letter-spacing="0.06em">CONFIG·PROXY</text>
+
+        <!-- A4 Traefik -> Let's Encrypt : ACME (elbow, dashed) -->
+        <path d="M270,382 H238 Q230,382 230,390 V408 Q230,416 222,416 H202" fill="none" stroke="#2e5aa8" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrow-link)"/>
+        <rect x="208" y="368" width="36" height="11" rx="2" fill="#f5f5f5"/>
+        <text x="226" y="376" fill="#2e5aa8" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">ACME</text>
+
+        <!-- A5 Newt -> Pangolin : REGISTER (straight vertical, up) -->
+        <line x1="632" y1="330" x2="632" y2="262" stroke="#4f5d75" stroke-width="1" marker-end="url(#arrow)"/>
+        <rect x="640" y="289" width="58" height="11" rx="2" fill="#f5f5f5"/>
+        <text x="644" y="297" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="start" letter-spacing="0.06em">REGISTER</text>
+
+        <!-- A6 Newt -> Docker socket : LABELS (elbow, dashed) -->
+        <path d="M716,362 H756 Q764,362 764,370 V436 Q764,444 772,444 H796" fill="none" stroke="#4f5d75" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+        <rect x="770" y="398" width="42" height="11" rx="2" fill="#f5f5f5"/>
+        <text x="773" y="406" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="start" letter-spacing="0.06em">LABELS</text>
+
+        <!-- A7 docker-socket-proxy -> Docker socket : read-only (right loop, dashed; label omitted — node sublabel states read-only) -->
+        <path d="M960,216 H966 Q972,216 972,222 V438 Q972,444 966,444 H964" fill="none" stroke="#4f5d75" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+
+        <!-- A8 Dockhand -> Docker socket : MANAGE (straight vertical, dashed) -->
+        <line x1="880" y1="364" x2="880" y2="412" stroke="#4f5d75" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+        <rect x="886" y="382" width="52" height="11" rx="2" fill="#f5f5f5"/>
+        <text x="890" y="390" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="start" letter-spacing="0.06em">MANAGE</text>
+
+        <!-- ============ NODES ============ -->
+
+        <!-- N1 Internet (input) -->
+        <rect x="48" y="188" width="150" height="64" rx="6" fill="#f5f5f5"/>
+        <rect x="48" y="188" width="150" height="64" rx="6" fill="rgba(79,93,117,0.10)" stroke="#7a8399" stroke-width="1"/>
+        <rect x="60" y="202" width="56" height="13" rx="2" fill="none" stroke="#7a8399" stroke-width="0.8"/>
+        <text x="66" y="211" fill="#7a8399" font-size="7" font-family="'Geist Mono', monospace" letter-spacing="0.12em">CLIENTS</text>
+        <text x="60" y="232" fill="#2d3142" font-size="12" font-family="'Geist', sans-serif" font-weight="600">Internet</text>
+        <text x="60" y="246" fill="#7a8399" font-size="9" font-family="'Geist Mono', monospace">browsers · WG peers</text>
+
+        <!-- N4 Let's Encrypt (external) -->
+        <rect x="48" y="388" width="154" height="56" rx="6" fill="#f5f5f5"/>
+        <rect x="48" y="388" width="154" height="56" rx="6" fill="rgba(45,49,66,0.03)" stroke="rgba(45,49,66,0.30)" stroke-width="1"/>
+        <rect x="60" y="400" width="74" height="13" rx="2" fill="none" stroke="rgba(45,49,66,0.30)" stroke-width="0.8"/>
+        <text x="66" y="409" fill="#7a8399" font-size="7" font-family="'Geist Mono', monospace" letter-spacing="0.12em">EXTERNAL CA</text>
+        <text x="60" y="429" fill="#2d3142" font-size="12" font-family="'Geist', sans-serif" font-weight="600">Let's Encrypt</text>
+        <text x="60" y="440" fill="#7a8399" font-size="9" font-family="'Geist Mono', monospace">ACME · TLS certs</text>
+
+        <!-- N2 Gerbil (focal — gateway) -->
+        <rect x="270" y="182" width="160" height="76" rx="6" fill="#f5f5f5"/>
+        <rect x="270" y="182" width="160" height="76" rx="6" fill="rgba(235,108,54,0.08)" stroke="#eb6c36" stroke-width="1.2"/>
+        <rect x="282" y="196" width="60" height="13" rx="2" fill="none" stroke="#eb6c36" stroke-width="0.8"/>
+        <text x="288" y="205" fill="#eb6c36" font-size="7" font-family="'Geist Mono', monospace" letter-spacing="0.12em">GATEWAY</text>
+        <text x="282" y="226" fill="#2d3142" font-size="12" font-family="'Geist', sans-serif" font-weight="600">Gerbil</text>
+        <text x="282" y="240" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace">:80 :443 · :51820/udp</text>
+        <text x="282" y="251" fill="#7a8399" font-size="9" font-family="'Geist Mono', monospace">WireGuard tunnel</text>
+
+        <!-- N3 Traefik (backend — reverse proxy) -->
+        <rect x="270" y="330" width="160" height="72" rx="6" fill="#f5f5f5"/>
+        <rect x="270" y="330" width="160" height="72" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+        <rect x="282" y="344" width="92" height="13" rx="2" fill="none" stroke="#2d3142" stroke-width="0.8"/>
+        <text x="288" y="353" fill="#2d3142" font-size="7" font-family="'Geist Mono', monospace" letter-spacing="0.12em">REVERSE PROXY</text>
+        <text x="282" y="374" fill="#2d3142" font-size="12" font-family="'Geist', sans-serif" font-weight="600">Traefik</text>
+        <text x="282" y="388" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace">http provider · conf.d</text>
+        <text x="282" y="399" fill="#7a8399" font-size="9" font-family="'Geist Mono', monospace">+ certdumper</text>
+
+        <!-- N5 Pangolin (focal — control plane) -->
+        <rect x="540" y="182" width="184" height="76" rx="6" fill="#f5f5f5"/>
+        <rect x="540" y="182" width="184" height="76" rx="6" fill="rgba(235,108,54,0.08)" stroke="#eb6c36" stroke-width="1.2"/>
+        <rect x="552" y="196" width="94" height="13" rx="2" fill="none" stroke="#eb6c36" stroke-width="0.8"/>
+        <text x="558" y="205" fill="#eb6c36" font-size="7" font-family="'Geist Mono', monospace" letter-spacing="0.12em">CONTROL PLANE</text>
+        <text x="552" y="226" fill="#2d3142" font-size="12" font-family="'Geist', sans-serif" font-weight="600">Pangolin</text>
+        <text x="552" y="240" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace">API :3000/:3001</text>
+        <text x="552" y="251" fill="#7a8399" font-size="9" font-family="'Geist Mono', monospace">dashboard :3002</text>
+
+        <!-- N6 Newt (backend — site agent) -->
+        <rect x="548" y="330" width="168" height="64" rx="6" fill="#f5f5f5"/>
+        <rect x="548" y="330" width="168" height="64" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+        <rect x="560" y="344" width="72" height="13" rx="2" fill="none" stroke="#2d3142" stroke-width="0.8"/>
+        <text x="566" y="353" fill="#2d3142" font-size="7" font-family="'Geist Mono', monospace" letter-spacing="0.12em">SITE AGENT</text>
+        <text x="560" y="374" fill="#2d3142" font-size="12" font-family="'Geist', sans-serif" font-weight="600">Newt</text>
+        <text x="560" y="388" fill="#7a8399" font-size="9" font-family="'Geist Mono', monospace">tunnel connector</text>
+
+        <!-- N7 docker-socket-proxy (backend) -->
+        <rect x="800" y="184" width="160" height="64" rx="6" fill="#f5f5f5"/>
+        <rect x="800" y="184" width="160" height="64" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+        <rect x="812" y="198" width="80" height="13" rx="2" fill="none" stroke="#2d3142" stroke-width="0.8"/>
+        <text x="818" y="207" fill="#2d3142" font-size="7" font-family="'Geist Mono', monospace" letter-spacing="0.12em">DOCKER TOOL</text>
+        <text x="812" y="227" fill="#2d3142" font-size="12" font-family="'Geist', sans-serif" font-weight="600">socket-proxy</text>
+        <text x="812" y="241" fill="#7a8399" font-size="9" font-family="'Geist Mono', monospace">read-only API</text>
+
+        <!-- N8 Dockhand (backend) -->
+        <rect x="800" y="300" width="160" height="64" rx="6" fill="#f5f5f5"/>
+        <rect x="800" y="300" width="160" height="64" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+        <rect x="812" y="314" width="72" height="13" rx="2" fill="none" stroke="#2d3142" stroke-width="0.8"/>
+        <text x="818" y="323" fill="#2d3142" font-size="7" font-family="'Geist Mono', monospace" letter-spacing="0.12em">DOCKER UI</text>
+        <text x="812" y="343" fill="#2d3142" font-size="12" font-family="'Geist', sans-serif" font-weight="600">Dockhand</text>
+        <text x="812" y="357" fill="#7a8399" font-size="9" font-family="'Geist Mono', monospace">dockhand.$HOST · :3000</text>
+
+        <!-- N9 Host docker socket (store) -->
+        <rect x="800" y="416" width="160" height="56" rx="6" fill="#f5f5f5"/>
+        <rect x="800" y="416" width="160" height="56" rx="6" fill="rgba(45,49,66,0.05)" stroke="#4f5d75" stroke-width="1"/>
+        <rect x="812" y="428" width="40" height="13" rx="2" fill="none" stroke="#4f5d75" stroke-width="0.8"/>
+        <text x="818" y="437" fill="#4f5d75" font-size="7" font-family="'Geist Mono', monospace" letter-spacing="0.12em">HOST</text>
+        <text x="812" y="457" fill="#2d3142" font-size="12" font-family="'Geist', sans-serif" font-weight="600">Docker socket</text>
+        <text x="812" y="468" fill="#7a8399" font-size="9" font-family="'Geist Mono', monospace">docker.sock (rootless)</text>
+
+        <!-- ============ LEGEND (bottom strip) ============ -->
+        <line x1="48" y1="622" x2="972" y2="622" stroke="rgba(45,49,66,0.12)" stroke-width="0.8"/>
+
+        <rect x="48" y="642" width="18" height="12" rx="3" fill="rgba(235,108,54,0.08)" stroke="#eb6c36" stroke-width="1"/>
+        <text x="72" y="652" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace">focal</text>
+
+        <rect x="120" y="642" width="18" height="12" rx="3" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+        <text x="144" y="652" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace">service</text>
+
+        <rect x="202" y="642" width="18" height="12" rx="3" fill="rgba(45,49,66,0.05)" stroke="#4f5d75" stroke-width="1"/>
+        <text x="226" y="652" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace">store</text>
+
+        <rect x="276" y="642" width="18" height="12" rx="3" fill="rgba(45,49,66,0.03)" stroke="rgba(45,49,66,0.30)" stroke-width="1"/>
+        <text x="300" y="652" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace">external</text>
+
+        <rect x="362" y="642" width="18" height="12" rx="3" fill="rgba(79,93,117,0.10)" stroke="#7a8399" stroke-width="1"/>
+        <text x="386" y="652" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace">ingress</text>
+
+        <line x1="448" y1="648" x2="476" y2="648" stroke="#2e5aa8" stroke-width="1.2" marker-end="url(#arrow-link)"/>
+        <text x="484" y="652" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace">HTTP / proxy / ACME</text>
+
+        <line x1="606" y1="648" x2="634" y2="648" stroke="#4f5d75" stroke-width="1" marker-end="url(#arrow)"/>
+        <text x="642" y="652" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace">control / register</text>
+
+        <line x1="748" y1="648" x2="776" y2="648" stroke="#4f5d75" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+        <text x="784" y="652" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace">docker.sock / async</text>
+      </svg>
+    </div>
+  </div>
+</body>
+</html>
