@@ -13,14 +13,20 @@ WireGuard). Gerbil partage son namespace réseau (`SHARED NETNS`) avec **Traefik
 reverse proxy (provider HTTP, ACME + certdumper), qui termine le TLS et route le trafic.
 
 **Plan de contrôle.** **Pangolin** (API `resources` + dashboard) fournit la configuration
-à Traefik (`CONFIG`) ; son agent **Newt** lit les labels Docker pour enregistrer
-automatiquement les services.
+à Traefik (`CONFIG`). Son agent de site **Newt** établit le tunnel WireGuard et surveille
+les labels Docker des stacks.
 
-**Routes sortantes.** Traefik dessert trois destinations :
+**Configuration par label.** La stack d'exemple **whoami** (`WHOAMI · EXAMPLE STACK`,
+docker-compose) illustre le mécanisme : le conteneur `traefik/whoami` ne porte aucune
+route codée en dur, seulement des labels `pangolin.public-resources.*` (domaine `$HOST`,
+port `80`, `ssl=true`, healthcheck, page de maintenance). Newt lit ces `DOCKER LABELS`
+(flèche pointillée depuis whoami), `REGISTER` la ressource auprès de Pangolin, qui pousse
+alors la configuration à Traefik. La requête publique emprunte ensuite la route de bout en
+bout mise en évidence en orange (Gerbil → Traefik → whoami). Ajouter un service se résume
+donc à déclarer ces labels sur sa stack.
 
-- **whoami** (*Example App*, `traefik/whoami`, `:80`, `whoami.$HOST`) — service de
-  démonstration auto-enregistré via les labels Docker, atteint par la route de bout en
-  bout mise en évidence en orange.
+**Autres destinations.** Traefik dessert aussi :
+
 - **Authentik** (*SSO · Identity*, `server` · `worker` · `:9000`, PostgreSQL + Redis) —
   interrogé en `FORWARD-AUTH` pour l'authentification des requêtes.
 - **Backup** (*DB · Files*, `databasus` · `duplicati`) — sauvegarde des bases et fichiers.
