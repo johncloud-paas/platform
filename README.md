@@ -25,10 +25,18 @@ alors la configuration à Traefik. La requête publique emprunte ensuite la rout
 bout mise en évidence en orange (Gerbil → Traefik → whoami). Ajouter un service se résume
 donc à déclarer ces labels sur sa stack.
 
+**Contrôle d'accès (middleware `badger`).** Traefik charge le plugin `badger`
+(`github.com/fosrl/badger`), appliqué comme middleware sur les routers Pangolin et sur les
+ressources exposées. À chaque requête, `badger` interroge Pangolin (`VERIFY`) pour valider
+la session et les droits : une requête non authentifiée est redirigée vers la page de
+connexion SSO, une requête autorisée poursuit vers le backend. C'est lui qui distingue les
+ressources publiques des ressources protégées déclarées via les labels.
+
 **Autres destinations.** Traefik dessert aussi :
 
 - **Authentik** (*SSO · Identity*, `server` · `worker` · `:9000`, PostgreSQL + Redis) —
-  interrogé en `FORWARD-AUTH` pour l'authentification des requêtes.
+  fournisseur d'identité, branché comme middleware `forwardAuth` (`FORWARD-AUTH`) pour les
+  ressources protégées directement par le SSO Authentik.
 - **Backup** (*DB · Files*, `databasus` · `duplicati`) — sauvegarde des bases et fichiers.
 
 **Observabilité.** Le bloc **MONITORING** (VictoriaMetrics · VictoriaLogs · VictoriaTraces,
