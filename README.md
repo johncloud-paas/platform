@@ -1,21 +1,39 @@
 # JohnCloud Platform
 
-## Architecture du cœur (core)
+## Architecture de la plateforme
 
-![Architecture du core](core/core-architecture.png)
+![Architecture du core](platform-architecture.png)
 
-Le trafic entrant arrive sur **Gerbil** (passerelle WireGuard, ports `80`/`443`/`51820`),
-qui partage son namespace réseau avec **Traefik** (reverse proxy, provider HTTP + certdumper).
-Traefik obtient ses certificats TLS auprès de **Let's Encrypt** (ACME) et récupère sa
-configuration depuis **Pangolin**, le plan de contrôle (API `:3000`/`:3001`, dashboard `:3002`).
-L'agent de site **Newt** s'enregistre auprès de Pangolin et établit le tunnel.
+Le diagramme se lit autour d'un bloc central, **CORE · INGRESS + CONTROL PLANE**, qui
+regroupe l'ingress et le plan de contrôle.
 
-Côté exploitation (*Platform Ops*), **socket-proxy** expose une API Docker en lecture seule
-et **Dockhand** fournit l'interface de gestion des conteneurs, tous deux s'appuyant sur le
-`docker.sock` **rootless** de l'hôte.
+**Ingress.** Les clients (navigateurs, pairs WireGuard) atteignent la plateforme en
+`HTTPS·WG` sur **Gerbil**, la passerelle (ports `:80`, `:443`, `:51820/udp`, tunnel
+WireGuard). Gerbil partage son namespace réseau (`SHARED NETNS`) avec **Traefik**, le
+reverse proxy (provider HTTP, ACME + certdumper), qui termine le TLS et route le trafic.
 
-> Sources du diagramme : `core/core-architecture.html` (éditable), `core/core-architecture.svg`
-> et `core/core-architecture.png`.
+**Plan de contrôle.** **Pangolin** (API `resources` + dashboard) fournit la configuration
+à Traefik (`CONFIG`) ; son agent **Newt** lit les labels Docker pour enregistrer
+automatiquement les services.
+
+**Routes sortantes.** Traefik dessert trois destinations :
+
+- **whoami** (*Example App*, `traefik/whoami`, `:80`, `whoami.$HOST`) — service de
+  démonstration auto-enregistré via les labels Docker, atteint par la route de bout en
+  bout mise en évidence en orange.
+- **Authentik** (*SSO · Identity*, `server` · `worker` · `:9000`, PostgreSQL + Redis) —
+  interrogé en `FORWARD-AUTH` pour l'authentification des requêtes.
+- **Backup** (*DB · Files*, `databasus` · `duplicati`) — sauvegarde des bases et fichiers.
+
+**Observabilité.** Le bloc **MONITORING** (VictoriaMetrics · VictoriaLogs · VictoriaTraces,
+plus `fluent-bit`, `suricata`, `node-exporter`, `cadvisor`) collecte métriques et logs du
+core (`SCRAPE · TAIL`).
+
+La légende distingue les blocs *focal / example* (orange), *service*, *ingress* et *stack
+(docker-compose)*, ainsi que les types de flèches : route d'exemple (orange), http / config
+(bleu plein) et observation (bleu pointillé).
+
+> Sources du diagramme : `platform-architecture.html` (éditable) et `platform-architecture.png`.
 
 ## Mise en place du Docker rootless
 
