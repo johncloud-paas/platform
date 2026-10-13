@@ -36,7 +36,7 @@ services:
       - BIND_ADDRESS=0.0.0.0
       # --- Authentik OIDC (native) ---
       - OIDC_ENABLED=true
-      - OIDC_PROVIDER=fail2ban-ui
+      - OIDC_PROVIDER=${FAIL2BAN_UI_OIDC_PROVIDER}
       - OIDC_ISSUER_URL=${FAIL2BAN_UI_OIDC_ISSUER_URL}
       - OIDC_CLIENT_ID=${FAIL2BAN_UI_OIDC_CLIENT_ID}
       - OIDC_CLIENT_SECRET=${FAIL2BAN_UI_OIDC_CLIENT_SECRET}
@@ -65,5 +65,10 @@ services:
       - "homepage.name=Fail2ban UI"
       - "homepage.icon=https://raw.githubusercontent.com/swissmakers/fail2ban-ui/dev/pkg/web/static/images/favicon-light.png"
       - "homepage.href=https://fail2ban.$HOST/"
-      - "homepage.description=Management platform for operating Fail2Ban
+      - "homepage.description=Management platform for operating Fail2Ban"
       
+networks:
+  default:
+    external: true
+    name: $TRAEFIK_NETWORK
+    
