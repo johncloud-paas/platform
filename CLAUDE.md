@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 JohnCloud Platform is a self-hosted PaaS for a **single Ubuntu node running rootless Docker**. There is no application source to compile — the repo is a set of independent **Docker Compose stacks** plus the shell glue that renders their config and brings them up.
 
-**Language policy: English is mandatory across the entire repository** — all documentation, README, `use-cases/`, code comments, and commit messages. Some existing docs (e.g. the README and `use-cases/`) are still in French; translate them to English when you touch them, and write any new content in English.
+**Language policy: English is mandatory across the entire repository** — all documentation, README, `docs/`, code comments, and commit messages. Some existing docs (e.g. the README and `docs/`) are still in French; translate them to English when you touch them, and write any new content in English.
 
 ## Stacks & orchestration
 
@@ -29,7 +29,7 @@ Four root scripts operate on a stack **directory** (not a name):
 
 ## Service exposure is label-driven
 
-Services are **not** wired into Traefik by hand. A container declares `pangolin.public-resources.<name>.*` labels (full-domain, protocol, port, `ssl`, `auth.sso-enabled`, `auth.sso-roles[n]`, optional healthcheck/maintenance). **Newt** (core stack) watches the Docker socket, reads these labels, and registers the resource with **Pangolin**, which pushes dynamic config to **Traefik**. `homepage.*` labels feed the dashboard. Adding a service = adding labels to its compose, then `./startstack.sh` its directory. The flows are documented as sequence diagrams in `use-cases/`.
+Services are **not** wired into Traefik by hand. A container declares `pangolin.public-resources.<name>.*` labels (full-domain, protocol, port, `ssl`, `auth.sso-enabled`, `auth.sso-roles[n]`, optional healthcheck/maintenance). **Newt** (core stack) watches the Docker socket, reads these labels, and registers the resource with **Pangolin**, which pushes dynamic config to **Traefik**. `homepage.*` labels feed the dashboard. Adding a service = adding labels to its compose, then `./startstack.sh` its directory. The flows are documented as sequence diagrams in `docs/use-cases/`.
 
 ## Request path (core stack = ingress + control plane)
 

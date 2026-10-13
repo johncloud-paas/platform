@@ -52,15 +52,15 @@ The legend distinguishes the *focal / example* (orange), *service*, *ingress* an
 ## Use cases
 
 The platform's reference scenarios are described as sequence diagrams in the
-[`use-cases/`](use-cases/) folder:
+[`docs/use-cases/`](docs/use-cases/) folder:
 
-- [Add a new service](use-cases/new-service.md) — registering a stack with Pangolin and
+- [Add a new service](docs/use-cases/new-service.md) — registering a stack with Pangolin and
   the automatic configuration of Traefik.
-- [Access an unprotected service](use-cases/access-unprotected-service.md) — the path of a
+- [Access an unprotected service](docs/use-cases/access-unprotected-service.md) — the path of a
   request to a public resource.
-- [Access a service protected by Authentik SSO](use-cases/access-pangolin_sso-service.md) —
+- [Access a service protected by Authentik SSO](docs/use-cases/access-pangolin_sso-service.md) —
   access control via the Authentik `forwardAuth` middleware.
-- [Access a service protected by Pangolin SSO](use-cases/acess-authentik_sso-service.md) —
+- [Access a service protected by Pangolin SSO](docs/use-cases/acess-authentik_sso-service.md) —
   access control via the Pangolin `badger` middleware.
 
 ## Setting up rootless Docker
