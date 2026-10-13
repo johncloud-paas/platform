@@ -8,6 +8,7 @@ configures itself automatically.
 ```mermaid
 sequenceDiagram
   autonumber
+  Dockhand->>whoami: Spawns a docker stack
   Newt->>whoami: Gather docker labels
   Newt->>Pangolin: Configure Pangolin
   Pangolin->>Traefik: Configure Traefik

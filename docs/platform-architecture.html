@@ -61,12 +61,13 @@
     <div class="diagram-container">
       <svg viewBox="0 0 964 802" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="platform-arch-title platform-arch-desc">
         <title id="platform-arch-title">JohnCloud Platform Architecture</title>
-        <desc id="platform-arch-desc">Public traffic first passes the fail2ban host firewall — driven by Suricata in the monitoring stack — then enters the Gerbil WireGuard gateway and is terminated by Traefik, which pulls its routing configuration from the Pangolin control plane and fans requests out to the authentik, backup and example application stacks, while the monitoring stack observes the whole platform. Every docker-compose managed container is marked with a Docker whale; fail2ban runs on the host and is marked with a Linux penguin.</desc>
+        <desc id="platform-arch-desc">Public traffic first passes the fail2ban host firewall — driven by Suricata in the monitoring stack — then enters the Gerbil WireGuard gateway and is terminated by Traefik, which pulls its routing configuration from the Pangolin control plane and fans requests out to the authentik, backup and example application stacks, while the monitoring stack observes the whole platform. Dockhand, a Docker-management UI in the core stack, spawns the whoami example stack by driving the shared Docker socket. Every docker-compose managed container is marked with a Docker whale; fail2ban runs on the host and is marked with a Linux penguin.</desc>
         <defs>
           <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker>
           <marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#eb6c36"/></marker>
           <marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#2e5aa8"/></marker>
           <marker id="arrow-ban" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#c0392b"/></marker>
+          <marker id="arrow-spawn" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#2e8b57"/></marker>
 
           <!-- Docker whale (marks docker-compose managed containers) -->
           <symbol id="ico-docker" viewBox="0 0 28 22">
@@ -182,6 +183,11 @@
         <rect x="508" y="556" width="86" height="11" rx="2" fill="#f5f5f5"/>
         <text x="512" y="564" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="start" letter-spacing="0.06em">SCRAPE · TAIL</text>
 
+        <!-- A9 Dockhand -> whoami : spawns the example stack by driving the Docker socket -->
+        <line x1="558" y1="170" x2="712" y2="170" stroke="#2e8b57" stroke-width="1.4" marker-end="url(#arrow-spawn)"/>
+        <rect x="610" y="156" width="52" height="11" rx="2" fill="#f5f5f5"/>
+        <text x="636" y="164" fill="#2e8b57" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">SPAWNS</text>
+
         <!-- A8 whoami -> Newt : docker labels read by the site agent (config by label) -->
         <path d="M716,160 H690 V476 H586" fill="none" stroke="#2e5aa8" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arrow-link)"/>
         <rect x="654" y="250" width="72" height="11" rx="2" fill="#f5f5f5"/>
@@ -246,6 +252,15 @@
         <text x="492" y="494" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace">reads labels</text>
         <text x="492" y="505" fill="#7a8399" font-size="9" font-family="'Geist Mono', monospace">WireGuard tunnel</text>
 
+        <!-- N4c Dockhand (service — docker management UI, spawns stacks) -->
+        <rect x="446" y="140" width="112" height="76" rx="6" fill="#f5f5f5"/>
+        <rect x="446" y="140" width="112" height="76" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+        <rect x="458" y="154" width="70" height="13" rx="2" fill="none" stroke="#2d3142" stroke-width="0.8"/>
+        <text x="464" y="163" fill="#2d3142" font-size="7" font-family="'Geist Mono', monospace" letter-spacing="0.12em">DOCKER UI</text>
+        <text x="458" y="184" fill="#2d3142" font-size="12" font-family="'Geist', sans-serif" font-weight="600">Dockhand</text>
+        <text x="458" y="198" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace">spawns stacks</text>
+        <text x="458" y="209" fill="#7a8399" font-size="9" font-family="'Geist Mono', monospace">docker socket</text>
+
         <!-- N5 whoami (focal — example app) -->
         <rect x="716" y="140" width="184" height="84" rx="6" fill="#f5f5f5"/>
         <rect x="716" y="140" width="184" height="84" rx="6" fill="rgba(235,108,54,0.08)" stroke="#eb6c36" stroke-width="1.2"/>
@@ -287,6 +302,7 @@
         <use href="#ico-docker" x="384" y="307" width="16" height="13"/>  <!-- Traefik -->
         <use href="#ico-docker" x="414" y="443" width="16" height="13"/>  <!-- Pangolin -->
         <use href="#ico-docker" x="564" y="443" width="16" height="13"/>  <!-- Newt -->
+        <use href="#ico-docker" x="540" y="147" width="16" height="13"/>  <!-- Dockhand -->
         <use href="#ico-docker" x="878" y="147" width="16" height="13"/>  <!-- whoami -->
         <use href="#ico-docker" x="878" y="319" width="16" height="13"/>  <!-- Authentik -->
         <use href="#ico-docker" x="878" y="455" width="16" height="13"/>  <!-- Backup -->
@@ -325,6 +341,9 @@
 
         <line x1="500" y1="776" x2="528" y2="776" stroke="#c0392b" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arrow-ban)"/>
         <text x="536" y="780" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace">suricata drives ban</text>
+
+        <line x1="700" y1="776" x2="728" y2="776" stroke="#2e8b57" stroke-width="1.4" marker-end="url(#arrow-spawn)"/>
+        <text x="736" y="780" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace">dockhand spawns stack</text>
       </svg>
     </div>
   </div>
