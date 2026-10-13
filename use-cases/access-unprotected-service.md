@@ -8,8 +8,8 @@ consulted, only the network filtering layer (fail2ban) and TLS termination are i
 sequenceDiagram
   autonumber
   Internet->>fail2ban: Allows traffic
-  fail2ban->>Gerbil: Pass https traffic and terminate WG
-  Gerbil->>Traefik: Pass traffic
+  fail2ban->>Gerbil: Pass https traffic
+  Gerbil->>Traefik: Pass https traffic and terminate WG
   Traefik->>whoami: Terminate SSL and pass clear traffic to service
   whoami->>Traefik: Service response
   Traefik->>Gerbil: Service response

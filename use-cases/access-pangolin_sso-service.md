@@ -9,8 +9,8 @@ to validate the session and permissions before granting access to the backend.
 sequenceDiagram
   autonumber
   Internet->>fail2ban: Allows traffic
-  fail2ban->>Gerbil: Pass https traffic and terminate WG
-  Gerbil->>Traefik: Pass traffic
+  fail2ban->>Gerbil: Pass https traffic
+  Gerbil->>Traefik: Pass https traffic and terminate WG
   Traefik->>Pangolin: Check SSO through badger MW
   Pangolin->>Traefik: Permission status
   Traefik->>whoami: Terminate SSL and pass clear traffic to service
