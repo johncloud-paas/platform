@@ -1,0 +1,1 @@
+{"timestamp":"2026-10-13T12:35:10.111213+0000","flow_id":2234567890,"in_iface":"eth0","event_type":"alert","src_ip":"198.51.100.23","src_port":51234,"dest_ip":"10.0.0.5","dest_port":443,"proto":"TCP","alert":{"action":"allowed","gid":1,"signature_id":2010935,"rev":3,"signature":"ET SCAN medium severity example","category":"Attempted Information Leak","severity":2}}

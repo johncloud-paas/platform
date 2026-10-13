@@ -1,0 +1,1 @@
+{"timestamp":"2026-10-13T12:34:56.789012+0000","flow_id":1234567890,"in_iface":"eth0","event_type":"alert","src_ip":"203.0.113.66","src_port":44321,"dest_ip":"10.0.0.5","dest_port":80,"proto":"TCP","alert":{"action":"allowed","gid":1,"signature_id":1000099,"rev":1,"signature":"TEST f2b e2e","category":"","severity":1}}
