@@ -49,6 +49,20 @@ La légende distingue les blocs *focal / example* (orange), *service*, *ingress*
 
 > Sources du diagramme : `platform-architecture.html` (éditable) et `platform-architecture.png`.
 
+## Cas d'usage
+
+Les scénarios de référence de la plateforme sont décrits sous forme de diagrammes de
+séquence dans le dossier [`use-cases/`](use-cases/) :
+
+- [Ajouter un nouveau service](use-cases/new-service.md) — enregistrement d'une stack
+  auprès de Pangolin et configuration automatique de Traefik.
+- [Accéder à un service non protégé](use-cases/access-unprotected-service.md) — parcours
+  d'une requête vers une ressource publique.
+- [Accéder à un service protégé par SSO Authentik](use-cases/access-pangolin_sso-service.md) —
+  contrôle d'accès via le middleware `forwardAuth` Authentik.
+- [Accéder à un service protégé par SSO Pangolin](use-cases/acess-authentik_sso-service.md) —
+  contrôle d'accès via le middleware `badger` Pangolin.
+
 ## Mise en place du Docker rootless
 
 **Arrêter le démon rootful**:
