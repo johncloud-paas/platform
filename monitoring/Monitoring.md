@@ -25,7 +25,50 @@ customizable policies, and manual/automatic blocking on this node.
 | Block engine | **Fail2ban** → nftables (auto) + raw nftables (manual) | 2026-10-08 |
 | Blocking posture | **Detection-first** (manual only), flip to auto later | 2026-10-08 |
 | Alert UI (optional) | **EveBox** (GPLv2) | 2026-10-08 |
+| Ban-management UI | **fail2ban-ui** (rootful, native Authentik OIDC) | 2026-10-13 |
 | Rejected | **CrowdSec** — see below | 2026-10-08 |
+
+## Ban-management UI: fail2ban-ui
+
+[`swissmakers/fail2ban-ui`](https://github.com/swissmakers/fail2ban-ui) is the web UI
+for the **ban layer** (jails, banned IPs, search/ban/unban, live filter tester,
+country/GeoIP "Ban Insights") — the piece the EveBox placeholder never covered. EveBox,
+if added, stays the *alert* review UI; fail2ban-ui manages the *bans* Fail2ban applies.
+
+**Rootful, like Suricata.** The UI uses Fail2ban's **Local connector**, which needs the
+root-owned control socket (`/var/run/fail2ban/fail2ban.sock`, `root:root 0600`) and write
+access to `/etc/fail2ban`. A rootless container's root maps to an unprivileged host subuid
+and gets `EACCES` on the socket — the same user-namespace limit that forces the Suricata
+sensor rootful. So fail2ban-ui runs under the **system (rootful) daemon** from its own
+`fail2ban-ui/docker-compose.yml`; `setup_before_up.sh` brings it up with `sudo docker
+compose`, right after the Suricata sensor.
+
+**Auth: native Authentik OIDC.** Unlike other services (proxy-level Pangolin SSO), the UI
+authenticates directly against Authentik (`OIDC_PROVIDER=authentik`). All OIDC settings come
+from `FAIL2BAN_UI_OIDC_*` in `monitoring/.env`. Access is role-gated by Authentik **group**
+membership (`OIDC_ROLE_CLAIM=groups`): admins vs support (read + manual ban/unban).
+
+**Live events.** `CALLBACK_URL`/`CALLBACK_SECRET` let Fail2ban POST every ban/unban back to
+the UI for a real-time dashboard. The app **writes and manages its own callback action files**
+under `/etc/fail2ban` (it has RW access via the Local connector) — nothing to hand-author, and
+the callback reaches the UI at `http://127.0.0.1:$FAIL2BAN_UI_PORT` over the host network.
+
+**Exposure caveat.** Being rootful + host-network, the container is invisible to Newt (which
+watches the rootless Docker socket) and cannot join the rootless `traefik-proxy` network, so
+`pangolin.public-resources.*` labels will **not** auto-register it. Expose it by registering a
+Pangolin resource whose target is the **host IP:`$FAIL2BAN_UI_PORT`** at `fail2ban.$HOST`; the
+app's own OIDC gates access. (The host port is bound on the uplink — rely on OIDC plus the
+existing Fail2ban/iptables posture.)
+
+**One-time manual setup:**
+1. **Authentik** — create an OAuth2/OIDC *Provider* + *Application* (slug `fail2ban-ui`,
+   redirect URI `https://fail2ban.$HOST/auth/callback`). Copy `client_id`/`client_secret` into
+   `.env`; set `FAIL2BAN_UI_OIDC_ADMIN_ROLES` to the authorized Authentik group name(s).
+2. **Secrets** — `openssl rand -hex 32` for `FAIL2BAN_UI_OIDC_SESSION_SECRET` and
+   `FAIL2BAN_UI_CALLBACK_SECRET` (both may be left blank to auto-generate).
+3. **Pangolin** — register the `fail2ban.$HOST` → host-IP:`$FAIL2BAN_UI_PORT` resource.
+
+Then `./startstack.sh monitoring`.
 
 ## Why not CrowdSec
 
@@ -179,6 +222,7 @@ write a small `eve.json` → `nft` watcher, and give up timed expiry/persistence
       reading `eve.json` + `./pangolin/logs/`.
 - [ ] Start jails in detection-only mode; verify alerts land in `eve.json`.
 - [ ] (Optional) Add EveBox for alert review UI.
+- [x] Add **fail2ban-ui** (rootful) for ban management + native Authentik OIDC.
 - [ ] After tuning, enable automatic banning on trusted jails.
 - [ ] (Optional) WireGuard transport metrics: `wg-exporter` in Gerbil's netns →
       VictoriaMetrics (Traefik Log Analysis §5 below).
