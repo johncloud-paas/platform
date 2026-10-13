@@ -10,7 +10,7 @@ SURICATA_DATA="$JOHNCLOUD_ROOT/suricata"
 (
     envsubst '$PUBLIC_IP_ADDRESS $JOHNCLOUD_ROOT' < fail2ban/jail.d/suricata.template.conf > fail2ban/jail.d/suricata.conf &&    
     envsubst '$PUBLIC_IP_ADDRESS' < suricata/suricata.template.yaml > suricata/suricata.yaml &&        
-    mkdir -p $JOHNCLOUD_ROOT/victoriametrics/data $JOHNCLOUD_ROOT/victorialogs/data $JOHNCLOUD_ROOT/victoriatraces/data $JOHNCLOUD_ROOT/fluent-bit $JOHNCLOUD_ROOT/fail2ban-ui &&
+    mkdir -p $JOHNCLOUD_ROOT/victoriametrics/data $JOHNCLOUD_ROOT/victorialogs/data $JOHNCLOUD_ROOT/victoriatraces/data $JOHNCLOUD_ROOT/fluent-bit $JOHNCLOUD_ROOT/fail2ban &&
     cp ./victoriametrics/* $JOHNCLOUD_ROOT/victoriametrics &&
     cp ./fluent-bit/* $JOHNCLOUD_ROOT/fluent-bit &&
     mkdir -p "$SURICATA_DATA/rules" "$SURICATA_DATA/logs" &&
@@ -58,14 +58,14 @@ else
     echo "[suricata] WARN: no system docker.service; cannot start the rootful sensor"
 fi
 
-# fail2ban-ui runs ROOTFUL too: the Local connector needs the root-owned Fail2ban
+# fail2ban runs ROOTFUL too: the Local connector needs the root-owned Fail2ban
 # socket (/var/run/fail2ban) and /etc/fail2ban, which rootless can't reach. It
 # manages its own ban/unban callback action files under /etc/fail2ban and reads
-# the live ban state over the socket. See fail2ban-ui/docker-compose.yml.
+# the live ban state over the socket. See fail2ban/docker-compose.yml.
 if systemctl list-unit-files docker.service >/dev/null 2>&1; then
-    sudo docker compose --env-file .env -f fail2ban-ui/docker-compose.yml \
+    sudo docker compose --env-file .env -f fail2ban/docker-compose.yml \
         up -d --force-recreate --remove-orphans ||
-        echo "[fail2ban-ui] WARN: UI failed to start; check 'sudo docker logs fail2ban-ui'"
+        echo "[fail2ban] WARN: UI failed to start; check 'sudo docker logs fail2ban'"
 else
-    echo "[fail2ban-ui] WARN: no system docker.service; cannot start the rootful UI"
+    echo "[fail2ban] WARN: no system docker.service; cannot start the rootful UI"
 fi

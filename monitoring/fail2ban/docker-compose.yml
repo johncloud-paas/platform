@@ -1,4 +1,4 @@
-# fail2ban-ui — web UI for the host Fail2ban ban layer. Runs under the SYSTEM
+# fail2ban — web UI for the host Fail2ban ban layer. Runs under the SYSTEM
 # (rootful) Docker daemon, NOT the per-user rootless daemon the rest of the
 # monitoring stack uses.
 #
@@ -12,7 +12,7 @@
 # Local connector works.
 #
 # Launch (from the monitoring/ directory — setup_before_up.sh does this for you):
-#   sudo docker compose --env-file .env -f fail2ban-ui/docker-compose.yml up -d \
+#   sudo docker compose --env-file .env -f fail2ban/docker-compose.yml up -d \
 #        --force-recreate --remove-orphans
 #
 # Exposure: this is a rootful, host-network container, so Newt (which watches the
@@ -20,12 +20,11 @@
 # traefik-proxy network — pangolin.public-resources.* labels would never register.
 # Expose it by registering a Pangolin resource targeting the host IP:$FAIL2BAN_UI_PORT
 # (see Monitoring.md). Access is gated by the app's own Authentik OIDC.
-name: fail2ban-ui
+name: fail2ban
 
 services:
   fail2ban-ui:
     image: swissmakers/fail2ban-ui:latest
-    container_name: fail2ban-ui
     restart: unless-stopped
     # Host network namespace: binds $FAIL2BAN_UI_PORT on the host and lets the
     # host-side Fail2ban action reach the callback endpoint at 127.0.0.1.
@@ -37,8 +36,8 @@ services:
       - BIND_ADDRESS=0.0.0.0
       # --- Authentik OIDC (native) ---
       - OIDC_ENABLED=true
-      - OIDC_PROVIDER=authentik
-      - OIDC_ISSUER_URL=${FAIL2BAN_UI_OIDC_ISSUER_URL:-https://authentik.$HOST/application/o/fail2ban-ui/}
+      - OIDC_PROVIDER=fail2ban-ui
+      - OIDC_ISSUER_URL=${FAIL2BAN_UI_OIDC_ISSUER_URL}
       - OIDC_CLIENT_ID=${FAIL2BAN_UI_OIDC_CLIENT_ID}
       - OIDC_CLIENT_SECRET=${FAIL2BAN_UI_OIDC_CLIENT_SECRET}
       - OIDC_REDIRECT_URL=https://fail2ban.$HOST/auth/callback
@@ -55,3 +54,16 @@ services:
       - /etc/fail2ban:/etc/fail2ban                    # jail/filter config (RW; Local connector)
       - /var/run/fail2ban:/var/run/fail2ban            # Fail2ban control socket
       - /var/log:/var/log:ro                           # log-path validation
+    labels:
+      - pangolin.public-resources.fail2ban-ui.name=fail2ban-ui
+      - pangolin.public-resources.fail2ban-ui.full-domain=fail2ban.$HOST
+      - pangolin.public-resources.fail2ban-ui.protocol=http
+      - pangolin.public-resources.fail2ban-ui.ssl=true
+      - pangolin.public-resources.fail2ban-ui.targets[0].method=http
+      - pangolin.public-resources.fail2ban-ui.targets[0].port=${FAIL2BAN_UI_PORT}
+      - "homepage.group=Platform"
+      - "homepage.name=Fail2ban UI"
+      - "homepage.icon=https://raw.githubusercontent.com/swissmakers/fail2ban-ui/dev/pkg/web/static/images/favicon-light.png"
+      - "homepage.href=https://fail2ban.$HOST/"
+      - "homepage.description=Management platform for operating Fail2Ban
+      
