@@ -1,9 +1,9 @@
-# Accéder à un service protégé par le SSO Pangolin
+# Access a service protected by Authentik SSO
 
-Ce scénario décrit le parcours d'une requête publique vers une **ressource protégée par le
-SSO Pangolin**. Le contrôle d'accès est assuré par le middleware **`badger`**
-(`github.com/fosrl/badger`) chargé dans Traefik : à chaque requête, `badger` interroge
-Pangolin pour valider la session et les droits avant d'autoriser l'accès au backend.
+This scenario describes the path of a public request to a **resource protected by Authentik
+SSO**. Compared to the unprotected service, an identity-verification step is inserted:
+Traefik queries **Authentik** (identity provider wired in as `forwardAuth`) before letting
+the request reach the backend.
 
 ```mermaid
 sequenceDiagram
@@ -11,44 +11,44 @@ sequenceDiagram
   Internet->>fail2ban: Allows traffic
   fail2ban->>Gerbil: Pass https traffic and terminate WG
   Gerbil->>Traefik: Pass traffic
-  Traefik->>Pangolin: Check SSO through badger MW
-  Pangolin->>Traefik: Permission status
+  Traefik->>Authentik: Check SSO
+  Authentik->>Traefik: Permission status
   Traefik->>whoami: Terminate SSL and pass clear traffic to service
   whoami->>Traefik: Service response
   Traefik->>Gerbil: Service response
   Gerbil->>Internet: Service response
 ```
 
-## Déroulé étape par étape
+## Step-by-step walkthrough
 
-1. **Internet → fail2ban — `Allows traffic`.** La requête du client arrive sur la machine.
-   **fail2ban** vérifie que l'adresse IP source n'est pas bannie avant de laisser passer le
-   trafic.
+1. **Internet → fail2ban — `Allows traffic`.** The client's request arrives on the machine.
+   **fail2ban** checks that the source IP address is not banned before letting the traffic
+   through.
 
-2. **fail2ban → Gerbil — `Pass https traffic and terminate WG`.** Le trafic HTTPS atteint
-   **Gerbil**, la passerelle d'ingress, qui termine le tunnel WireGuard et transmet le
-   trafic.
+2. **fail2ban → Gerbil — `Pass https traffic and terminate WG`.** The HTTPS traffic reaches
+   **Gerbil**, the ingress gateway, which terminates the WireGuard tunnel and forwards the
+   traffic.
 
-3. **Gerbil → Traefik — `Pass traffic`.** Gerbil remet le trafic à **Traefik** (reverse
-   proxy) via le namespace réseau partagé.
+3. **Gerbil → Traefik — `Pass traffic`.** Gerbil hands the traffic to **Traefik** (reverse
+   proxy) via the shared network namespace.
 
-4. **Traefik → Pangolin — `Check SSO through badger MW`.** La ressource étant protégée,
-   Traefik applique le middleware **`badger`**, qui interroge **Pangolin** (`VERIFY`) pour
-   valider la session et les droits de l'utilisateur.
+4. **Traefik → Authentik — `Check SSO`.** Since the resource is protected, Traefik applies
+   the `forwardAuth` middleware and delegates the authentication decision to **Authentik**,
+   the identity provider. The session (cookie / headers) is passed along for verification.
 
-5. **Pangolin → Traefik — `Permission status`.** Pangolin renvoie le statut d'accès :
-   - requête **non authentifiée** → redirection vers la page de connexion SSO Pangolin ;
-   - requête **autorisée** → Traefik poursuit vers le backend (étape suivante).
+5. **Authentik → Traefik — `Permission status`.** Authentik responds with the access status:
+   - an **unauthenticated** request → redirect to the Authentik SSO login page;
+   - an **authorized** request → Traefik continues to the backend (next step).
 
-6. **Traefik → whoami — `Terminate SSL and pass clear traffic to service`.** Une fois
-   l'accès validé, Traefik termine le TLS et transmet la requête en clair au conteneur
-   backend `whoami`.
+6. **Traefik → whoami — `Terminate SSL and pass clear traffic to service`.** Once access is
+   validated, Traefik terminates TLS and forwards the request in clear to the `whoami`
+   backend container.
 
-7. **whoami → Traefik — `Service response`.** Le service traite la requête et renvoie sa
-   réponse à Traefik.
+7. **whoami → Traefik — `Service response`.** The service processes the request and returns
+   its response to Traefik.
 
-8. **Traefik → Gerbil — `Service response`.** Traefik rechiffre la réponse et la transmet à
-   Gerbil.
+8. **Traefik → Gerbil — `Service response`.** Traefik re-encrypts the response and forwards
+   it to Gerbil.
 
-9. **Gerbil → Internet — `Service response`.** Gerbil renvoie la réponse au client
-   authentifié.
+9. **Gerbil → Internet — `Service response`.** Gerbil returns the response to the
+   authenticated client.

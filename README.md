@@ -1,78 +1,78 @@
 # JohnCloud Platform
 
-## Architecture de la plateforme
+## Platform architecture
 
-![Architecture du core](docs/platform-architecture.png)
+![Core architecture](docs/platform-architecture.png)
 
-Le diagramme se lit autour d'un bloc central, **CORE · INGRESS + CONTROL PLANE**, qui
-regroupe l'ingress et le plan de contrôle.
+The diagram is read around a central block, **CORE · INGRESS + CONTROL PLANE**, which
+groups the ingress and the control plane.
 
-**Ingress.** Les clients (navigateurs, pairs WireGuard) atteignent la plateforme en
-`HTTPS·WG` sur **Gerbil**, la passerelle (ports `:80`, `:443`, `:51820/udp`, tunnel
-WireGuard). Gerbil partage son namespace réseau (`SHARED NETNS`) avec **Traefik**, le
-reverse proxy (provider HTTP, ACME + certdumper), qui termine le TLS et route le trafic.
+**Ingress.** Clients (browsers, WireGuard peers) reach the platform over `HTTPS·WG` on
+**Gerbil**, the gateway (ports `:80`, `:443`, `:51820/udp`, WireGuard tunnel). Gerbil
+shares its network namespace (`SHARED NETNS`) with **Traefik**, the reverse proxy (HTTP
+provider, ACME + certdumper), which terminates TLS and routes the traffic.
 
-**Plan de contrôle.** **Pangolin** (API `resources` + dashboard) fournit la configuration
-à Traefik (`CONFIG`). Son agent de site **Newt** établit le tunnel WireGuard et surveille
-les labels Docker des stacks.
+**Control plane.** **Pangolin** (`resources` API + dashboard) provides the configuration to
+Traefik (`CONFIG`). Its site agent **Newt** establishes the WireGuard tunnel and watches
+the stacks' Docker labels.
 
-**Configuration par label.** La stack d'exemple **whoami** (`WHOAMI · EXAMPLE STACK`,
-docker-compose) illustre le mécanisme : le conteneur `traefik/whoami` ne porte aucune
-route codée en dur, seulement des labels `pangolin.public-resources.*` (domaine `$HOST`,
-port `80`, `ssl=true`, healthcheck, page de maintenance). Newt lit ces `DOCKER LABELS`
-(flèche pointillée depuis whoami), `REGISTER` la ressource auprès de Pangolin, qui pousse
-alors la configuration à Traefik. La requête publique emprunte ensuite la route de bout en
-bout mise en évidence en orange (Gerbil → Traefik → whoami). Ajouter un service se résume
-donc à déclarer ces labels sur sa stack.
+**Label-driven configuration.** The example stack **whoami** (`WHOAMI · EXAMPLE STACK`,
+docker-compose) illustrates the mechanism: the `traefik/whoami` container carries no
+hard-coded route, only `pangolin.public-resources.*` labels (domain `$HOST`, port `80`,
+`ssl=true`, healthcheck, maintenance page). Newt reads these `DOCKER LABELS` (dashed arrow
+from whoami), `REGISTER`s the resource with Pangolin, which then pushes the configuration to
+Traefik. The public request then follows the end-to-end route highlighted in orange
+(Gerbil → Traefik → whoami). Adding a service therefore comes down to declaring these labels
+on its stack.
 
-**Contrôle d'accès (middleware `badger`).** Traefik charge le plugin `badger`
-(`github.com/fosrl/badger`), appliqué comme middleware sur les routers Pangolin et sur les
-ressources exposées. À chaque requête, `badger` interroge Pangolin (`VERIFY`) pour valider
-la session et les droits : une requête non authentifiée est redirigée vers la page de
-connexion SSO, une requête autorisée poursuit vers le backend. C'est lui qui distingue les
-ressources publiques des ressources protégées déclarées via les labels.
+**Access control (`badger` middleware).** Traefik loads the `badger` plugin
+(`github.com/fosrl/badger`), applied as middleware on the Pangolin routers and on the
+exposed resources. On every request, `badger` queries Pangolin (`VERIFY`) to validate the
+session and permissions: an unauthenticated request is redirected to the SSO login page, an
+authorized request continues to the backend. It is what distinguishes public resources from
+protected resources declared via the labels.
 
-**Autres destinations.** Traefik dessert aussi :
+**Other destinations.** Traefik also serves:
 
 - **Authentik** (*SSO · Identity*, `server` · `worker` · `:9000`, PostgreSQL + Redis) —
-  fournisseur d'identité, branché comme middleware `forwardAuth` (`FORWARD-AUTH`) pour les
-  ressources protégées directement par le SSO Authentik.
-- **Backup** (*DB · Files*, `databasus` · `duplicati`) — sauvegarde des bases et fichiers.
+  identity provider, wired in as a `forwardAuth` middleware (`FORWARD-AUTH`) for resources
+  protected directly by Authentik SSO.
+- **Backup** (*DB · Files*, `databasus` · `duplicati`) — backup of databases and files.
 
-**Observabilité.** Le bloc **MONITORING** (VictoriaMetrics · VictoriaLogs · VictoriaTraces,
-plus `fluent-bit`, `suricata`, `node-exporter`, `cadvisor`) collecte métriques et logs du
-core (`SCRAPE · TAIL`).
+**Observability.** The **MONITORING** block (VictoriaMetrics · VictoriaLogs · VictoriaTraces,
+plus `fluent-bit`, `suricata`, `node-exporter`, `cadvisor`) collects the core's metrics and
+logs (`SCRAPE · TAIL`).
 
-La légende distingue les blocs *focal / example* (orange), *service*, *ingress* et *stack
-(docker-compose)*, ainsi que les types de flèches : route d'exemple (orange), http / config
-(bleu plein) et observation (bleu pointillé).
+The legend distinguishes the *focal / example* (orange), *service*, *ingress* and *stack
+(docker-compose)* blocks, as well as the arrow types: example route (orange), http / config
+(solid blue) and observation (dashed blue).
 
-> Sources du diagramme : `platform-architecture.html` (éditable) et `platform-architecture.png`.
+> Diagram sources: `platform-architecture.html` (editable) and `platform-architecture.png`.
 
-## Cas d'usage
+## Use cases
 
-Les scénarios de référence de la plateforme sont décrits sous forme de diagrammes de
-séquence dans le dossier [`use-cases/`](use-cases/) :
+The platform's reference scenarios are described as sequence diagrams in the
+[`use-cases/`](use-cases/) folder:
 
-- [Ajouter un nouveau service](use-cases/new-service.md) — enregistrement d'une stack
-  auprès de Pangolin et configuration automatique de Traefik.
-- [Accéder à un service non protégé](use-cases/access-unprotected-service.md) — parcours
-  d'une requête vers une ressource publique.
-- [Accéder à un service protégé par SSO Authentik](use-cases/access-pangolin_sso-service.md) —
-  contrôle d'accès via le middleware `forwardAuth` Authentik.
-- [Accéder à un service protégé par SSO Pangolin](use-cases/acess-authentik_sso-service.md) —
-  contrôle d'accès via le middleware `badger` Pangolin.
+- [Add a new service](use-cases/new-service.md) — registering a stack with Pangolin and
+  the automatic configuration of Traefik.
+- [Access an unprotected service](use-cases/access-unprotected-service.md) — the path of a
+  request to a public resource.
+- [Access a service protected by Authentik SSO](use-cases/access-pangolin_sso-service.md) —
+  access control via the Authentik `forwardAuth` middleware.
+- [Access a service protected by Pangolin SSO](use-cases/acess-authentik_sso-service.md) —
+  access control via the Pangolin `badger` middleware.
 
-## Mise en place du Docker rootless
+## Setting up rootless Docker
 
-**Arrêter le démon rootful**:
+**Stop the rootful daemon**:
 
 ```bash
 sudo systemctl disable docker.service docker.socket
 sudo systemctl stop docker.service docker.socket
 ```
 
-Installer le mode rootless :
+Install rootless mode:
 
 ```bash
 dockerd-rootless-setuptool.sh install
@@ -80,7 +80,7 @@ systemctl --user enable docker
 systemctl --user start docker
 ```
 
-Vérifiez ensuite que le mode rootless fonctionne :
+Then verify that rootless mode is working:
 
 ```bash
 dockerd-rootless-setuptool.sh install
@@ -89,22 +89,22 @@ docker info | grep -i rootless
 docker run --rm hello-world
 ```
 
-Si `docker info` n'affiche pas `rootless`, c'est que votre client utilise encore le socket rootful : revérifiez la variable `DOCKER_HOST`.
+If `docker info` does not show `rootless`, your client is still using the rootful socket: double-check the `DOCKER_HOST` variable.
 
-Avec le mode rootless, le démon ne peut pas ouvrir les ports inférieurs à 1024 par défaut. Il faut donc autoriser cette liaison une fois, avec les droits root.
+In rootless mode, the daemon cannot open ports below 1024 by default. You therefore need to allow this binding once, with root privileges.
 
-**Abaisser le seuil des ports non privilégiés via sysctl**
+**Lower the unprivileged ports threshold via sysctl**
 
-Cette méthode s'applique à tout le système :
+This method applies system-wide:
 
 ```bash
 sudo sysctl net.ipv4.ip_unprivileged_port_start=80
 echo 'net.ipv4.ip_unprivileged_port_start=80' | sudo tee /etc/sysctl.d/99-unprivileged-ports.conf
 ```
 
-Avec la valeur `80`, les ports 80 et 443 deviennent accessibles à tous les utilisateurs. Cette option est plus large que la précédente, car elle concerne tous les processus de la machine.
+With the value `80`, ports 80 and 443 become accessible to all users. This option is broader than the previous one, since it concerns every process on the machine.
 
-**Vérification**
+**Verification**
 
 ```bash
 docker ps
@@ -112,4 +112,4 @@ ss -tlnp | grep -E ':(80|443)\b'
 curl -I http://localhost
 ```
 
-Si le conteneur ne démarre pas avec « permission denied » ou « bind: permission denied », vérifiez d'abord que le démon utilisé est bien le rootless (`docker info | grep -i rootless`) et que le `DOCKER_HOST` pointe vers `$XDG_RUNTIME_DIR/docker.sock`.
+If the container fails to start with "permission denied" or "bind: permission denied", first check that the daemon in use is indeed the rootless one (`docker info | grep -i rootless`) and that `DOCKER_HOST` points to `$XDG_RUNTIME_DIR/docker.sock`.

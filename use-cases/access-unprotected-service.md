@@ -1,9 +1,8 @@
-# Accéder à un service non protégé
+# Access an unprotected service
 
-Ce scénario décrit le parcours d'une requête publique vers une **ressource non protégée**,
-c'est-à-dire exposée sans contrôle d'accès SSO. C'est le chemin le plus court : aucun
-fournisseur d'identité n'est consulté, seule la couche de filtrage réseau (fail2ban) et la
-terminaison TLS interviennent.
+This scenario describes the path of a public request to an **unprotected resource**, that is,
+one exposed without SSO access control. It is the shortest path: no identity provider is
+consulted, only the network filtering layer (fail2ban) and TLS termination are involved.
 
 ```mermaid
 sequenceDiagram
@@ -17,29 +16,29 @@ sequenceDiagram
   Gerbil->>Internet: Service response
 ```
 
-## Déroulé étape par étape
+## Step-by-step walkthrough
 
-1. **Internet → fail2ban — `Allows traffic`.** La requête du client arrive sur la machine.
-   **fail2ban** inspecte la source : si l'adresse IP n'est pas bannie (suite à des
-   comportements abusifs détectés par Suricata), le trafic est autorisé à poursuivre.
+1. **Internet → fail2ban — `Allows traffic`.** The client's request arrives on the machine.
+   **fail2ban** inspects the source: if the IP address is not banned (following abusive
+   behavior detected by Suricata), the traffic is allowed to proceed.
 
-2. **fail2ban → Gerbil — `Pass https traffic and terminate WG`.** Le trafic HTTPS atteint
-   **Gerbil**, la passerelle d'ingress (ports `:80`, `:443`, `:51820/udp`). Gerbil termine
-   le tunnel WireGuard (`WG`) et transmet le trafic.
+2. **fail2ban → Gerbil — `Pass https traffic and terminate WG`.** The HTTPS traffic reaches
+   **Gerbil**, the ingress gateway (ports `:80`, `:443`, `:51820/udp`). Gerbil terminates
+   the WireGuard tunnel (`WG`) and forwards the traffic.
 
-3. **Gerbil → Traefik — `Pass traffic`.** Gerbil partage son namespace réseau avec
-   **Traefik** (reverse proxy) et lui remet le trafic pour le routage applicatif.
+3. **Gerbil → Traefik — `Pass traffic`.** Gerbil shares its network namespace with
+   **Traefik** (reverse proxy) and hands the traffic over for application routing.
 
 4. **Traefik → whoami — `Terminate SSL and pass clear traffic to service`.** Traefik
-   termine le TLS (certificat Let's Encrypt), identifie le router correspondant au domaine
-   demandé et transmet la requête en clair au conteneur backend `whoami`. Comme la
-   ressource n'est pas protégée, **aucun middleware SSO** n'est consulté.
+   terminates TLS (Let's Encrypt certificate), identifies the router matching the requested
+   domain and forwards the request in clear to the `whoami` backend container. Since the
+   resource is unprotected, **no SSO middleware** is consulted.
 
-5. **whoami → Traefik — `Service response`.** Le service traite la requête et renvoie sa
-   réponse à Traefik.
+5. **whoami → Traefik — `Service response`.** The service processes the request and returns
+   its response to Traefik.
 
-6. **Traefik → Gerbil — `Service response`.** Traefik rechiffre la réponse et la transmet à
-   Gerbil.
+6. **Traefik → Gerbil — `Service response`.** Traefik re-encrypts the response and forwards
+   it to Gerbil.
 
-7. **Gerbil → Internet — `Service response`.** Gerbil renvoie la réponse au client, qui
-   referme la chaîne.
+7. **Gerbil → Internet — `Service response`.** Gerbil returns the response to the client,
+   closing the chain.

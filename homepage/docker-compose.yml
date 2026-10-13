@@ -31,11 +31,11 @@ services:
       # - pangolin.public-resources.homepage.targets[0].healthcheck.method=GET
       # - pangolin.public-resources.homepage.targets[0].healthcheck.status=200
 
-      # # Page de maintenance en mode automatique
+      # # Maintenance page in automatic mode
       # - pangolin.public-resources.homepage.maintenance.enabled=true
       # - pangolin.public-resources.homepage.maintenance.type=automatic
-      # - pangolin.public-resources.homepage.maintenance.title=Maintenance en cours
-      # - pangolin.public-resources.homepage.maintenance.message=Le service est temporairement indisponible.
+      # - pangolin.public-resources.homepage.maintenance.title=Maintenance in progress
+      # - pangolin.public-resources.homepage.maintenance.message=The service is temporarily unavailable.
 
 networks:
   default:
