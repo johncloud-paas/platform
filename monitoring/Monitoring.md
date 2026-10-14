@@ -45,9 +45,10 @@ the host (`host.docker.internal:host-gateway`) as a dedicated user that has narr
 no host network — just `${JOHNCLOUD_ROOT}/fail2ban-ui:/config` (which persists the SQLite DB
 and the SSH keypair the UI generates in `/config/.ssh`).
 
-`setup_before_up.sh` provisions the host login when `FAIL2BAN_UI_SSH_USER` is set: creates the
-user, installs `/etc/sudoers.d/fail2ban-ui` (only `fail2ban-client *` and `systemctl restart
-fail2ban`), applies a `setfacl` `rwX` on `/etc/fail2ban`, and authorizes `FAIL2BAN_UI_SSH_PUBKEY`.
+`setup_before_up.sh` provisions the connector end-to-end (default account `sa_fail2ban`): service
+account, a **generated** ed25519 key the UI logs in with, narrow sudo, an `/etc/fail2ban` ACL, and
+the reverse-tunnel prerequisites. Full details, verification, and troubleshooting are in a dedicated
+guide: **[Fail2ban-UI-SSH.md](Fail2ban-UI-SSH.md)**.
 
 **Auth: native Authentik OIDC.** Unlike other services (proxy-level Pangolin SSO), the UI
 authenticates directly against Authentik (`OIDC_PROVIDER=authentik`). All OIDC settings come
@@ -60,8 +61,10 @@ discoverable by Newt, so it exposes the normal way — `pangolin.public-resource
 the dashboard tile.
 
 **Live events.** The SSH connector reads live ban state over the connection; for the real-time
-callback dashboard, configure the server's **reverse tunnel** in the UI (the UI then writes its
-own callback action files on the host over SSH — nothing to hand-author).
+callback dashboard, enable the server's **reverse tunnel** in the UI. The UI then opens
+`ssh -R <tunnelPort>:localhost:<uiPort>` over its existing connection and installs its own
+callback action (`ui-custom-action.conf`) on the host, which posts each ban/unban to
+`http://localhost:<tunnelPort>` — no inbound port on the UI, nothing to hand-author.
 
 **One-time setup (then `./startstack.sh monitoring`):**
 1. **Authentik** — create an OAuth2/OIDC *Provider* + *Application* (slug `fail2ban-ui`,
@@ -69,10 +72,10 @@ own callback action files on the host over SSH — nothing to hand-author).
    `.env`; set `FAIL2BAN_UI_OIDC_ADMIN_ROLES` to the authorized Authentik group name(s).
    `openssl rand -hex 32` for `FAIL2BAN_UI_OIDC_SESSION_SECRET` (blank auto-generates).
 2. **Pangolin** — the labels auto-register `fail2ban.$HOST` via Newt (no manual step).
-3. **SSH connector** — first `startstack` provisions the `FAIL2BAN_UI_SSH_USER`. Open the UI,
-   add a server (host `host.docker.internal`, port `22`, that user) — it generates a keypair and
-   shows the public key. Paste it into `FAIL2BAN_UI_SSH_PUBKEY` and re-run `./startstack.sh
-   monitoring` to authorize it. (Ensure the host `sshd` is reachable from the Docker network.)
+3. **SSH connector** — `startstack` provisions `sa_fail2ban` + its key; then add the server once in
+   the UI (host `host.docker.internal`, port `22`, user `sa_fail2ban`, key
+   `/config/.ssh/sa_fail2ban_ed25519`) and enable the reverse tunnel. Full walkthrough:
+   **[Fail2ban-UI-SSH.md](Fail2ban-UI-SSH.md)**.
 
 ## Why not CrowdSec
 

@@ -35,37 +35,61 @@ else
     echo "[fail2ban] WARN: fail2ban-client not found; skipping jail install"
 fi
 
-# fail2ban-ui (rootless container) drives the host's ROOTFUL Fail2ban over SSH — a
-# rootless container can't reach the root-owned control socket, so instead it logs in
-# as a dedicated host user with narrow sudo. Provision that login here: sudoers (only
-# fail2ban-client + restart) + an ACL so the UI can edit /etc/fail2ban. The UI's SSH
-# *public* key (generated in its /config/.ssh on first start, shown in the UI) is
-# authorized via FAIL2BAN_UI_SSH_PUBKEY. Gated on FAIL2BAN_UI_SSH_USER being set.
-if [ -n "${FAIL2BAN_UI_SSH_USER:-}" ] && command -v sudo >/dev/null 2>&1; then
-    id -u "$FAIL2BAN_UI_SSH_USER" >/dev/null 2>&1 ||
-        sudo useradd --system --create-home --shell /bin/bash "$FAIL2BAN_UI_SSH_USER"
+# fail2ban-ui (rootless container) drives the host's ROOTFUL Fail2ban over the SSH
+# connector — a rootless container can't reach the root-owned control socket, so it
+# logs in as a dedicated service account instead. Provision that login end-to-end:
+# account, a generated key the UI authenticates with, narrow sudo, an /etc/fail2ban
+# ACL, and the host prerequisites for the reverse-tunnel callback path. The only
+# manual step left is adding the server once in the UI (see the echo at the end).
+SA="${FAIL2BAN_UI_SSH_USER:-sa_fail2ban}"
+SSH_DIR="$JOHNCLOUD_ROOT/fail2ban-ui/.ssh"          # == /config/.ssh inside the container
+KEY="$SSH_DIR/${SA}_ed25519"
+if command -v sudo >/dev/null 2>&1; then
+    # 1) Service account (system user, shell for SSH, key-only — no password).
+    id -u "$SA" >/dev/null 2>&1 ||
+        sudo useradd --system --create-home --shell /bin/bash "$SA"
 
+    # 2) Generate the key the UI logs in with (once; lives in the /config/.ssh bind mount).
+    mkdir -p "$SSH_DIR"
+    [ -f "$KEY" ] || ssh-keygen -t ed25519 -N '' -C "fail2ban-ui@$HOST" -f "$KEY"
+    chmod 700 "$SSH_DIR"; chmod 600 "$KEY"; chmod 644 "$KEY.pub"
+
+    # 3) Authorize that public key for the service account.
+    sa_home="$(getent passwd "$SA" | cut -d: -f6)"
+    sudo install -d -m 700 -o "$SA" -g "$SA" "$sa_home/.ssh"
+    sudo tee "$sa_home/.ssh/authorized_keys" >/dev/null < "$KEY.pub"
+    sudo chown "$SA:$SA" "$sa_home/.ssh/authorized_keys"
+    sudo chmod 600 "$sa_home/.ssh/authorized_keys"
+
+    # 4) Minimal sudo: exactly what the SSH connector runs (validated before it sticks).
     printf '%s ALL=(ALL) NOPASSWD: /usr/bin/fail2ban-client *, /usr/bin/systemctl restart fail2ban\n' \
-        "$FAIL2BAN_UI_SSH_USER" | sudo tee /etc/sudoers.d/fail2ban-ui >/dev/null
+        "$SA" | sudo tee /etc/sudoers.d/fail2ban-ui >/dev/null
     sudo chmod 0440 /etc/sudoers.d/fail2ban-ui
+    sudo visudo -cf /etc/sudoers.d/fail2ban-ui >/dev/null ||
+        echo "[fail2ban-ui] WARN: sudoers validation failed; review /etc/sudoers.d/fail2ban-ui"
 
+    # 5) Let the UI read/write jail & filter config over SSH.
     if command -v setfacl >/dev/null 2>&1; then
-        sudo setfacl -R    -m "u:$FAIL2BAN_UI_SSH_USER:rwX" /etc/fail2ban &&
-        sudo setfacl -R -d -m "u:$FAIL2BAN_UI_SSH_USER:rwX" /etc/fail2ban
+        sudo setfacl -R    -m "u:$SA:rwX" /etc/fail2ban &&
+        sudo setfacl -R -d -m "u:$SA:rwX" /etc/fail2ban
     else
         echo "[fail2ban-ui] WARN: setfacl not found; UI can ban/unban but not edit /etc/fail2ban"
     fi
 
-    if [ -n "${FAIL2BAN_UI_SSH_PUBKEY:-}" ]; then
-        ssh_home="$(getent passwd "$FAIL2BAN_UI_SSH_USER" | cut -d: -f6)"
-        sudo install -d -m 700 -o "$FAIL2BAN_UI_SSH_USER" -g "$FAIL2BAN_UI_SSH_USER" "$ssh_home/.ssh"
-        printf '%s\n' "$FAIL2BAN_UI_SSH_PUBKEY" | sudo tee "$ssh_home/.ssh/authorized_keys" >/dev/null
-        sudo chown "$FAIL2BAN_UI_SSH_USER:$FAIL2BAN_UI_SSH_USER" "$ssh_home/.ssh/authorized_keys"
-        sudo chmod 600 "$ssh_home/.ssh/authorized_keys"
-        echo "[fail2ban-ui] SSH login '$FAIL2BAN_UI_SSH_USER' ready (sudo + ACL + authorized key)"
-    else
-        echo "[fail2ban-ui] SSH login '$FAIL2BAN_UI_SSH_USER' ready (sudo + ACL); set FAIL2BAN_UI_SSH_PUBKEY to authorize the UI key, then re-run"
-    fi
+    # 6) Reverse-tunnel prerequisites: the UI opens `ssh -R <tunnel>:localhost:<ui>` and the
+    #    host posts callbacks to localhost:<tunnel>, so sshd must allow TCP forwarding and the
+    #    connector's callback action needs jq+curl on the host.
+    sshd -T 2>/dev/null | grep -qi '^allowtcpforwarding yes' ||
+        echo "[fail2ban-ui] NOTE: enable sshd AllowTcpForwarding for the reverse-tunnel callbacks"
+    for t in jq curl; do
+        command -v "$t" >/dev/null 2>&1 ||
+            echo "[fail2ban-ui] WARN: host '$t' missing; the ban/unban callback action needs it"
+    done
+
+    echo "[fail2ban-ui] SSH connector ready: user '$SA', key authorized."
+    echo "[fail2ban-ui] UI → Manage Servers → add host=host.docker.internal port=22 user=$SA" \
+         "key=/config/.ssh/$(basename "$KEY"); enable 'reverse tunnel for events'" \
+         "(port ${FAIL2BAN_UI_TUNNEL_PORT:-= server port})."
 fi
 
 # First-time rule fetch (ET Open ~50k rules). Refreshed daily by cron afterwards;
