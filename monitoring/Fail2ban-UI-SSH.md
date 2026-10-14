@@ -130,8 +130,18 @@ sudo fail2ban-client set suricata unbanip 203.0.113.9
   `FAIL2BAN_UI_TUNNEL_PORT` is free on the host.
 - **Permission denied running fail2ban-client.** Re-run `./startstack.sh monitoring` to reinstall
   the sudoers file; verify with `sudo -l -U sa_fail2ban`.
-- **UI can't edit jails.** `setfacl` must be installed; re-run the setup so the `/etc/fail2ban`
-  ACL is applied.
+- **UI can't edit jails / "Apply shared configuration" fails with
+  `PermissionError: … /etc/fail2ban/.fail2ban-ui-operations`.** The service account lacks write on
+  the `/etc/fail2ban` **directory** — almost always because the `acl` package (`setfacl`) is not
+  installed, so the grant silently no-ops. `setup_before_up.sh` now installs `acl` automatically;
+  to fix an already-deployed host:
+  ```bash
+  sudo apt-get install -y acl
+  sudo setfacl -R    -m u:sa_fail2ban:rwX /etc/fail2ban
+  sudo setfacl -R -d -m u:sa_fail2ban:rwX /etc/fail2ban
+  ```
+  Verify with `getfacl /etc/fail2ban | grep sa_fail2ban`. (Each **remote** managed host needs the
+  same account + sudo + ACL; the script only provisions the local host.)
 
 ## Security notes
 

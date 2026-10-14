@@ -68,12 +68,17 @@ if command -v sudo >/dev/null 2>&1; then
     sudo visudo -cf /etc/sudoers.d/fail2ban-ui >/dev/null ||
         echo "[fail2ban-ui] WARN: sudoers validation failed; review /etc/sudoers.d/fail2ban-ui"
 
-    # 5) Let the UI read/write jail & filter config over SSH.
+    # 5) Let the UI read/write jail & filter config over SSH. The connector also writes a
+    #    recovery dir (/etc/fail2ban/.fail2ban-ui-operations) as this account, so it needs write
+    #    on the /etc/fail2ban directory itself — grant it by ACL. Install `acl` if setfacl is
+    #    missing: without it the grant silently fails and "Apply shared configuration" errors with
+    #    PermissionError on /etc/fail2ban/.fail2ban-ui-operations.
+    command -v setfacl >/dev/null 2>&1 || sudo apt-get install -y acl >/dev/null 2>&1 || true
     if command -v setfacl >/dev/null 2>&1; then
         sudo setfacl -R    -m "u:$SA:rwX" /etc/fail2ban &&
         sudo setfacl -R -d -m "u:$SA:rwX" /etc/fail2ban
     else
-        echo "[fail2ban-ui] WARN: setfacl not found; UI can ban/unban but not edit /etc/fail2ban"
+        echo "[fail2ban-ui] WARN: setfacl unavailable (install the 'acl' package); UI can ban/unban but not save config"
     fi
 
     # 6) Reverse-tunnel prerequisites: the UI opens `ssh -R <tunnel>:localhost:<ui>` and the
