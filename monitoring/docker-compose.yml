@@ -116,6 +116,48 @@ services:
     environment:
       - TZ=$TZ
 
+  # fail2ban-ui runs ROOTLESS like the rest of this stack. It does NOT touch the
+  # host's root-owned Fail2ban socket (a rootless container would get EACCES on it);
+  # instead it drives the host's rootful Fail2ban through the **SSH connector** —
+  # it SSHes to the host as a dedicated user that has narrow sudo for fail2ban-client.
+  # Configure the server + SSH key in the UI after first start (key persists in
+  # /config/.ssh); see Monitoring.md. host.docker.internal lets it reach host sshd.
+  fail2ban-ui:
+    image: swissmakers/fail2ban-ui:latest
+    container_name: fail2ban-ui
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"   # reach the host's sshd for the SSH connector
+    environment:
+      - CONTAINER=true                         # store SSH keys/known_hosts under /config/.ssh
+      - TZ=$TZ
+      - PORT=${FAIL2BAN_UI_PORT}               # internal listen port; Traefik targets it by name
+      # --- Authentik OIDC (native) ---
+      - OIDC_ENABLED=true
+      - OIDC_PROVIDER=${FAIL2BAN_UI_OIDC_PROVIDER:-authentik}
+      - OIDC_ISSUER_URL=${FAIL2BAN_UI_OIDC_ISSUER_URL:-https://authentik.$HOST/application/o/fail2ban-ui/}
+      - OIDC_CLIENT_ID=${FAIL2BAN_UI_OIDC_CLIENT_ID}
+      - OIDC_CLIENT_SECRET=${FAIL2BAN_UI_OIDC_CLIENT_SECRET}
+      - OIDC_REDIRECT_URL=https://fail2ban.$HOST/auth/callback
+      - OIDC_ROLE_CLAIM=groups
+      - OIDC_ADMIN_ROLES=${FAIL2BAN_UI_OIDC_ADMIN_ROLES}
+      - OIDC_SUPPORT_ROLES=${FAIL2BAN_UI_OIDC_SUPPORT_ROLES}
+      - OIDC_SESSION_SECRET=${FAIL2BAN_UI_OIDC_SESSION_SECRET}
+    volumes:
+      - ${JOHNCLOUD_ROOT}/fail2ban-ui:/config  # SQLite DB, settings, SSH keys/known_hosts
+    labels:
+      - pangolin.public-resources.fail2ban-ui.name=fail2ban-ui
+      - pangolin.public-resources.fail2ban-ui.full-domain=fail2ban.$HOST
+      - pangolin.public-resources.fail2ban-ui.protocol=http
+      - pangolin.public-resources.fail2ban-ui.ssl=true
+      - pangolin.public-resources.fail2ban-ui.targets[0].method=http
+      - pangolin.public-resources.fail2ban-ui.targets[0].port=${FAIL2BAN_UI_PORT}
+      - "homepage.group=Platform"
+      - "homepage.name=Fail2ban UI"
+      - "homepage.icon=https://raw.githubusercontent.com/swissmakers/fail2ban-ui/dev/pkg/web/static/images/favicon-light.png"
+      - "homepage.href=https://fail2ban.$HOST/"
+      - "homepage.description=Management platform for operating Fail2Ban"
+
 networks:
   default:
     external: true

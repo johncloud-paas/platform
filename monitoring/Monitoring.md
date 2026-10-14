@@ -25,7 +25,7 @@ customizable policies, and manual/automatic blocking on this node.
 | Block engine | **Fail2ban** → nftables (auto) + raw nftables (manual) | 2026-10-08 |
 | Blocking posture | **Detection-first** (manual only), flip to auto later | 2026-10-08 |
 | Alert UI (optional) | **EveBox** (GPLv2) | 2026-10-08 |
-| Ban-management UI | **fail2ban-ui** (rootful, native Authentik OIDC) | 2026-10-13 |
+| Ban-management UI | **fail2ban-ui** (rootless, SSH connector, native Authentik OIDC) | 2026-10-13 |
 | Rejected | **CrowdSec** — see below | 2026-10-08 |
 
 ## Ban-management UI: fail2ban-ui
@@ -35,40 +35,44 @@ for the **ban layer** (jails, banned IPs, search/ban/unban, live filter tester,
 country/GeoIP "Ban Insights") — the piece the EveBox placeholder never covered. EveBox,
 if added, stays the *alert* review UI; fail2ban-ui manages the *bans* Fail2ban applies.
 
-**Rootful, like Suricata.** The UI uses Fail2ban's **Local connector**, which needs the
-root-owned control socket (`/var/run/fail2ban/fail2ban.sock`, `root:root 0600`) and write
-access to `/etc/fail2ban`. A rootless container's root maps to an unprivileged host subuid
-and gets `EACCES` on the socket — the same user-namespace limit that forces the Suricata
-sensor rootful. So fail2ban-ui runs under the **system (rootful) daemon** from its own
-`fail2ban-ui/docker-compose.yml`; `setup_before_up.sh` brings it up with `sudo docker
-compose`, right after the Suricata sensor.
+**Rootless, via the SSH connector.** Fail2ban runs rootful on the host and its control
+socket (`/var/run/fail2ban/fail2ban.sock`, `root:root 0600`) + `/etc/fail2ban` are
+root-owned, so the **Local connector would need a rootful container** (a rootless one maps
+to an unprivileged host subuid and gets `EACCES` on the socket). To keep the UI in the
+**rootless** monitoring stack, it uses the **SSH connector** instead: the container SSHes to
+the host (`host.docker.internal:host-gateway`) as a dedicated user that has narrow sudo for
+`fail2ban-client`, and edits `/etc/fail2ban` through a filesystem ACL. No root-owned mounts,
+no host network — just `${JOHNCLOUD_ROOT}/fail2ban-ui:/config` (which persists the SQLite DB
+and the SSH keypair the UI generates in `/config/.ssh`).
+
+`setup_before_up.sh` provisions the host login when `FAIL2BAN_UI_SSH_USER` is set: creates the
+user, installs `/etc/sudoers.d/fail2ban-ui` (only `fail2ban-client *` and `systemctl restart
+fail2ban`), applies a `setfacl` `rwX` on `/etc/fail2ban`, and authorizes `FAIL2BAN_UI_SSH_PUBKEY`.
 
 **Auth: native Authentik OIDC.** Unlike other services (proxy-level Pangolin SSO), the UI
 authenticates directly against Authentik (`OIDC_PROVIDER=authentik`). All OIDC settings come
 from `FAIL2BAN_UI_OIDC_*` in `monitoring/.env`. Access is role-gated by Authentik **group**
 membership (`OIDC_ROLE_CLAIM=groups`): admins vs support (read + manual ban/unban).
 
-**Live events.** `CALLBACK_URL`/`CALLBACK_SECRET` let Fail2ban POST every ban/unban back to
-the UI for a real-time dashboard. The app **writes and manages its own callback action files**
-under `/etc/fail2ban` (it has RW access via the Local connector) — nothing to hand-author, and
-the callback reaches the UI at `http://127.0.0.1:$FAIL2BAN_UI_PORT` over the host network.
+**Exposure.** Being rootless and on the `traefik-proxy` network, the container **is**
+discoverable by Newt, so it exposes the normal way — `pangolin.public-resources.*` labels at
+`fail2ban.$HOST`, no `auth.sso-enabled` (the app's own OIDC gates it). `homepage.*` labels add
+the dashboard tile.
 
-**Exposure caveat.** Being rootful + host-network, the container is invisible to Newt (which
-watches the rootless Docker socket) and cannot join the rootless `traefik-proxy` network, so
-`pangolin.public-resources.*` labels will **not** auto-register it. Expose it by registering a
-Pangolin resource whose target is the **host IP:`$FAIL2BAN_UI_PORT`** at `fail2ban.$HOST`; the
-app's own OIDC gates access. (The host port is bound on the uplink — rely on OIDC plus the
-existing Fail2ban/iptables posture.)
+**Live events.** The SSH connector reads live ban state over the connection; for the real-time
+callback dashboard, configure the server's **reverse tunnel** in the UI (the UI then writes its
+own callback action files on the host over SSH — nothing to hand-author).
 
-**One-time manual setup:**
+**One-time setup (then `./startstack.sh monitoring`):**
 1. **Authentik** — create an OAuth2/OIDC *Provider* + *Application* (slug `fail2ban-ui`,
    redirect URI `https://fail2ban.$HOST/auth/callback`). Copy `client_id`/`client_secret` into
    `.env`; set `FAIL2BAN_UI_OIDC_ADMIN_ROLES` to the authorized Authentik group name(s).
-2. **Secrets** — `openssl rand -hex 32` for `FAIL2BAN_UI_OIDC_SESSION_SECRET` and
-   `FAIL2BAN_UI_CALLBACK_SECRET` (both may be left blank to auto-generate).
-3. **Pangolin** — register the `fail2ban.$HOST` → host-IP:`$FAIL2BAN_UI_PORT` resource.
-
-Then `./startstack.sh monitoring`.
+   `openssl rand -hex 32` for `FAIL2BAN_UI_OIDC_SESSION_SECRET` (blank auto-generates).
+2. **Pangolin** — the labels auto-register `fail2ban.$HOST` via Newt (no manual step).
+3. **SSH connector** — first `startstack` provisions the `FAIL2BAN_UI_SSH_USER`. Open the UI,
+   add a server (host `host.docker.internal`, port `22`, that user) — it generates a keypair and
+   shows the public key. Paste it into `FAIL2BAN_UI_SSH_PUBKEY` and re-run `./startstack.sh
+   monitoring` to authorize it. (Ensure the host `sshd` is reachable from the Docker network.)
 
 ## Why not CrowdSec
 
@@ -222,7 +226,7 @@ write a small `eve.json` → `nft` watcher, and give up timed expiry/persistence
       reading `eve.json` + `./pangolin/logs/`.
 - [ ] Start jails in detection-only mode; verify alerts land in `eve.json`.
 - [ ] (Optional) Add EveBox for alert review UI.
-- [x] Add **fail2ban-ui** (rootful) for ban management + native Authentik OIDC.
+- [x] Add **fail2ban-ui** (rootless, SSH connector) for ban management + native Authentik OIDC.
 - [ ] After tuning, enable automatic banning on trusted jails.
 - [ ] (Optional) WireGuard transport metrics: `wg-exporter` in Gerbil's netns →
       VictoriaMetrics (Traefik Log Analysis §5 below).

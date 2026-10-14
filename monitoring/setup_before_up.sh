@@ -10,7 +10,7 @@ SURICATA_DATA="$JOHNCLOUD_ROOT/suricata"
 (
     envsubst '$PUBLIC_IP_ADDRESS $JOHNCLOUD_ROOT' < fail2ban/jail.d/suricata.template.conf > fail2ban/jail.d/suricata.conf &&    
     envsubst '$PUBLIC_IP_ADDRESS' < suricata/suricata.template.yaml > suricata/suricata.yaml &&        
-    mkdir -p $JOHNCLOUD_ROOT/victoriametrics/data $JOHNCLOUD_ROOT/victorialogs/data $JOHNCLOUD_ROOT/victoriatraces/data $JOHNCLOUD_ROOT/fluent-bit $JOHNCLOUD_ROOT/fail2ban &&
+    mkdir -p $JOHNCLOUD_ROOT/victoriametrics/data $JOHNCLOUD_ROOT/victorialogs/data $JOHNCLOUD_ROOT/victoriatraces/data $JOHNCLOUD_ROOT/fluent-bit $JOHNCLOUD_ROOT/fail2ban-ui &&
     cp ./victoriametrics/* $JOHNCLOUD_ROOT/victoriametrics &&
     cp ./fluent-bit/* $JOHNCLOUD_ROOT/fluent-bit &&
     mkdir -p "$SURICATA_DATA/rules" "$SURICATA_DATA/logs" &&
@@ -35,6 +35,39 @@ else
     echo "[fail2ban] WARN: fail2ban-client not found; skipping jail install"
 fi
 
+# fail2ban-ui (rootless container) drives the host's ROOTFUL Fail2ban over SSH — a
+# rootless container can't reach the root-owned control socket, so instead it logs in
+# as a dedicated host user with narrow sudo. Provision that login here: sudoers (only
+# fail2ban-client + restart) + an ACL so the UI can edit /etc/fail2ban. The UI's SSH
+# *public* key (generated in its /config/.ssh on first start, shown in the UI) is
+# authorized via FAIL2BAN_UI_SSH_PUBKEY. Gated on FAIL2BAN_UI_SSH_USER being set.
+if [ -n "${FAIL2BAN_UI_SSH_USER:-}" ] && command -v sudo >/dev/null 2>&1; then
+    id -u "$FAIL2BAN_UI_SSH_USER" >/dev/null 2>&1 ||
+        sudo useradd --system --create-home --shell /bin/bash "$FAIL2BAN_UI_SSH_USER"
+
+    printf '%s ALL=(ALL) NOPASSWD: /usr/bin/fail2ban-client *, /usr/bin/systemctl restart fail2ban\n' \
+        "$FAIL2BAN_UI_SSH_USER" | sudo tee /etc/sudoers.d/fail2ban-ui >/dev/null
+    sudo chmod 0440 /etc/sudoers.d/fail2ban-ui
+
+    if command -v setfacl >/dev/null 2>&1; then
+        sudo setfacl -R    -m "u:$FAIL2BAN_UI_SSH_USER:rwX" /etc/fail2ban &&
+        sudo setfacl -R -d -m "u:$FAIL2BAN_UI_SSH_USER:rwX" /etc/fail2ban
+    else
+        echo "[fail2ban-ui] WARN: setfacl not found; UI can ban/unban but not edit /etc/fail2ban"
+    fi
+
+    if [ -n "${FAIL2BAN_UI_SSH_PUBKEY:-}" ]; then
+        ssh_home="$(getent passwd "$FAIL2BAN_UI_SSH_USER" | cut -d: -f6)"
+        sudo install -d -m 700 -o "$FAIL2BAN_UI_SSH_USER" -g "$FAIL2BAN_UI_SSH_USER" "$ssh_home/.ssh"
+        printf '%s\n' "$FAIL2BAN_UI_SSH_PUBKEY" | sudo tee "$ssh_home/.ssh/authorized_keys" >/dev/null
+        sudo chown "$FAIL2BAN_UI_SSH_USER:$FAIL2BAN_UI_SSH_USER" "$ssh_home/.ssh/authorized_keys"
+        sudo chmod 600 "$ssh_home/.ssh/authorized_keys"
+        echo "[fail2ban-ui] SSH login '$FAIL2BAN_UI_SSH_USER' ready (sudo + ACL + authorized key)"
+    else
+        echo "[fail2ban-ui] SSH login '$FAIL2BAN_UI_SSH_USER' ready (sudo + ACL); set FAIL2BAN_UI_SSH_PUBKEY to authorize the UI key, then re-run"
+    fi
+fi
+
 # First-time rule fetch (ET Open ~50k rules). Refreshed daily by cron afterwards;
 # see Monitoring.md "Suricata Setup" §10. suricata-update only downloads rules, so
 # the rootless daemon is fine here — no raw-socket access needed.
@@ -56,16 +89,4 @@ if systemctl list-unit-files docker.service >/dev/null 2>&1; then
         echo "[suricata] WARN: rootful sensor failed to start; check 'sudo docker logs suricata'"
 else
     echo "[suricata] WARN: no system docker.service; cannot start the rootful sensor"
-fi
-
-# fail2ban runs ROOTFUL too: the Local connector needs the root-owned Fail2ban
-# socket (/var/run/fail2ban) and /etc/fail2ban, which rootless can't reach. It
-# manages its own ban/unban callback action files under /etc/fail2ban and reads
-# the live ban state over the socket. See fail2ban/docker-compose.yml.
-if systemctl list-unit-files docker.service >/dev/null 2>&1; then
-    sudo docker compose --env-file .env -f fail2ban/docker-compose.yml \
-        up -d --force-recreate --remove-orphans ||
-        echo "[fail2ban] WARN: UI failed to start; check 'sudo docker logs fail2ban'"
-else
-    echo "[fail2ban] WARN: no system docker.service; cannot start the rootful UI"
 fi
