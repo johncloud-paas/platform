@@ -56,24 +56,17 @@ af-packet:
 default-log-dir: /var/log/suricata/
 
 outputs:
-  - fast:                        # human-readable one-liners
-      enabled: yes
-      filename: fast.log
   - eve-log:                     # THE file Fail2ban + EveBox consume
       enabled: yes
       filetype: regular
       filename: eve.json
       types:
+        # Alert-only to cut serialization CPU/IO. Fail2ban only needs src_ip +
+        # severity from the alert event (see fail2ban/filter.d/suricata.conf).
+        # App-layer parsers stay enabled below so rules still match; we just
+        # don't log the http/dns/tls/flow/anomaly records (nor tagged-packets).
         - alert:
-            metadata: yes
-            tagged-packets: yes
-        - http:
-            extended: yes
-        - dns
-        - tls:
-            extended: yes
-        - flow                   # includes in_iface — proves which wire a flow came from
-        - anomaly
+            metadata: yes        # rule context for EveBox; filter doesn't require it
   - stats:
       enabled: yes
       filename: stats.log

@@ -1,16 +1,19 @@
 #!/bin/sh
 set -eu
-# Capture on the uplink + every ACTIVE Docker bridge (br-* / docker0).
-# Bridge names are hash-based and churn as stacks come and go, so we discover
-# them at start instead of hard-coding. Restart Suricata after bringing up a new
-# Docker network to pick up its bridge.
+# Capture on the uplink + ONLY the bridges named in $SURICATA_CAPTURE_BRIDGES.
+# Capturing every active bridge inspects the same traffic twice (pre-NAT on the
+# uplink, again post-NAT on the bridge) and adds capture threads per bridge, so
+# we restrict to the Traefik bridge the operator cares about. Its hash-based name
+# (br-<id>) churns, so setup_before_up.sh resolves it by subnet on the host and
+# passes the current name(s) in here. Restart Suricata after recreating that
+# network to pick up the new bridge name.
 
 UPLINK="${SURICATA_UPLINK:-eth0}"
 IFACES="$UPLINK"
 
-for path in /sys/class/net/br-* /sys/class/net/docker0; do
+for dev in ${SURICATA_CAPTURE_BRIDGES:-}; do
+    path="/sys/class/net/$dev"
     [ -e "$path" ] || continue
-    dev=${path##*/}
     state=$(cat "$path/operstate" 2>/dev/null || echo down)
     [ "$state" = "down" ] && continue        # skip bridges with no attached containers
     IFACES="$IFACES $dev"

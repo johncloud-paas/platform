@@ -102,7 +102,7 @@ Each tool maps to one requirement, and nothing is gated:
 | Requirement | Tool | Paywall? |
 |---|---|---|
 | Monitor **all** traffic on host | **Suricata** `af-packet` mode — sniffs every packet on the interface, all ports/protocols | None (GPLv2) |
-| Detect via customizable policies | **ET Open** ruleset (~50k rules) **+ own `local.rules`** | ET **Open** free forever; only ET *Pro* costs money (not needed) |
+| Detect via customizable policies | **ET Open** ruleset (~37k rules after `disable.conf` trim, §12.1) **+ own `local.rules`** | ET **Open** free forever; only ET *Pro* costs money (not needed) |
 | Block manually or automatically | **Fail2ban** → nftables. Manual: `fail2ban-client set <jail> banip`. Auto: jails on Suricata + Traefik logs | None (GPLv2) |
 
 **Division of labour:** Suricata is the *sensor* (it sees and judges all
@@ -211,8 +211,8 @@ write a small `eve.json` → `nft` watcher, and give up timed expiry/persistence
 
 ## Implementation Checklist
 
-- [x] Confirm host interface carrying traffic — uplink is `eth0`; Docker bridges
-      (`br-*`) auto-discovered by the sensor.
+- [x] Confirm host interface carrying traffic — uplink is `eth0`; the Traefik
+      bridge is resolved by subnet (`SURICATA_BRIDGE_SUBNET`) and captured too.
 - [x] Add `suricata` service (`network_mode: host`, `NET_ADMIN`/`NET_RAW`) in its
       own **rootful** compose (`monitoring/suricata/docker-compose.yml`) — rootless
       Docker can't grant `CAP_NET_RAW` on the host NIC; config + rules under
@@ -287,10 +287,16 @@ Two honest limitations on this stack:
    that traffic is ciphertext. The decrypted resource traffic appears on the
    Docker side after Gerbil handles it — again, caught by bridge capture.
 
-**Design decision for this host:** capture on `eth0` **and auto-discover every
-active `br-*` / `docker0` bridge**. Bridge names here are hash-based
-(`br-2cb477635178`) and change when a network is recreated, and new app stacks
-add new bridges — so we discover them at container start rather than hard-coding.
+**Design decision for this host:** capture on `eth0` **plus the Traefik bridge
+only** (the `traefik-proxy` network — decrypted HTTP + post-NAT flows), not every
+active bridge. Capturing every bridge inspects the same traffic twice (pre-NAT on
+`eth0`, again post-NAT on the bridge) and adds capture threads per bridge, for a
+lot of extra CPU. Bridge names here are hash-based (`br-2cb477635178`) and change
+when a network is recreated, so `setup_before_up.sh` resolves the Traefik bridge
+by its stable subnet (`SURICATA_BRIDGE_SUBNET`, default `192.168.203`) on the host
+and passes the current name into the sensor via `SURICATA_CAPTURE_BRIDGES`. Set
+`SURICATA_BRIDGE_SUBNET` empty to capture the uplink only (lowest CPU). Restart
+Suricata after recreating that network to pick up the new bridge name.
 
 > We capture **bridges**, not the individual `veth*` legs. A bridge already
 > aggregates all its members' traffic; capturing veths too would only create
@@ -341,7 +347,7 @@ monitoring/                             # in the repo (tracked)
 $JOHNCLOUD_ROOT/suricata/               # on the host (runtime, not in git)
 ├── suricata.yaml  local.rules  entrypoint.sh   # copies, bind-mounted read-only
 ├── rules/                              # suricata-update writes suricata.rules here
-└── logs/                               # eve.json, stats.log, fast.log → Fail2ban/EveBox
+└── logs/                               # eve.json, stats.log → Fail2ban/EveBox
 ```
 
 > **Edit the template, not the rendered file.** `suricata.yaml` is regenerated
@@ -401,24 +407,16 @@ af-packet:
 default-log-dir: /var/log/suricata/
 
 outputs:
-  - fast:                        # human-readable one-liners
-      enabled: yes
-      filename: fast.log
   - eve-log:                     # THE file Fail2ban + EveBox consume
       enabled: yes
       filetype: regular
       filename: eve.json
       types:
+        # Alert-only to cut serialization CPU/IO. Fail2ban only needs src_ip +
+        # severity from the alert event. App-layer parsers stay enabled (below)
+        # so rules still match; we just don't log http/dns/tls/flow/anomaly.
         - alert:
             metadata: yes
-            tagged-packets: yes
-        - http:
-            extended: yes
-        - dns
-        - tls:
-            extended: yes
-        - flow                   # includes in_iface — proves which wire a flow came from
-        - anomaly
   - stats:
       enabled: yes
       filename: stats.log
@@ -480,16 +478,17 @@ alert tls $EXTERNAL_NET any -> $HOME_NET any (msg:"LOCAL legacy TLS 1.0 handshak
 alert tls $EXTERNAL_NET any -> $HOME_NET any (msg:"LOCAL legacy TLS 1.1 handshake"; ssl_version:tls1.1; sid:1000011; rev:1;)
 ```
 
-ET Open (~50k rules) is added in step 8 via `suricata-update`; it writes to
-`$JOHNCLOUD_ROOT/suricata/rules/suricata.rules`.
+ET Open is added in step 8 via `suricata-update`, trimmed by `disable.conf` to
+~37k rules (§12.1); it writes to `$JOHNCLOUD_ROOT/suricata/rules/suricata.rules`.
 
 ---
 
-## 5. `entrypoint.sh` — capture uplink + every active bridge
+## 5. `entrypoint.sh` — capture uplink + the Traefik bridge
 
 This is the piece that makes Suricata **Docker-aware**. It builds a `-i` flag for
-`eth0` and for each **UP** `br-*` / `docker0` bridge at startup — and gives each
-interface its **own `cluster-id`**.
+`eth0` and for each bridge named in `$SURICATA_CAPTURE_BRIDGES` (the Traefik
+bridge, resolved by subnet on the host in `setup_before_up.sh`) that is **UP** —
+and gives each interface its **own `cluster-id`**.
 
 ```sh
 #!/bin/sh
@@ -498,10 +497,11 @@ set -eu
 UPLINK="${SURICATA_UPLINK:-eth0}"
 IFACES="$UPLINK"
 
-# Discover active Docker bridges (hash-named br-* plus the default docker0).
-for path in /sys/class/net/br-* /sys/class/net/docker0; do
+# Add only the operator-selected bridges (space-separated names, resolved by
+# subnet on the host). Skip any that are missing or down.
+for dev in ${SURICATA_CAPTURE_BRIDGES:-}; do
+    path="/sys/class/net/$dev"
     [ -e "$path" ] || continue
-    dev=${path##*/}
     state=$(cat "$path/operstate" 2>/dev/null || echo down)
     [ "$state" = "down" ] && continue          # skip bridges with no attached containers
     IFACES="$IFACES $dev"
@@ -587,8 +587,10 @@ rules from `$JOHNCLOUD_ROOT/suricata/` (populated by `setup_before_up.sh`).
       - NET_RAW
       - SYS_NICE
     environment:
-      # Uplink interface to capture on. Bridges (br-*/docker0) are auto-discovered.
+      # Uplink interface to capture on.
       - SURICATA_UPLINK=${SURICATA_UPLINK:-eth0}
+      # Extra bridges to capture (resolved by subnet in setup_before_up.sh).
+      - SURICATA_CAPTURE_BRIDGES=${SURICATA_CAPTURE_BRIDGES:-}
     entrypoint: ["/entrypoint.sh"]
     volumes:
       - $JOHNCLOUD_ROOT/suricata/entrypoint.sh:/entrypoint.sh:ro
@@ -678,8 +680,10 @@ Healthy startup shows the interface list from the entrypoint and
 
 ## 9. Verify — edge capture AND Docker capture
 
-The `eve.json` `flow` / `alert` events carry an **`in_iface`** field. That's your
-proof of *which wire* a packet was seen on.
+The `eve.json` `alert` events carry an **`in_iface`** field. That's your proof of
+*which wire* a packet was seen on. (We log alert-only — `flow` logging is off — so
+to confirm a bridge is *captured* without an alert on it, use the per-interface
+capture threads in `stats.log`, as in 9b.)
 
 **9a. Edge (`eth0`) — trigger the ICMP test rule from another machine:**
 
@@ -695,26 +699,20 @@ docker compose exec suricata sh -c \
 # expect in_iface: "eth0"
 ```
 
-**9b. Docker bridge — generate container-side traffic and confirm `in_iface` is a `br-*`:**
+**9b. Docker bridge — confirm the Traefik bridge is actually being captured:**
 
 ```bash
-# Ping a container's gateway / another container to create bridge traffic,
-# or just hit a published service which produces the post-DNAT copy on the bridge.
-curl -k https://dockhand.$HOST/ -o /dev/null -s
+# What the sensor bound at startup (uplink + the subnet-selected Traefik bridge):
+docker logs suricata 2>&1 | grep 'capturing on'
+# -> [entrypoint] Suricata capturing on: eth0 br-2cb477635178
 
-# Show which interfaces have produced flows — you should see eth0 AND br-...
-docker compose exec suricata sh -c \
-  "tail -2000 /var/log/suricata/eve.json" | jq -r 'select(.event_type=="flow") | .in_iface' | sort | uniq -c
+# Per-interface capture threads prove each wire is live (one W# thread per iface):
+grep -E 'capture.kernel_packets' $JOHNCLOUD_ROOT/suricata/logs/stats.log | tail
 ```
 
-Expected output is something like:
-
-```
-    842 eth0
-    310 br-2cb477635178
-```
-
-Two different `in_iface` values = Suricata is watching the edge **and** Docker. ✅
+A capture thread for both `eth0` and the `br-*` device = Suricata is watching the
+edge **and** Docker. ✅ (Generate bridge traffic first if counts are zero, e.g.
+`curl -k https://dockhand.$HOST/ -o /dev/null -s`.)
 
 **9c. Real-signature smoke test (ET Open):**
 
@@ -731,13 +729,21 @@ docker compose exec suricata sh -c \
 `suricata-update` should run on a schedule, followed by a rule reload (no
 restart / no dropped packets needed — Suricata reloads rules on `SIGUSR2`).
 
+Suricata runs under the **rootful** daemon from its own compose file, so target it
+with `-f suricata/docker-compose.yml`, and pass the same `disable.conf` the deploy
+uses (§12.1) so the daily refresh keeps the ruleset trimmed. `/etc/cron.daily`
+jobs run as root, which is the rootful daemon — no `sudo` needed inside.
+
 ```bash
 sudo tee /etc/cron.daily/suricata-update >/dev/null <<'EOF'
 #!/bin/sh
 cd /home/yann/repos/johncloud/platform/monitoring || exit 0
-docker compose run --rm --entrypoint suricata-update suricata >/var/log/suricata-update.log 2>&1
+docker compose -f suricata/docker-compose.yml run --rm --entrypoint suricata-update \
+    suricata --disable-conf /etc/suricata/disable.conf -o /var/lib/suricata/rules \
+    >/var/log/suricata-update.log 2>&1
 # hot-reload rules without dropping capture:
-docker compose kill -s USR2 suricata 2>/dev/null || docker compose restart suricata
+docker compose -f suricata/docker-compose.yml kill -s USR2 suricata 2>/dev/null \
+    || docker compose -f suricata/docker-compose.yml restart suricata
 EOF
 sudo chmod +x /etc/cron.daily/suricata-update
 ```
@@ -746,7 +752,7 @@ sudo chmod +x /etc/cron.daily/suricata-update
 
 ## 11. Rotate the Suricata logs (logrotate + `SIGHUP`)
 
-`eve.json`, `fast.log` and `stats.log` grow fast under `$JOHNCLOUD_ROOT/suricata/logs/`.
+`eve.json` and `stats.log` grow under `$JOHNCLOUD_ROOT/suricata/logs/`.
 Rotate them on the **host** (they're a bind mount), and have `postrotate` tell
 Suricata to reopen its files. Because the entrypoint ends in `exec suricata …`,
 **Suricata is PID 1 in the container**, so `SIGHUP` reaches it directly and it
@@ -797,20 +803,49 @@ Notes:
 
 ---
 
-## 12. Performance notes (single node, ~50k rules, several interfaces)
+## 12. Performance notes (single node, ~37k rules after trim, few interfaces)
 
 - **Watch drops.** `grep kernel_drops $JOHNCLOUD_ROOT/suricata/logs/stats.log` — if non-zero and
   climbing, raise `ring-size` in `suricata.yaml` (×2 until it stops) and/or trim
-  rules with `suricata-update --disable-conf`.
-- **CPU scales with interfaces × rules.** Each UP bridge adds capture threads. If
-  idle app bridges cost too much, narrow the discovery in `entrypoint.sh` to just
-  `eth0` + the Traefik bridge (`br-2cb477635178`) and the bridges you actually
-  care to inspect.
+  more rules in `suricata/disable.conf` (§12.1).
+- **CPU scales with interfaces × rules.** Each captured bridge adds capture
+  threads and re-inspects the same traffic. We capture only `eth0` + the Traefik
+  bridge (resolved by `SURICATA_BRIDGE_SUBNET`); to also inspect another bridge,
+  add its subnet/name, or set `SURICATA_BRIDGE_SUBNET` empty for uplink-only. The
+  ET Open ruleset is trimmed to ~37k rules via `disable.conf` (§12.1).
 - **Disk.** `eve.json` grows fast — rotate it via logrotate + `SIGHUP` (see
   §11 above). EveBox/Fail2ban tail the live file and follow the rotation.
 - **Duplicate-ish alerts** for a flow seen on `eth0` (pre-NAT) and again on a
   bridge (post-NAT) are expected — different dst IPs, so different flows. Tune
   with rule thresholds if noisy.
+
+---
+
+## 12.1. Ruleset trim (`suricata/disable.conf`)
+
+ET Open ships ~53k enabled rules; evaluating all of them against every packet is
+the dominant CPU cost on this single node. `suricata/disable.conf` disables the
+categories irrelevant to a headless, web-facing Linux PaaS, cutting **~15,700
+rules → ~37,600 remain (−29%)** (verified with `suricata-update`). It is matched
+by the `ET <CATEGORY>` prefix in each rule's `msg`, mounted at
+`/etc/suricata/disable.conf`, and honoured by both the deploy-time build
+(`setup_before_up.sh`) and the daily refresh (§10). A handful of rules in the
+disabled categories (~150) stay enabled because kept rules depend on their
+flowbits — `suricata-update` re-enables those automatically.
+
+| Tier | Disabled categories | Why |
+|---|---|---|
+| **A** — not present here | SCADA, GAMES, VOIP, CHAT, P2P, FILE_SHARING, INAPPROPRIATE, NETBIOS (Windows SMB), RETIRED | protocols/platforms this host doesn't run + deprecated rules |
+| **B** — pure noise | TOR, DYN_DNS, INFO | informational, sev 2–3 → never trips the severity-1 Fail2ban jail |
+| **C** — wrong victim | MOBILE_MALWARE, ACTIVEX, ADWARE_PUP, HUNTING | target mobile/Windows-desktop endpoints; a headless Linux server won't match |
+
+**Kept:** all MALWARE, EXPLOIT, EXPLOIT_KIT, WEB_* (server/client/specific-apps),
+PHISHING, SCAN, ATTACK_RESPONSE, SHELLCODE, DOS, COINMINER, CINS, USER_AGENTS, etc.
+— the full server-threat surface.
+
+**Re-enable a category:** delete its line in `suricata/disable.conf` and redeploy
+(`./startstack.sh ./monitoring`); the build re-runs because the disable list
+changed. **To cut CPU further**, add more `re:msg:"ET <CATEGORY>\b` lines.
 
 ---
 
@@ -835,9 +870,9 @@ docker compose -f monitoring/docker-compose.yml logs -f suricata
 # which interfaces are being captured right now
 docker compose -f monitoring/docker-compose.yml logs suricata | grep 'capturing on'
 
-# live alerts
-docker compose -f monitoring/docker-compose.yml exec suricata \
-  tail -f /var/log/suricata/fast.log
+# live alerts (eve.json is alert-only now)
+tail -f $JOHNCLOUD_ROOT/suricata/logs/eve.json | \
+  jq -c 'select(.event_type=="alert") | {src:.src_ip, sig:.alert.signature, sev:.alert.severity}'
 
 # capture health (drops should stay ~0)
 grep -E 'kernel_(packets|drops)' $JOHNCLOUD_ROOT/suricata/logs/stats.log | tail

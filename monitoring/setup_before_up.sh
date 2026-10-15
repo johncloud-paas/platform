@@ -15,7 +15,7 @@ SURICATA_DATA="$JOHNCLOUD_ROOT/suricata"
     cp ./fluent-bit/* $JOHNCLOUD_ROOT/fluent-bit &&
     mkdir -p "$SURICATA_DATA/rules" "$SURICATA_DATA/logs" &&
     cp ./suricata/entrypoint.sh "$SURICATA_DATA/" &&
-    cp ./suricata/suricata.yaml ./suricata/local.rules "$SURICATA_DATA/" &&
+    cp ./suricata/suricata.yaml ./suricata/local.rules ./suricata/disable.conf "$SURICATA_DATA/" &&
     chmod +x "$SURICATA_DATA/entrypoint.sh"
 )
 
@@ -97,23 +97,45 @@ if command -v sudo >/dev/null 2>&1; then
          "(port ${FAIL2BAN_UI_TUNNEL_PORT:-= server port})."
 fi
 
-# First-time rule fetch (ET Open ~50k rules). Refreshed daily by cron afterwards;
-# see Monitoring.md "Suricata Setup" §10. suricata-update only downloads rules, so
-# the rootless daemon is fine here — no raw-socket access needed.
-if [ ! -s "$SURICATA_DATA/rules/suricata.rules" ]; then
-    echo "[suricata] fetching ET Open ruleset (first run)..."
-    docker run --rm -v "$SURICATA_DATA/rules:/var/lib/suricata/rules" \
-        jasonish/suricata:latest suricata-update --no-test -o /var/lib/suricata/rules \
-        || echo "[suricata] WARN: rule fetch failed; starting with local.rules only"
+# Build the ET Open ruleset, trimmed by suricata/disable.conf (see Monitoring.md
+# §12.1). suricata-update only downloads rules, so the rootless daemon is fine
+# here — no raw-socket access needed. Rebuild when the ruleset is missing OR the
+# disable list changed (so an edit to disable.conf takes effect on the next
+# deploy); otherwise skip to keep deploys fast. The daily cron (§10) refreshes it
+# afterwards and honours the same disable.conf.
+NEWDIS=./suricata/disable.conf
+APPLIED="$SURICATA_DATA/rules/.disable.conf.applied"
+if [ ! -s "$SURICATA_DATA/rules/suricata.rules" ] || ! cmp -s "$NEWDIS" "$APPLIED"; then
+    echo "[suricata] (re)building ET Open ruleset with disable list..."
+    docker run --rm \
+        -v "$SURICATA_DATA/rules:/var/lib/suricata/rules" \
+        -v "$SURICATA_DATA/disable.conf:/etc/suricata/disable.conf:ro" \
+        jasonish/suricata:latest suricata-update --no-test \
+        --disable-conf /etc/suricata/disable.conf -o /var/lib/suricata/rules \
+        && cp "$NEWDIS" "$APPLIED" \
+        || echo "[suricata] WARN: rule build failed; starting with the previous rules (or local.rules only)"
 fi
 
 # Suricata runs ROOTFUL (own compose) because sniffing the physical uplink needs
 # CAP_NET_RAW in the init user namespace, which rootless Docker can't grant. See
 # suricata/docker-compose.yml for the full explanation. Everything else in this
 # stack stays rootless; only this one container uses the system daemon.
+# Capture the uplink + the Traefik bridge only (not every idle app bridge).
+# Match the bridge by its stable subnet so hash-based br-* name churn is a
+# non-issue. The host side always has `ip`; the suricata image may not, so we
+# resolve the name here and pass it into the container via SURICATA_CAPTURE_BRIDGES.
+# Empty (core stack down / no match) => uplink-only capture, a safe default.
+SURICATA_CAPTURE_BRIDGES=""
+if [ -n "${SURICATA_BRIDGE_SUBNET:-}" ]; then
+    SURICATA_CAPTURE_BRIDGES=$(ip -4 -o addr show 2>/dev/null \
+        | awk -v p="${SURICATA_BRIDGE_SUBNET}." '$4 ~ "^"p {print $2}' \
+        | grep -E '^(br-|docker0)' | sort -u | tr '\n' ' ')
+fi
+
 if systemctl list-unit-files docker.service >/dev/null 2>&1; then
     sudo systemctl enable --now docker &&
-    sudo docker compose --env-file .env -f suricata/docker-compose.yml \
+    sudo env SURICATA_CAPTURE_BRIDGES="$SURICATA_CAPTURE_BRIDGES" \
+        docker compose --env-file .env -f suricata/docker-compose.yml \
         up -d --force-recreate --remove-orphans ||
         echo "[suricata] WARN: rootful sensor failed to start; check 'sudo docker logs suricata'"
 else
