@@ -83,7 +83,6 @@ systemctl --user start docker
 Then verify that rootless mode is working:
 
 ```bash
-dockerd-rootless-setuptool.sh install
 systemctl --user status docker
 docker info | grep -i rootless
 docker run --rm hello-world
@@ -113,3 +112,9 @@ curl -I http://localhost
 ```
 
 If the container fails to start with "permission denied" or "bind: permission denied", first check that the daemon in use is indeed the rootless one (`docker info | grep -i rootless`) and that `DOCKER_HOST` points to `$XDG_RUNTIME_DIR/docker.sock`.
+
+**Docker network creation**
+
+```bash
+docker network create -d bridge --subnet=192.168.203.0/24 traefik-proxy
+```
