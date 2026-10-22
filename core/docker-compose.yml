@@ -244,7 +244,7 @@
 
         - "homepage.group=Platform"
         - "homepage.name=Dockhand"
-        - "homepage.icon=https://dockhand.pro/images/logo-dark.webp"
+        - "homepage.icon=https://dockhand.pro/images/dockhand-logo.svg"
         - "homepage.href=https://dockhand.$HOST"
         - "homepage.description=Modern Docker management for everyone"
 
