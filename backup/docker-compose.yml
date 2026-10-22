@@ -6,8 +6,6 @@ services:
     restart: unless-stopped
     volumes:
       - $JOHNCLOUD_ROOT/databasus/data:/databasus-data
-    networks:
-      - frontend
     labels:
       - pangolin.public-resources.databasus.name=databasus
       - pangolin.public-resources.databasus.full-domain=databasus.$HOST
@@ -35,8 +33,6 @@ services:
     volumes:
       - '$JOHNCLOUD_ROOT/duplicati/config:/config'
       - '$JOHNCLOUD_ROOT:/source'
-    networks:
-      frontend:
     healthcheck:
       test:
         - CMD
@@ -62,7 +58,7 @@ services:
       - "homepage.description=Secure backup solution for managed service providers"
 
 networks:
-  frontend:
+  default:
     external: true
     name: $TRAEFIK_NETWORK
     

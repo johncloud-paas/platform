@@ -1,0 +1,9 @@
+# Temporary Suricata rule for the Fail2ban end-to-end test (tests/live/test_e2e_ban.sh).
+# Installed into the running sensor's rules only for the duration of the test,
+# then removed. SID 1000099 is inside the reserved local range (1000000-1999999).
+#
+# It fires on a TCP SYN whose SOURCE is 203.0.113.66 (RFC 5737 TEST-NET-3, never a
+# real client). priority:1 makes Suricata emit "severity":1 in eve.json, which is
+# the only severity the Fail2ban suricata filter bans. Because the only trigger is
+# a spoofed TEST-NET source, this rule is inert outside the test.
+alert tcp 203.0.113.66 any -> any any (msg:"TEST f2b e2e marker"; flags:S; priority:1; sid:1000099; rev:1;)

@@ -1,0 +1,29 @@
+---
+# For configuration options and examples, please see:
+# https://gethomepage.dev/configs/info-widgets/
+
+- resources:
+    cpu: true
+    memory: true
+    disk: /
+
+- search:
+    provider: duckduckgo
+    target: _blank
+
+- datetime:
+    text_size: md
+    locale: fr
+    format:
+      dateStyle: short
+      timeStyle: short
+
+- openmeteo:
+    label: Toulouse
+    latitude: 43.604401
+    longitude: 1.443489
+    timezone: Europe/Paris # optional
+    units: metric # or imperial
+    cache: 5 # Time in minutes to cache API responses, to stay within limits
+    format: # optional, Intl.NumberFormat options
+      maximumFractionDigits: 1

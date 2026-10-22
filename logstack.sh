@@ -4,5 +4,5 @@ SERVICE_DIR=`readlink -f $1`
 
 (
   cd $SERVICE_DIR &&
-  sudo docker compose logs -f $2
+  docker compose logs -f $2
 )

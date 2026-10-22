@@ -1,0 +1,26 @@
+name: Monitoring tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  offline:
+    name: Offline suite (Suricata + Fail2ban)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # fail2ban provides fail2ban-regex and fail2ban-client. Without it the
+      # config-sanity and filter-regex suites would SKIP (green) instead of
+      # actually testing. Docker is preinstalled on ubuntu-latest and powers
+      # the `suricata -T` rule-syntax check.
+      - name: Install fail2ban
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends fail2ban
+
+      - name: Run offline test suite
+        working-directory: monitoring
+        run: ./tests/run.sh

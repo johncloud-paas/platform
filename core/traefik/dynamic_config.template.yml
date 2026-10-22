@@ -17,11 +17,10 @@ http:
         - web
       middlewares:
         - redirect-to-https
-        - badger
 
     # Next.js router (handles everything except API and WebSocket paths)
     next-router:
-      rule: "Host(`pangolin.${HOST}`) && !PathPrefix(`/api/v1`)"
+      rule: "!PathPrefix(`/api/v1`)"
       service: next-service
       entryPoints:
         - websecure
@@ -41,16 +40,6 @@ http:
       tls:
         certResolver: letsencrypt
 
-    # WebSocket router
-    ws-router:
-      rule: "Host(`pangolin.${HOST}`)"
-      service: api-service
-      entryPoints:
-        - websecure
-      middlewares:
-        - badger
-      tls:
-        certResolver: letsencrypt
 
   services:
     next-service:

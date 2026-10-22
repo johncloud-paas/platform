@@ -32,8 +32,6 @@ services:
       - authentik_postgresql
       - redis
       - authentik_worker
-    networks:
-      - frontend
     labels:
       - pangolin.public-resources.authentik.name=authentik
       - pangolin.public-resources.authentik.full-domain=authentik.$HOST
@@ -75,9 +73,6 @@ services:
       SERVICE_USER_POSTGRESQL: 'postgres'
       SERVICE_PASSWORD_POSTGRESQL: '${AUTHENTIK_PASSWORD_POSTGRESQL}'
       SERVICE_PASSWORD_64_AUTHENTIKSERVER: '${AUTHENTIK_SERVICE_PASSWORD_64}'
-    user: root
-    networks:
-      - frontend
     volumes:
       - '$JOHNCLOUD_ROOT/authentik/media:/media'
       - '$JOHNCLOUD_ROOT/authentik/certs:/certs'
@@ -97,8 +92,6 @@ services:
     #   interval: 2s
     #   timeout: 10s
     #   retries: 15
-    networks:
-      - frontend
     volumes:
       - '$JOHNCLOUD_ROOT/authentik/db:/var/lib/postgresql/data'
     environment:
@@ -113,11 +106,9 @@ services:
     environment:
       - TZ=$TZ
       - ENABLE_OVERCOMMIT_MEMORY=true
-    networks:
-      - frontend
 
 networks:
-  frontend:
+  default:
     external: true
     name: $TRAEFIK_NETWORK
     
