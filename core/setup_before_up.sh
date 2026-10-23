@@ -22,8 +22,8 @@ export ROUTED_DOMAINS_BLOCKS
 
 (
     mkdir -p $JOHNCLOUD_ROOT/pangolin $JOHNCLOUD_ROOT/traefik/GeoLite2 $JOHNCLOUD_ROOT/traefik/agent/positions $JOHNCLOUD_ROOT/traefik/dashboard $JOHNCLOUD_ROOT/traefik/plugins $JOHNCLOUD_ROOT/traefik/conf.d/rules &&
-    envsubst < pangolin/config.template.yml > $JOHNCLOUD_ROOT/pangolin/config.yml &&
-    envsubst < traefik/dynamic_config.template.yml > $JOHNCLOUD_ROOT/traefik/dynamic_config.yml &&
-    envsubst < traefik/dashboard.template.yml > $JOHNCLOUD_ROOT/traefik/dashboard.yml &&
-    envsubst < traefik/static_config.template.yml > $JOHNCLOUD_ROOT/traefik/static_config.yml
+    envsubst < pangolin/config.template.yml        > $JOHNCLOUD_ROOT/pangolin/config.yml &&
+    envsubst < traefik/dynamic_config.template.yml > $JOHNCLOUD_ROOT/traefik/conf.d/rules/dynamic_config.yml &&
+    envsubst < traefik/dashboard.template.yml      > $JOHNCLOUD_ROOT/traefik/conf.d/rules/dashboard.yml &&
+    envsubst < traefik/static_config.template.yml  > $JOHNCLOUD_ROOT/traefik/conf.d/static_config.yml
 )
