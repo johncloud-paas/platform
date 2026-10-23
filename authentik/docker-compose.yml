@@ -2,16 +2,17 @@ name: authentik
 
 services:
   authentik_server:
-    image: 'ghcr.io/goauthentik/server:${AUTHENTIK_TAG:-2025.6.4}'
+    image: 'ghcr.io/goauthentik/server:${AUTHENTIK_TAG}'
     container_name: authentik_server
     restart: unless-stopped
     command: server
+    shm_size: 512mb
     environment:
       AUTHENTIK_REDIS__HOST: 'redis'
       AUTHENTIK_POSTGRESQL__HOST: 'authentik_postgresql'
-      AUTHENTIK_POSTGRESQL__USER: 'postgres'
       AUTHENTIK_POSTGRESQL__NAME: 'authentik'
       AUTHENTIK_POSTGRESQL__PASSWORD: '${AUTHENTIK_PASSWORD_POSTGRESQL}'
+      AUTHENTIK_POSTGRESQL__USER: 'postgres'
       AUTHENTIK_SECRET_KEY: '${AUTHENTIK_SERVICE_PASSWORD_64}'
       AUTHENTIK_ERROR_REPORTING__ENABLED: true
       AUTHENTIK_EMAIL__HOST: '${EMAIL_HOST}'
@@ -22,16 +23,13 @@ services:
       AUTHENTIK_EMAIL__USE_SSL: '${EMAIL_USE_SSL}'
       AUTHENTIK_EMAIL__TIMEOUT: '${EMAIL_TIMEOUT}'
       AUTHENTIK_EMAIL__FROM: '${EMAIL_FROM}'
-      SERVICE_USER_POSTGRESQL: 'postgres'
-      SERVICE_PASSWORD_POSTGRESQL: '${AUTHENTIK_PASSWORD_POSTGRESQL}'
-      SERVICE_PASSWORD_64_AUTHENTIKSERVER: '${AUTHENTIK_SERVICE_PASSWORD_64}'
     volumes:
       - '$JOHNCLOUD_ROOT/authentik/media:/media'
       - '$JOHNCLOUD_ROOT/authentik/custom-templates:/templates'
+      - '$JOHNCLOUD_ROOT/authentik/data:/data'
     depends_on:
-      - authentik_postgresql
-      - redis
-      - authentik_worker
+      authentik_postgresql:
+        condition: service_healthy
     labels:
       - pangolin.public-resources.authentik.name=authentik
       - pangolin.public-resources.authentik.full-domain=authentik.$HOST
@@ -50,16 +48,17 @@ services:
       - "homepage.widget.version=2"
 
   authentik_worker:
-    image: 'ghcr.io/goauthentik/server:${AUTHENTIK_TAG:-2025.6.4}'
+    image: 'ghcr.io/goauthentik/server:${AUTHENTIK_TAG}'
     restart: unless-stopped
     command: worker
+    shm_size: 512mb
     container_name: authentik_worker
     environment:
       AUTHENTIK_REDIS__HOST: 'redis'
       AUTHENTIK_POSTGRESQL__HOST: 'authentik_postgresql'
-      AUTHENTIK_POSTGRESQL__USER: 'postgres'
       AUTHENTIK_POSTGRESQL__NAME: 'authentik'
       AUTHENTIK_POSTGRESQL__PASSWORD: '${AUTHENTIK_PASSWORD_POSTGRESQL}'
+      AUTHENTIK_POSTGRESQL__USER: 'postgres'
       AUTHENTIK_SECRET_KEY: '${AUTHENTIK_SERVICE_PASSWORD_64}'
       AUTHENTIK_ERROR_REPORTING__ENABLED: true
       AUTHENTIK_EMAIL__HOST: '${EMAIL_HOST}'
@@ -70,28 +69,28 @@ services:
       AUTHENTIK_EMAIL__USE_SSL: '${EMAIL_USE_SSL}'
       AUTHENTIK_EMAIL__TIMEOUT: '${EMAIL_TIMEOUT}'
       AUTHENTIK_EMAIL__FROM: '${EMAIL_FROM}'
-      SERVICE_USER_POSTGRESQL: 'postgres'
-      SERVICE_PASSWORD_POSTGRESQL: '${AUTHENTIK_PASSWORD_POSTGRESQL}'
-      SERVICE_PASSWORD_64_AUTHENTIKSERVER: '${AUTHENTIK_SERVICE_PASSWORD_64}'
     volumes:
+      - ${XDG_RUNTIME_DIR}/docker.sock:/var/run/docker.sock
       - '$JOHNCLOUD_ROOT/authentik/media:/media'
       - '$JOHNCLOUD_ROOT/authentik/certs:/certs'
       - '$JOHNCLOUD_ROOT/authentik/custom-templates:/templates'
+      - '$JOHNCLOUD_ROOT/authentik/data:/data'
     depends_on:
-      - authentik_postgresql
-      - redis
+      authentik_postgresql:
+        condition: service_healthy
     
   authentik_postgresql:
     image: postgres:16-trixie
     container_name: authentik_postgresql
     restart: unless-stopped
-    # healthcheck:
-    #   test:
-    #     - CMD-SHELL
-    #     - 'pg_isready -d $authentik -U $${POSTGRES_USER}'
-    #   interval: 2s
-    #   timeout: 10s
-    #   retries: 15
+    healthcheck:
+      interval: 30s
+      retries: 5
+      start_period: 20s
+      test:
+      - CMD-SHELL
+      - pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}
+      timeout: 5s
     volumes:
       - '$JOHNCLOUD_ROOT/authentik/db:/var/lib/postgresql/data'
     environment:
