@@ -10,6 +10,9 @@ server:
   maxmind_asn_path: "/app/config/GeoLite2/GeoLite2-ASN.mmdb"
   maxmind_db_path:  "/app/config/GeoLite2/GeoLite2-Country.mmdb"
 
+postgres:
+  connection_string: postgresql://pangolin:${PANGOLIN_DB_PASSWORD}@db:5432/pangolin
+
 gerbil:
   base_endpoint: "pangolin.$HOST"
 

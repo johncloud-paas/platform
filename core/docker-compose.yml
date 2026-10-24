@@ -48,7 +48,6 @@ services:
       - NODE_ENV=prod
       - EMAIL_SMTP_PASS=$EMAIL_PASSWORD
       - SERVER_SECRET=$PANGOLIN_SERVER_SECRET
-      - POSTGRES_CONNECTION_STRING=postgresql://pangolin:${PANGOLIN_DB_PASSWORD}@db:5432/pangolin
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3001/api/v1"]
       interval: "3s"
@@ -91,6 +90,9 @@ services:
   newt:
     image: fosrl/newt:latest
     restart: unless-stopped
+    depends_on:
+      pangolin:
+        condition: service_healthy
     volumes:
       - ${XDG_RUNTIME_DIR}/docker.sock:/var/run/docker.sock
     environment:
