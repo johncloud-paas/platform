@@ -13,7 +13,7 @@ services:
     image: ghcr.io/gethomepage/homepage:latest
     restart: unless-stopped
     environment:
-      - HOMEPAGE_ALLOWED_HOSTS=home.$HOST
+      - HOMEPAGE_ALLOWED_HOSTS=home.$HOST,homepage-homepage-1:3000
     depends_on:
       provision-config:
         condition: service_completed_successfully
@@ -21,7 +21,7 @@ services:
       - $JOHNCLOUD_ROOT/homepage/config:/app/config # Make sure your local config directory exists
       - ${XDG_RUNTIME_DIR}/docker.sock:/var/run/docker.sock
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/healthcheck"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3000/api/healthcheck"]
       interval: 30s
       timeout: 5s
       retries: 3
