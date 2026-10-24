@@ -36,18 +36,18 @@ services:
       - pangolin.public-resources.homepage.auth.sso-enabled=true
       - pangolin.public-resources.homepage.auth.sso-roles[0]=Member
       
-      # - pangolin.public-resources.homepage.targets[0].healthcheck.enabled=true
-      # - pangolin.public-resources.homepage.targets[0].healthcheck.hostname=homepage-homepage-1
-      # - pangolin.public-resources.homepage.targets[0].healthcheck.port=3000
-      # - pangolin.public-resources.homepage.targets[0].healthcheck.path=/api/healthcheck
-      # - pangolin.public-resources.homepage.targets[0].healthcheck.method=GET
-      # - pangolin.public-resources.homepage.targets[0].healthcheck.status=200
+      - pangolin.public-resources.homepage.targets[0].healthcheck.enabled=true
+      - pangolin.public-resources.homepage.targets[0].healthcheck.hostname=homepage-homepage-1
+      - pangolin.public-resources.homepage.targets[0].healthcheck.port=3000
+      - pangolin.public-resources.homepage.targets[0].healthcheck.path=/api/healthcheck
+      - pangolin.public-resources.homepage.targets[0].healthcheck.method=GET
+      - pangolin.public-resources.homepage.targets[0].healthcheck.status=200
 
-      # # Maintenance page in automatic mode
-      # - pangolin.public-resources.homepage.maintenance.enabled=true
-      # - pangolin.public-resources.homepage.maintenance.type=automatic
-      # - pangolin.public-resources.homepage.maintenance.title=Maintenance in progress
-      # - pangolin.public-resources.homepage.maintenance.message=The service is temporarily unavailable.
+      # Maintenance page in automatic mode
+      - pangolin.public-resources.homepage.maintenance.enabled=true
+      - pangolin.public-resources.homepage.maintenance.type=automatic
+      - pangolin.public-resources.homepage.maintenance.title=Maintenance in progress
+      - pangolin.public-resources.homepage.maintenance.message=The service is temporarily unavailable.
 
 networks:
   default:

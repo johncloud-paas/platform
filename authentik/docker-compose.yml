@@ -7,6 +7,12 @@ services:
     restart: unless-stopped
     command: server
     shm_size: 512mb
+    healthcheck:
+      test: ['CMD', 'ak', 'healthcheck']
+      start_period: 60s
+      interval: 30s
+      retries: 3
+      timeout: 30s
     environment:
       AUTHENTIK_REDIS__HOST: 'redis'
       AUTHENTIK_POSTGRESQL__HOST: 'core-db-1'
@@ -34,6 +40,20 @@ services:
       - pangolin.public-resources.authentik.ssl=true
       - pangolin.public-resources.authentik.targets[0].method=http
       - pangolin.public-resources.authentik.targets[0].port=9000
+
+      - pangolin.public-resources.authentik.targets[0].healthcheck.enabled=true
+      - pangolin.public-resources.authentik.targets[0].healthcheck.hostname=authentik_server
+      - pangolin.public-resources.authentik.targets[0].healthcheck.port=9000
+      - pangolin.public-resources.authentik.targets[0].healthcheck.path=/-/health/ready/
+      - pangolin.public-resources.authentik.targets[0].healthcheck.method=GET
+      - pangolin.public-resources.authentik.targets[0].healthcheck.status=200
+
+      # Maintenance page in automatic mode
+      - pangolin.public-resources.authentik.maintenance.enabled=true
+      - pangolin.public-resources.authentik.maintenance.type=automatic
+      - pangolin.public-resources.authentik.maintenance.title=Maintenance in progress
+      - pangolin.public-resources.authentik.maintenance.message=The service is temporarily unavailable.
+
       - "homepage.group=Platform"
       - "homepage.name=Authentik"
       - "homepage.icon=authentik.png"

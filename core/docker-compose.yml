@@ -165,18 +165,18 @@ services:
       - pangolin.public-resources.dockhand.targets[0].method=http
       - pangolin.public-resources.dockhand.targets[0].port=3000
       
-      # - pangolin.public-resources.dockhand.targets[0].healthcheck.enabled=true
-      # - pangolin.public-resources.dockhand.targets[0].healthcheck.hostname=core-dockhand-1
-      # - pangolin.public-resources.dockhand.targets[0].healthcheck.port=3000
-      # - pangolin.public-resources.dockhand.targets[0].healthcheck.path=/health
-      # - pangolin.public-resources.dockhand.targets[0].healthcheck.method=GET
-      # - pangolin.public-resources.dockhand.targets[0].healthcheck.status=200
+      - pangolin.public-resources.dockhand.targets[0].healthcheck.enabled=true
+      - pangolin.public-resources.dockhand.targets[0].healthcheck.hostname=core-dockhand-1
+      - pangolin.public-resources.dockhand.targets[0].healthcheck.port=3000
+      - pangolin.public-resources.dockhand.targets[0].healthcheck.path=/health
+      - pangolin.public-resources.dockhand.targets[0].healthcheck.method=GET
+      - pangolin.public-resources.dockhand.targets[0].healthcheck.status=200
 
-      # # Maintenance page in automatic mode
-      # - pangolin.public-resources.dockhand.maintenance.enabled=true
-      # - pangolin.public-resources.dockhand.maintenance.type=automatic
-      # - pangolin.public-resources.dockhand.maintenance.title=Maintenance in progress
-      # - pangolin.public-resources.dockhand.maintenance.message=The service is temporarily unavailable.
+      # Maintenance page in automatic mode
+      - pangolin.public-resources.dockhand.maintenance.enabled=true
+      - pangolin.public-resources.dockhand.maintenance.type=automatic
+      - pangolin.public-resources.dockhand.maintenance.title=Maintenance in progress
+      - pangolin.public-resources.dockhand.maintenance.message=The service is temporarily unavailable.
 
       - "homepage.group=Platform"
       - "homepage.name=Dockhand"
