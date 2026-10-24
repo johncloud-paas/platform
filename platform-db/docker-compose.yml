@@ -1,7 +1,7 @@
-name: platform-db
+name: platform
 
 services:
-  pangolin:
+  db:
     image: postgres:17-alpine3.23
     restart: unless-stopped
     volumes:
