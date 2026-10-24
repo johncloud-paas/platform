@@ -5,18 +5,18 @@ services:
     image: postgres:17-alpine3.23
     restart: unless-stopped
     volumes:
-      - '$JOHNCLOUD_ROOT/authentik/db:/var/lib/postgresql/data'
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - '$JOHNCLOUD_ROOT/platform-db/data:/var/lib/postgresql/data'
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U $DB_USER']
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
       interval: 10s
       timeout: 5s
       retries: 5
     environment:
-      POSTGRES_PASSWORD: '${AUTHENTIK_PASSWORD_POSTGRESQL}'
+      POSTGRES_PASSWORD: '${PLATFORM_DB_PASSWORD}'
       POSTGRES_USER: 'postgres'
-      POSTGRES_DB: authentik
-      SERVICE_PASSWORD_POSTGRESQL: '${AUTHENTIK_PASSWORD_POSTGRESQL}'
-      SERVICE_USER_POSTGRESQL: 'postgres'
+      POSTGRES_DB: postgres
       
 networks:
   default:
