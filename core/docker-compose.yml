@@ -1,8 +1,42 @@
 name: core
 
 services:
+  db:
+    image: postgres:17-alpine3.23
+    restart: unless-stopped
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - '$JOHNCLOUD_ROOT/core-db/data:/var/lib/postgresql/data'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    environment:
+      POSTGRES_PASSWORD: '${CORE_DB_PASSWORD}'
+      POSTGRES_USER: 'postgres'
+      POSTGRES_DB: postgres
+
+  provision-database:
+    image: postgres:17-alpine3.23
+    restart: "no"
+    entrypoint: ["/bin/bash", "/scripts/provision-db.sh"]
+    environment:
+      PGHOST: db
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGPASSWORD: ${CORE_DB_PASSWORD}
+      DOCKHAND_DB_PASSWORD: ${DOCKHAND_DB_PASSWORD}
+      PANGOLIN_DB_PASSWORD: ${PANGOLIN_DB_PASSWORD}
+    volumes:
+      - ./db/provision-db.sh:/scripts/provision-db.sh:ro
+    depends_on:
+      db:
+        condition: service_healthy
+
   pangolin:
-    image: docker.io/fosrl/pangolin:ee-latest
+    image: docker.io/fosrl/pangolin:ee-postgresql-1.25
     restart: unless-stopped
     # ports:
     #   - "3002:3002"  # Temporary for setup
@@ -14,11 +48,14 @@ services:
       - NODE_ENV=prod
       - EMAIL_SMTP_PASS=$EMAIL_PASSWORD
       - SERVER_SECRET=$PANGOLIN_SERVER_SECRET
+      - POSTGRES_CONNECTION_STRING=postgresql://pangolin:${PANGOLIN_DB_PASSWORD}@db:5432/pangolin
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3001/api/v1"]
       interval: "3s"
       timeout: "3s"
       retries: 15
+    depends_on:
+      - provision-database
     labels:
       - "homepage.group=Platform"
       - "homepage.name=Pangolin"
@@ -105,6 +142,11 @@ services:
   dockhand:
     image: fnsys/dockhand:latest
     restart: unless-stopped
+    depends_on:
+      - provision-database
+    environment:
+      - "TZ=$TZ"
+      - "DATABASE_URL=postgres://dockhand:$DOCKHAND_DB_PASSWORD@postgres:5432/dockhand"
     volumes:
       - $JOHNCLOUD_ROOT/dockhand/data:/app/data
       - ${XDG_RUNTIME_DIR}/docker.sock:/var/run/docker.sock
