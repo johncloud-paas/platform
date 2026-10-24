@@ -1,5 +1,4 @@
-# setup_before_up.sh
-#! /bin/bash
+#! /bin/sh
 
 (
     mkdir -p /app/config &&
