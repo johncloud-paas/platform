@@ -1,0 +1,25 @@
+name: platform-db
+
+services:
+  pangolin:
+    image: postgres:17-alpine3.23
+    restart: unless-stopped
+    volumes:
+      - '$JOHNCLOUD_ROOT/authentik/db:/var/lib/postgresql/data'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $DB_USER']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    environment:
+      POSTGRES_PASSWORD: '${AUTHENTIK_PASSWORD_POSTGRESQL}'
+      POSTGRES_USER: 'postgres'
+      POSTGRES_DB: authentik
+      SERVICE_PASSWORD_POSTGRESQL: '${AUTHENTIK_PASSWORD_POSTGRESQL}'
+      SERVICE_USER_POSTGRESQL: 'postgres'
+      
+networks:
+  default:
+    external: true
+    name: $TRAEFIK_NETWORK
+    
