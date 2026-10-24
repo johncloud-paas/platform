@@ -148,7 +148,7 @@ services:
       - provision-database
     environment:
       - "TZ=$TZ"
-      - "DATABASE_URL=postgres://dockhand:$DOCKHAND_DB_PASSWORD@postgres:5432/dockhand"
+      - "DATABASE_URL=postgres://dockhand:${DOCKHAND_DB_PASSWORD}@db:5432/dockhand"
     volumes:
       - $JOHNCLOUD_ROOT/dockhand/data:/app/data
       - ${XDG_RUNTIME_DIR}/docker.sock:/var/run/docker.sock
