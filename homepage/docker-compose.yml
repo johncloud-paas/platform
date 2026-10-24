@@ -1,11 +1,22 @@
 name: homepage
 
 services:
+  provision-config:
+    image: ghcr.io/gethomepage/homepage:latest
+    restart: "no"
+    entrypoint: ["/bin/bash", "/scripts/provision-config.sh"]
+    volumes:
+      - $JOHNCLOUD_ROOT/homepage/config:/app/config # Make sure your local config directory exists
+      - ./config:/scripts:ro
+
   homepage:
     image: ghcr.io/gethomepage/homepage:latest
     restart: unless-stopped
     environment:
       - HOMEPAGE_ALLOWED_HOSTS=home.$HOST
+    depends_on:
+      provision-config:
+        condition: service_completed_successfully
     volumes:
       - $JOHNCLOUD_ROOT/homepage/config:/app/config # Make sure your local config directory exists
       - ${XDG_RUNTIME_DIR}/docker.sock:/var/run/docker.sock
