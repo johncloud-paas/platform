@@ -72,8 +72,10 @@ SQL
 
 : "${DOCKHAND_DB_PASSWORD:?Missing DOCKHAND_DB_PASSWORD}"
 : "${PANGOLIN_DB_PASSWORD:?Missing PANGOLIN_DB_PASSWORD}"
+: "${AUTHENTIK_DB_PASSWORD:?Missing AUTHENTIK_DB_PASSWORD}"
 
 provision_database dockhand dockhand "$DOCKHAND_DB_PASSWORD"
 provision_database pangolin pangolin "$PANGOLIN_DB_PASSWORD"
+provision_database authentik authentik "$AUTHENTIK_DB_PASSWORD"
 
 echo "All databases provisioned successfully."
