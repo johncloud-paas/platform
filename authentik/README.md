@@ -1,6 +1,9 @@
 # Authentik
 
-Initial setup :
+First create an empty database :
+```bash
+cd ../core/db
+./create-db.sh authentik authentik <password>
+```
 
-    http://<your-server-ip>:9000/if/flow/initial-setup/
-
+Then, save the password in a secrets manager

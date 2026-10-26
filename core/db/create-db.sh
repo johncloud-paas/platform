@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-# create_db.sh <db> <user> <password>
+# create-db.sh <db> <user> <password>
 #
 # Create a single application database and its login role, the same way
 # provision-db.sh bootstraps the fixed platform databases. It reuses the
@@ -12,7 +12,7 @@ set -Eeuo pipefail
 # provision-db.sh is treated as read-only and is never modified.
 #
 # Environment:
-#   PGPASSWORD / CORE_DB_PASSWORD  postgres superuser password (required)
+#   PGPASSWORD / CORE_DB_PASSWORD  postgres superuser password (prompted if unset on a TTY)
 #   CORE_DB_CONTAINER             target container (default: core-db-1)
 
 usage() {
@@ -29,8 +29,14 @@ CONTAINER="${CORE_DB_CONTAINER:-core-db-1}"
 
 : "${PGPASSWORD:=${CORE_DB_PASSWORD:-}}"
 if [ -z "$PGPASSWORD" ]; then
-    echo "ERROR: set PGPASSWORD (or CORE_DB_PASSWORD) to the postgres superuser password" >&2
-    exit 1
+    if [ -t 0 ]; then
+        read -r -s -p "Postgres superuser password: " PGPASSWORD
+        echo >&2
+    fi
+    if [ -z "$PGPASSWORD" ]; then
+        echo "ERROR: set PGPASSWORD (or CORE_DB_PASSWORD) to the postgres superuser password" >&2
+        exit 1
+    fi
 fi
 export PGPASSWORD
 

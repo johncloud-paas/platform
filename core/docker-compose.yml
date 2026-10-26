@@ -22,7 +22,7 @@ services:
       POSTGRES_USER: 'postgres'
       POSTGRES_DB: postgres
 
-  provision-database:
+  initial-config:
     image: postgres:17-alpine3.23
     restart: "no"
     entrypoint: ["/bin/bash", "/scripts/provision-db.sh"]
@@ -49,7 +49,7 @@ services:
       PGADMIN_LISTEN_PORT: 3000
       PGADMIN_CONFIG_OAUTH2_CONFIG: "[{'OAUTH2_NAME': '$OAUTH2_NAME','OAUTH2_DISPLAY_NAME': '$OAUTH2_DISPLAY_NAME','OAUTH2_CLIENT_ID': '$OAUTH2_CLIENT_ID','OAUTH2_CLIENT_SECRET': '$OAUTH2_CLIENT_SECRET','OAUTH2_SERVER_METADATA_URL': '$OAUTH2_SERVER_METADATA_URL','OAUTH2_SCOPE': '$OAUTH2_SCOPE'}]"
     depends_on:
-      - provision-database
+      - initial-config
     # volumes:
     #   -  $JOHNCLOUD_ROOT/pgadmin4:/app/.data
     labels:
@@ -98,7 +98,7 @@ services:
       timeout: "3s"
       retries: 15
     depends_on:
-      - provision-database
+      - initial-config
     labels:
       - "homepage.group=Platform"
       - "homepage.name=Pangolin"
@@ -189,7 +189,7 @@ services:
     image: fnsys/dockhand:latest
     restart: unless-stopped
     depends_on:
-      - provision-database
+      - initial-config
     environment:
       - "TZ=$TZ"
       - "DATABASE_URL=postgres://dockhand:${DOCKHAND_DB_PASSWORD}@db:5432/dockhand"
