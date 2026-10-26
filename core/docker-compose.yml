@@ -51,8 +51,6 @@ services:
   pangolin:
     image: docker.io/fosrl/pangolin:ee-postgresql-1.25
     restart: unless-stopped
-    # ports:
-    #   - "3002:3002"  # Temporary for setup
     volumes:
       - $JOHNCLOUD_ROOT/pangolin:/app/config
       - $JOHNCLOUD_ROOT/traefik/letsencrypt:/app/config/letsencrypt:ro
@@ -76,7 +74,7 @@ services:
       - "homepage.description=Remote access to anything, anywhere"
 
   gerbil:
-    image: docker.io/fosrl/gerbil:latest
+    image: docker.io/fosrl/gerbil:1.5.2
     restart: unless-stopped
     depends_on:
       pangolin:
@@ -101,7 +99,7 @@ services:
       - 80:80
 
   newt:
-    image: fosrl/newt:latest
+    image: fosrl/newt:1.19
     restart: unless-stopped
     depends_on:
       pangolin:
