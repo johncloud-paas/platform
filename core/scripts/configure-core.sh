@@ -32,6 +32,7 @@ echo "All databases provisioned successfully."
 : "${EMAIL_HOST:?Missing EMAIL_HOST}"
 : "${EMAIL_PORT:?Missing EMAIL_PORT}"
 : "${EMAIL_USERNAME:?Missing EMAIL_USERNAME}"
+: "${EMAIL_LETS_ENCRYPT:?Missing EMAIL_LETS_ENCRYPT}"
 
 # Build the routed-domain blocks from the comma-separated ROUTED_DOMAINS env var.
 # domain1 is reserved for $HOST, so numbering starts at domain2.

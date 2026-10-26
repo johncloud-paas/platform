@@ -11,14 +11,14 @@ services:
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
-      - '$JOHNCLOUD_ROOT/core-db/data:/var/lib/postgresql/data'
+      - '${JOHNCLOUD_ROOT:?Missing JOHNCLOUD_ROOT}/core-db/data:/var/lib/postgresql/data'
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U postgres']
       interval: 10s
       timeout: 5s
       retries: 5
     environment:
-      POSTGRES_PASSWORD: '${CORE_DB_PASSWORD}'
+      POSTGRES_PASSWORD: '${CORE_DB_PASSWORD:?Missing CORE_DB_PASSWORD}'
       POSTGRES_USER: 'postgres'
       POSTGRES_DB: postgres
 
@@ -30,20 +30,21 @@ services:
       PGHOST: db
       PGPORT: "5432"
       PGUSER: postgres
-      PGPASSWORD: ${CORE_DB_PASSWORD}
-      DOCKHAND_DB_PASSWORD: ${DOCKHAND_DB_PASSWORD}
-      PANGOLIN_DB_PASSWORD: ${PANGOLIN_DB_PASSWORD}
-      ROUTED_DOMAINS: ${ROUTED_DOMAINS}
-      HOST: ${HOST}
-      EMAIL_HOST: ${EMAIL_HOST}
-      EMAIL_PORT: ${EMAIL_PORT}
-      EMAIL_USERNAME: ${EMAIL_USERNAME}
+      PGPASSWORD: ${CORE_DB_PASSWORD:?Missing CORE_DB_PASSWORD}
+      DOCKHAND_DB_PASSWORD: ${DOCKHAND_DB_PASSWORD:?Missing DOCKHAND_DB_PASSWORD}
+      PANGOLIN_DB_PASSWORD: ${PANGOLIN_DB_PASSWORD:?Missing PANGOLIN_DB_PASSWORD}
+      ROUTED_DOMAINS: ${ROUTED_DOMAINS?Missing ROUTED_DOMAINS}
+      HOST: ${HOST:?Missing HOST}
+      EMAIL_HOST: ${EMAIL_HOST:?Missing EMAIL_HOST}
+      EMAIL_PORT: ${EMAIL_PORT:?Missing EMAIL_PORT}
+      EMAIL_USERNAME: ${EMAIL_USERNAME:?Missing EMAIL_USERNAME}
+      EMAIL_LETS_ENCRYPT: ${EMAIL_LETS_ENCRYPT:?Missing EMAIL_LETS_ENCRYPT}
     volumes:
       - ./scripts:/scripts:ro
       - ./pangolin:/pangolin_src:ro
       - ./traefik:/traefik_src:ro
-      - $JOHNCLOUD_ROOT/pangolin:/pangolin
-      - $JOHNCLOUD_ROOT/traefik:/traefik
+      - ${JOHNCLOUD_ROOT:?Missing JOHNCLOUD_ROOT}/pangolin:/pangolin
+      - ${JOHNCLOUD_ROOT:?Missing JOHNCLOUD_ROOT}/traefik:/traefik
     depends_on:
       db:
         condition: service_healthy
@@ -52,13 +53,13 @@ services:
     image: docker.io/fosrl/pangolin:ee-postgresql-1.25
     restart: unless-stopped
     volumes:
-      - $JOHNCLOUD_ROOT/pangolin:/app/config
-      - $JOHNCLOUD_ROOT/traefik/letsencrypt:/app/config/letsencrypt:ro
-      - $JOHNCLOUD_ROOT/traefik/GeoLite2:/app/config/GeoLite2:ro
+      - ${JOHNCLOUD_ROOT:?Missing JOHNCLOUD_ROOT}/pangolin:/app/config
+      - ${JOHNCLOUD_ROOT:?Missing JOHNCLOUD_ROOT}/traefik/letsencrypt:/app/config/letsencrypt:ro
+      - ${JOHNCLOUD_ROOT:?Missing JOHNCLOUD_ROOT}/traefik/GeoLite2:/app/config/GeoLite2:ro
     environment:
       - NODE_ENV=prod
-      - EMAIL_SMTP_PASS=$EMAIL_PASSWORD
-      - SERVER_SECRET=$PANGOLIN_SERVER_SECRET
+      - EMAIL_SMTP_PASS=${EMAIL_PASSWORD:?Missing EMAIL_PASSWORD}
+      - SERVER_SECRET=${PANGOLIN_SERVER_SECRET:?Missing PANGOLIN_SERVER_SECRET}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3001/api/v1"]
       interval: "3s"
@@ -70,7 +71,7 @@ services:
       - "homepage.group=Platform"
       - "homepage.name=Pangolin"
       - "homepage.icon=pangolin.svg"
-      - "homepage.href=https://pangolin.$HOST"
+      - "homepage.href=https://pangolin.${HOST:?Missing HOST}"
       - "homepage.description=Remote access to anything, anywhere"
 
   gerbil:
@@ -87,7 +88,7 @@ services:
       - --generateAndSaveKeyTo=/var/config/key
       - --remoteConfig=http://pangolin:3001/api/v1/
     volumes:
-      - $JOHNCLOUD_ROOT/pangolin/:/var/config
+      - ${JOHNCLOUD_ROOT:?Missing JOHNCLOUD_ROOT}/pangolin/:/var/config
     cap_add:
       - NET_ADMIN
       - SYS_MODULE
@@ -105,25 +106,25 @@ services:
       pangolin:
         condition: service_healthy
     volumes:
-      - ${XDG_RUNTIME_DIR}/docker.sock:/var/run/docker.sock
+      - ${XDG_RUNTIME_DIR:?Missing XDG_RUNTIME_DIR}/docker.sock:/var/run/docker.sock
     environment:
       - DOCKER_SOCKET=unix:///var/run/docker.sock
-      - EMAIL_SMTP_PASS=$EMAIL_PASSWORD
-      - SERVER_SECRET=$PANGOLIN_SERVER_SECRET
+      - EMAIL_SMTP_PASS=${EMAIL_PASSWORD:?Missing EMAIL_PASSWORD}
+      - SERVER_SECRET=${PANGOLIN_SERVER_SECRET:?Missing PANGOLIN_SERVER_SECRET}
       - PANGOLIN_ENDPOINT=http://pangolin:3000
-      - NEWT_ID=$NEWT_ID
-      - NEWT_SECRET=$NEWT_SECRET
+      - NEWT_ID=${NEWT_ID:?Missing NEWT_ID}
+      - NEWT_SECRET=${NEWT_SECRET:?Missing NEWT_SECRET}
 
   geoipupdate:
     image: ghcr.io/maxmind/geoipupdate
     restart: unless-stopped
     environment:
-      - 'GEOIPUPDATE_ACCOUNT_ID=$GEOIPUPDATE_ACCOUNT_ID'							# Account ID
-      - 'GEOIPUPDATE_LICENSE_KEY=$GEOIPUPDATE_LICENSE_KEY'							# API key
+      - 'GEOIPUPDATE_ACCOUNT_ID=${GEOIPUPDATE_ACCOUNT_ID:?Missing GEOIPUPDATE_ACCOUNT_ID}'	# Account ID
+      - 'GEOIPUPDATE_LICENSE_KEY=${GEOIPUPDATE_LICENSE_KEY:?Missing GEOIPUPDATE_LICENSE_KEY}'	# API key
       - 'GEOIPUPDATE_EDITION_IDS=GeoLite2-Country GeoLite2-City GeoLite2-ASN'	# Which dbs should be downloaded
       - 'GEOIPUPDATE_FREQUENCY=72'							# Update intervall in hours
     volumes:
-      - '$JOHNCLOUD_ROOT/traefik/GeoLite2:/usr/share/GeoIP'
+      - '${JOHNCLOUD_ROOT:?Missing JOHNCLOUD_ROOT}/traefik/GeoLite2:/usr/share/GeoIP'
 
   traefik:
     image: traefik:latest
@@ -137,40 +138,40 @@ services:
     environment:
     # https://www.ovh.com/auth/api/createToken
     # https://eu.api.ovh.com/console/?section=%2Fme&branch=v1#delete-/me/api/application/-applicationId-
-      - "TZ=$TZ"
+      - "TZ=${TZ:?Missing TZ}"
     command:
       - --configFile=/conf.d/static_config.yml
     volumes:
-      - $JOHNCLOUD_ROOT/traefik/logs:/var/log/traefik
-      - $JOHNCLOUD_ROOT/traefik/letsencrypt:/letsencrypt
-      # - $JOHNCLOUD_ROOT/traefik/plugins:/plugins-storage
-      - $JOHNCLOUD_ROOT/traefik/conf.d:/conf.d
+      - ${JOHNCLOUD_ROOT:?Missing JOHNCLOUD_ROOT}/traefik/logs:/var/log/traefik
+      - ${JOHNCLOUD_ROOT:?Missing JOHNCLOUD_ROOT}/traefik/letsencrypt:/letsencrypt
+      # - ${JOHNCLOUD_ROOT}/traefik/plugins:/plugins-storage
+      - ${JOHNCLOUD_ROOT:?Missing JOHNCLOUD_ROOT}/traefik/conf.d:/conf.d
     labels:
       - "homepage.group=Platform"
       - "homepage.name=Traefik"
       - "homepage.icon=traefik.svg"
-      - "homepage.href=https://traefik.$HOST/dashboard/"
+      - "homepage.href=https://traefik.${HOST:?Missing HOST}/dashboard/"
       - "homepage.description=Traefik reverse proxy"
-  
+
   dockhand:
     image: fnsys/dockhand:latest
     restart: unless-stopped
     depends_on:
       - initial-config
     environment:
-      - "TZ=$TZ"
-      - "DATABASE_URL=postgres://dockhand:${DOCKHAND_DB_PASSWORD}@db:5432/dockhand"
+      - "TZ=${TZ:?Missing TZ}"
+      - "DATABASE_URL=postgres://dockhand:${DOCKHAND_DB_PASSWORD:?Missing DOCKHAND_DB_PASSWORD}@db:5432/dockhand"
     volumes:
-      - $JOHNCLOUD_ROOT/dockhand/data:/app/data
-      - ${XDG_RUNTIME_DIR}/docker.sock:/var/run/docker.sock
+      - ${JOHNCLOUD_ROOT:?Missing JOHNCLOUD_ROOT}/dockhand/data:/app/data
+      - ${XDG_RUNTIME_DIR:?Missing XDG_RUNTIME_DIR}/docker.sock:/var/run/docker.sock
     labels:
       - pangolin.public-resources.dockhand.name=dockhand
-      - pangolin.public-resources.dockhand.full-domain=dockhand.$HOST
+      - pangolin.public-resources.dockhand.full-domain=dockhand.${HOST:?Missing HOST}
       - pangolin.public-resources.dockhand.protocol=http
       - pangolin.public-resources.dockhand.ssl=true
       - pangolin.public-resources.dockhand.targets[0].method=http
       - pangolin.public-resources.dockhand.targets[0].port=3000
-      
+
       - pangolin.public-resources.dockhand.targets[0].healthcheck.enabled=true
       - pangolin.public-resources.dockhand.targets[0].healthcheck.hostname=core-dockhand-1
       - pangolin.public-resources.dockhand.targets[0].healthcheck.port=3000
@@ -187,11 +188,10 @@ services:
       - "homepage.group=Platform"
       - "homepage.name=Dockhand"
       - "homepage.icon=https://dockhand.pro/images/dockhand-logo.svg"
-      - "homepage.href=https://dockhand.$HOST"
+      - "homepage.href=https://dockhand.${HOST:?Missing HOST}"
       - "homepage.description=Modern Docker management for everyone"
 
 networks:
   default:
     external: true
-    name: $TRAEFIK_NETWORK
-    
+    name: ${TRAEFIK_NETWORK:?Missing TRAEFIK_NETWORK}

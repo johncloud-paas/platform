@@ -118,3 +118,5 @@ If the container fails to start with "permission denied" or "bind: permission de
 ```bash
 docker network create -d bridge --subnet=192.168.203.0/24 traefik-proxy
 ```
+
+infisical init
