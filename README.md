@@ -119,4 +119,5 @@ If the container fails to start with "permission denied" or "bind: permission de
 docker network create -d bridge --subnet=192.168.203.0/24 traefik-proxy
 ```
 
+https://infisical.com/docs/documentation/guides/local-development 
 infisical init
