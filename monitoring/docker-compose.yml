@@ -4,7 +4,7 @@ services:
   initial-config:
     image: alpine:3.23
     restart: "no"
-    entrypoint: ["/bin/bash", "/scripts/configure-monitoring.sh"]
+    entrypoint: ["/bin/sh", "/scripts/configure-monitoring.sh"]
     volumes:
       - ./scripts:/scripts:ro
       - ./victoriametrics:/victoriametrics_src:ro
