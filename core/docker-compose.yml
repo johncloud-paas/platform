@@ -62,9 +62,10 @@ services:
       - SERVER_SECRET=${PANGOLIN_SERVER_SECRET:?Missing PANGOLIN_SERVER_SECRET}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3001/api/v1"]
-      interval: "3s"
-      timeout: "3s"
-      retries: 15
+      interval: "5s"
+      timeout: "5s"
+      retries: 5
+      start_period: "180s"
     depends_on:
       - initial-config
     labels:
