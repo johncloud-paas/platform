@@ -44,12 +44,6 @@ unset SECRETS
 (
   cd "$SERVICE_DIR" &&
 
-  log "Pulling images" &&
-  docker compose pull &&
-
   log "Stopping containers" &&
-  docker compose down &&
-
-  log "Tailing logs${SERVICE:+ for $SERVICE} (Ctrl-C to detach)" &&
-  docker compose logs -f $SERVICE
+  docker compose down
 )
