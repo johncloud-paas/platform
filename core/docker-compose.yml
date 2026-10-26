@@ -25,7 +25,7 @@ services:
   initial-config:
     image: postgres:17-alpine3.23
     restart: "no"
-    entrypoint: ["/bin/bash", "/scripts/provision-db.sh"]
+    entrypoint: ["/bin/bash", "/scripts/configure-core.sh"]
     environment:
       PGHOST: db
       PGPORT: "5432"
@@ -33,51 +33,20 @@ services:
       PGPASSWORD: ${CORE_DB_PASSWORD}
       DOCKHAND_DB_PASSWORD: ${DOCKHAND_DB_PASSWORD}
       PANGOLIN_DB_PASSWORD: ${PANGOLIN_DB_PASSWORD}
-      AUTHENTIK_DB_PASSWORD: ${AUTHENTIK_DB_PASSWORD}
+      ROUTED_DOMAINS: ${ROUTED_DOMAINS}
+      HOST: ${HOST}
+      EMAIL_HOST: ${EMAIL_HOST}
+      EMAIL_PORT: ${EMAIL_PORT}
+      EMAIL_USERNAME: ${EMAIL_USERNAME}
     volumes:
-      - ./db/provision-db.sh:/scripts/provision-db.sh:ro
+      - ./scripts:/scripts:ro
+      - ./pangolin:/pangolin_src:ro
+      - ./traefik:/traefik_src:ro
+      - $JOHNCLOUD_ROOT/pangolin:/pangolin
+      - $JOHNCLOUD_ROOT/traefik:/traefik
     depends_on:
       db:
         condition: service_healthy
-
-  pgadmin4:
-    image: dpage/pgadmin4:9
-    restart: unless-stopped
-    environment:
-      PGADMIN_DEFAULT_EMAIL: $PGADMIN_DEFAULT_EMAIL
-      PGADMIN_DEFAULT_PASSWORD: $PGADMIN_DEFAULT_PASSWORD
-      PGADMIN_LISTEN_PORT: 3000
-      PGADMIN_CONFIG_OAUTH2_CONFIG: "[{'OAUTH2_NAME': '$OAUTH2_NAME','OAUTH2_DISPLAY_NAME': '$OAUTH2_DISPLAY_NAME','OAUTH2_CLIENT_ID': '$OAUTH2_CLIENT_ID','OAUTH2_CLIENT_SECRET': '$OAUTH2_CLIENT_SECRET','OAUTH2_SERVER_METADATA_URL': '$OAUTH2_SERVER_METADATA_URL','OAUTH2_SCOPE': '$OAUTH2_SCOPE'}]"
-    depends_on:
-      - initial-config
-    # volumes:
-    #   -  $JOHNCLOUD_ROOT/pgadmin4:/app/.data
-    labels:
-      - pangolin.public-resources.pgadmin4.name=pgadmin4
-      - pangolin.public-resources.pgadmin4.full-domain=pg.$HOST
-      - pangolin.public-resources.pgadmin4.protocol=http
-      - pangolin.public-resources.pgadmin4.ssl=true
-      - pangolin.public-resources.pgadmin4.targets[0].method=http
-      - pangolin.public-resources.pgadmin4.targets[0].port=3000
-      
-      - pangolin.public-resources.pgadmin4.targets[0].healthcheck.enabled=true
-      - pangolin.public-resources.pgadmin4.targets[0].healthcheck.hostname=core-pgadmin4-1
-      - pangolin.public-resources.pgadmin4.targets[0].healthcheck.port=3000
-      - pangolin.public-resources.pgadmin4.targets[0].healthcheck.path=/
-      - pangolin.public-resources.pgadmin4.targets[0].healthcheck.method=GET
-      - pangolin.public-resources.pgadmin4.targets[0].healthcheck.status=200
-
-      # Maintenance page in automatic mode
-      - pangolin.public-resources.pgadmin4.maintenance.enabled=true
-      - pangolin.public-resources.pgadmin4.maintenance.type=automatic
-      - pangolin.public-resources.pgadmin4.maintenance.title=Maintenance in progress
-      - pangolin.public-resources.pgadmin4.maintenance.message=The service is temporarily unavailable.
-
-      - "homepage.group=Platform"
-      - "homepage.name=pgadmin4"
-      - "homepage.icon=https://pg-view.com/_nuxt/icon.CsHwc3ut.png"
-      - "homepage.href=https://pg.$HOST"
-      - "homepage.description=PostgreSQL in the browser"
 
   pangolin:
     image: docker.io/fosrl/pangolin:ee-postgresql-1.25

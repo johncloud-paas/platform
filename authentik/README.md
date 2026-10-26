@@ -2,7 +2,7 @@
 
 First create an empty database :
 ```bash
-cd ../core/db
+cd ../core/scripts
 ./create-db.sh authentik authentik <password>
 ```
 
