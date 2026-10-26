@@ -12,6 +12,11 @@ if [ "$#" -lt 2 ] || [ "$#" -gt 3 ]; then
   exit 1
 fi
 
+# Timestamped, colorized step logging on stderr.
+log() {
+  printf '\033[1;36m[stopstack %s]\033[0m %s\n' "$(date '+%H:%M:%S')" "$*" >&2
+}
+
 STACK_DIR_ARG="$1"
 INFISICAL_ENV="$2"
 SERVICE="${3:-}"
@@ -25,13 +30,26 @@ fi
 # Infisical secret path is the stack's folder name under the project root.
 INFISICAL_PATH="/$(basename "$SERVICE_DIR")"
 
-run() {
-  infisical run --env="$INFISICAL_ENV" --path="$INFISICAL_PATH" -- "$@"
-}
+log "Stack: $(basename "$SERVICE_DIR") ($SERVICE_DIR)"
+log "Infisical env: $INFISICAL_ENV"
+
+# Pull this stack's secrets from Infisical once and load them into the
+# environment, so every docker compose call below inherits them without
+# re-contacting Infisical.
+log "Loading secrets from Infisical"
+SECRETS="$(infisical export --env="$INFISICAL_ENV" --path="$INFISICAL_PATH" --format=dotenv-export)"
+eval "$SECRETS"
+unset SECRETS
 
 (
   cd "$SERVICE_DIR" &&
-  run docker compose pull &&
-  run docker compose down &&
-  run docker compose logs -f $SERVICE
+
+  log "Pulling images" &&
+  docker compose pull &&
+
+  log "Stopping containers" &&
+  docker compose down &&
+
+  log "Tailing logs${SERVICE:+ for $SERVICE} (Ctrl-C to detach)" &&
+  docker compose logs -f $SERVICE
 )
