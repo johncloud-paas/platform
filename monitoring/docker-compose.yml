@@ -1,6 +1,19 @@
 name: monitoring
 
 services:
+  initial-config:
+    image: alpine:3.23
+    restart: "no"
+    entrypoint: ["/bin/bash", "/scripts/configure-monitoring.sh"]
+    volumes:
+      - ./scripts:/scripts:ro
+      - ./victoriametrics:/victoriametrics_src:ro
+      - ./fluent-bit:/fluent-bit_src:ro
+      - $JOHNCLOUD_ROOT/victoriametrics:/victoriametrics
+      - $JOHNCLOUD_ROOT/victorialogs:/victorialogs
+      - $JOHNCLOUD_ROOT/victoriatraces:/victoriatraces
+      - $JOHNCLOUD_ROOT/fluent-bit:/fluent-bit
+
   # NOTE: Suricata is NOT here. Sniffing the physical uplink needs CAP_NET_RAW in
   # the init user namespace, which rootless Docker cannot grant (socket() → EPERM).
   # The sensor runs under the rootful daemon from suricata/docker-compose.yml;
