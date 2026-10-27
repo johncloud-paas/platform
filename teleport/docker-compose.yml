@@ -1,0 +1,51 @@
+name: teleport
+
+services:
+  teleport:
+    image: public.ecr.aws/gravitational/teleport-distroless:17.4.3
+    restart: unless-stopped
+    command: --config /etc/teleport/teleport.yaml
+    environment:
+      - TZ=${TZ}
+      - HOST=${HOST}
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - ./config:/etc/teleport:ro
+      - ${JOHNCLOUD_ROOT}/teleport/data:/var/lib/teleport
+    # healthcheck:
+    #   test: ["CMD", "curl", "-f", "http://localhost:3080/healthz"]
+    #   interval: 10s
+    #   timeout: 5s
+    #   retries: 5
+    #   start_period: 60s
+    labels:
+      - pangolin.public-resources.teleport.name=teleport
+      - pangolin.public-resources.teleport.full-domain=teleport.${HOST}
+      - pangolin.public-resources.teleport.protocol=http
+      - pangolin.public-resources.teleport.ssl=true
+      - pangolin.public-resources.teleport.targets[0].method=https
+      - pangolin.public-resources.teleport.targets[0].port=3080
+
+      # - pangolin.public-resources.teleport.targets[0].healthcheck.enabled=true
+      # - pangolin.public-resources.teleport.targets[0].healthcheck.hostname=teleport-teleport-1
+      # - pangolin.public-resources.teleport.targets[0].healthcheck.port=3080
+      # - pangolin.public-resources.teleport.targets[0].healthcheck.path=/healthz
+      # - pangolin.public-resources.teleport.targets[0].healthcheck.method=GET
+      # - pangolin.public-resources.teleport.targets[0].healthcheck.status=200
+
+      # - pangolin.public-resources.teleport.maintenance.enabled=true
+      # - pangolin.public-resources.teleport.maintenance.type=automatic
+      # - pangolin.public-resources.teleport.maintenance.title=Maintenance in progress
+      # - pangolin.public-resources.teleport.maintenance.message=The service is temporarily unavailable.
+
+      - "homepage.group=Platform"
+      - "homepage.name=Teleport"
+      - "homepage.icon=teleport.svg"
+      - "homepage.href=https://teleport.${HOST}"
+      - "homepage.description=Secure access to SSH nodes, Kubernetes, and databases"
+
+networks:
+  default:
+    external: true
+    name: ${TRAEFIK_NETWORK}

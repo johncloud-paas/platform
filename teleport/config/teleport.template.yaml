@@ -1,0 +1,26 @@
+version: v3
+teleport:
+  data_dir: /var/lib/teleport
+  log:
+    output: stderr
+    severity: INFO
+
+auth_service:
+  enabled: true
+  cluster_name: ${CLUSTER_NAME}
+  # Auth listens on :3025 — internal only, not exposed externally.
+  # Nodes reach auth via the proxy's reverse tunnel, never directly.
+  listen_addr: 0.0.0.0:3025
+
+proxy_service:
+  enabled: true
+  # Plain HTTP — Traefik handles TLS termination.
+  web_listen_addr: 0.0.0.0:3080
+  # Must match the public URL so tsh and the web UI generate correct links.
+  public_addr: teleport.${HOST}:443
+  acme:
+    enabled: false
+
+ssh_service:
+  enabled: true
+  listen_addr: 0.0.0.0:3022

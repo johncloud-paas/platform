@@ -15,4 +15,5 @@ core/traefik/dashboard.yml
 core/traefik/static_config.yml
 monitoring/suricata/suricata.yaml
 monitoring/fail2ban/jail.d/suricata.conf
+teleport/config/teleport.yaml
 .infisical.yaml

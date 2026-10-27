@@ -38,8 +38,21 @@ INFISICAL_PATH="/$(basename "$SERVICE_DIR")"
 # environment, so every docker compose call below inherits them without
 # re-contacting Infisical.
 log "Loading secrets from Infisical"
-SECRETS="$(infisical export --env="$INFISICAL_ENV" --path="$INFISICAL_PATH" --format=dotenv-export)"
-eval "$SECRETS"
+_INFISICAL_STDERR="$(mktemp)"
+if SECRETS="$(infisical export --env="$INFISICAL_ENV" --path="$INFISICAL_PATH" --format=dotenv-export 2>"$_INFISICAL_STDERR")"; then
+  if [ -z "$SECRETS" ]; then
+    log "No secrets found in Infisical for path $INFISICAL_PATH (env: $INFISICAL_ENV) — continuing without injected secrets"
+  else
+    eval "$SECRETS"
+  fi
+elif grep -qE "404|was not found" "$_INFISICAL_STDERR"; then
+  log "No secrets folder found in Infisical for path $INFISICAL_PATH (env: $INFISICAL_ENV) — continuing without injected secrets"
+else
+  cat "$_INFISICAL_STDERR" >&2
+  rm -f "$_INFISICAL_STDERR"
+  exit 1
+fi
+rm -f "$_INFISICAL_STDERR"
 unset SECRETS
 
 # Traefik's shared network name is read from the stack's .env (not Infisical).
@@ -66,6 +79,11 @@ fi
 
   log "Stopping existing containers" &&
   docker compose down &&
+
+  if [ -f "$SERVICE_DIR/setup_before_up.sh" ]; then
+    log "Running setup_before_up.sh" &&
+    bash "$SERVICE_DIR/setup_before_up.sh"
+  fi &&
 
   log "Starting containers (remove-orphans)" &&
   docker compose up -d --remove-orphans &&
