@@ -18,6 +18,9 @@ proxy_service:
   web_listen_addr: 0.0.0.0:3080
   # Must match the public URL so tsh and the web UI generate correct links.
   public_addr: teleport.${HOST}:443
+  # Tunnel port exposed only on loopback — this host's SSH node agent uses it directly.
+  tunnel_listen_addr: 0.0.0.0:3024
+  tunnel_public_addr: localhost:3024
   acme:
     enabled: false
 

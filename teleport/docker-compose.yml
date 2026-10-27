@@ -2,12 +2,15 @@ name: teleport
 
 services:
   teleport:
-    image: public.ecr.aws/gravitational/teleport-distroless:17.4.3
+    image: public.ecr.aws/gravitational/teleport-distroless:17.7.23
     restart: unless-stopped
     command: --config /etc/teleport/teleport.yaml
     environment:
       - TZ=${TZ}
       - HOST=${HOST}
+    ports:
+      - "127.0.0.1:3080:3080"
+      - "127.0.0.1:3024:3024"
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro

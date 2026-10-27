@@ -1,0 +1,25 @@
+# /etc/teleport/teleport-node.yaml
+version: v3
+teleport:
+  nodename: mail.johncloud.fr
+  data_dir: /var/lib/teleport
+  join_params:
+    token_name: b01541a073032f043ede8c39a7deda1a
+    method: token
+  proxy_server: localhost:3080
+  log:
+    output: stderr
+    severity: INFO
+    format:
+      output: text
+  ca_pin: "sha256:c0d34fa12bbb3e93fdd66ae857871b89740bda24944a9a210b91b8a953f49ca8"
+  diag_addr: ""
+auth_service:
+  enabled: "no"
+ssh_service:
+  enabled: "yes"
+proxy_service:
+  enabled: "no"
+  https_keypairs: []
+  https_keypairs_reload_interval: 0s
+  acme: {}
