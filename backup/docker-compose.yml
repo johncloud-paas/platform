@@ -5,10 +5,10 @@ services:
     image: databasus/databasus:latest
     restart: unless-stopped
     volumes:
-      - $JOHNCLOUD_ROOT/databasus/data:/databasus-data
+      - ${JOHNCLOUD_ROOT:?Missing JOHNCLOUD_ROOT}/databasus/data:/databasus-data
     labels:
       - pangolin.public-resources.databasus.name=databasus
-      - pangolin.public-resources.databasus.full-domain=databasus.$HOST
+      - pangolin.public-resources.databasus.full-domain=databasus.${HOST:?Missing HOST}
       - pangolin.public-resources.databasus.protocol=http
       - pangolin.public-resources.databasus.ssl=true
       - pangolin.public-resources.databasus.targets[0].method=http
@@ -18,7 +18,7 @@ services:
       - "homepage.group=Platform"
       - "homepage.name=Databasus"
       - "homepage.icon=sh-databasus"
-      - "homepage.href=https://databasus.$HOST/"
+      - "homepage.href=https://databasus.${HOST:?Missing HOST}/"
       - "homepage.description=Database backup management application for MySQL, PostgreSQL, and MariaDB"
 
   duplicati:
@@ -27,12 +27,12 @@ services:
     environment:
       - 'PUID=0'
       - 'PGID=0'
-      - 'TZ=${TZ:-Europe/London}'
-      - 'SETTINGS_ENCRYPTION_KEY=${DUPLICATI_PASSWORD_ENCRYPT}'
-      - 'DUPLICATI__WEBSERVICE_PASSWORD=${DUPLICATI_PASSWORD_WEB}'
+      - 'TZ=${TZ:?Missing TZ}'
+      - 'SETTINGS_ENCRYPTION_KEY=${DUPLICATI_PASSWORD_ENCRYPT:?Missing DUPLICATI_PASSWORD_ENCRYPT}'
+      - 'DUPLICATI__WEBSERVICE_PASSWORD=${DUPLICATI_PASSWORD_WEB:?Missing DUPLICATI_PASSWORD_WEB}'
     volumes:
-      - '$JOHNCLOUD_ROOT/duplicati/config:/config'
-      - '$JOHNCLOUD_ROOT:/source'
+      - '${JOHNCLOUD_ROOT:?Missing JOHNCLOUD_ROOT}/duplicati/config:/config'
+      - '${JOHNCLOUD_ROOT:?Missing JOHNCLOUD_ROOT}:/source'
     healthcheck:
       test:
         - CMD
@@ -44,7 +44,7 @@ services:
       retries: 15
     labels:
       - pangolin.public-resources.duplicati.name=duplicati
-      - pangolin.public-resources.duplicati.full-domain=duplicati.$HOST
+      - pangolin.public-resources.duplicati.full-domain=duplicati.${HOST:?Missing HOST}
       - pangolin.public-resources.duplicati.protocol=http
       - pangolin.public-resources.duplicati.ssl=true
       - pangolin.public-resources.duplicati.targets[0].method=http
@@ -54,7 +54,7 @@ services:
       - "homepage.group=Platform"
       - "homepage.name=Duplicati"
       - "homepage.icon=duplicati.png"
-      - "homepage.href=https://duplicati.$HOST/ngclient/"
+      - "homepage.href=https://duplicati.${HOST:?Missing HOST}/ngclient/"
       - "homepage.description=Secure backup solution for managed service providers"
 
 networks:
