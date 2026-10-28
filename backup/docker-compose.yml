@@ -25,6 +25,8 @@ services:
     image: 'lscr.io/linuxserver/duplicati:latest'
     restart: unless-stopped
     environment:
+      - 'PUID=0'
+      - 'PGID=0'
       - 'TZ=${TZ:-Europe/London}'
       - 'SETTINGS_ENCRYPTION_KEY=${DUPLICATI_PASSWORD_ENCRYPT}'
       - 'DUPLICATI__WEBSERVICE_PASSWORD=${DUPLICATI_PASSWORD_WEB}'
