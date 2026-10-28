@@ -56,6 +56,5 @@ command -v envsubst >/dev/null 2>&1 || apk add --no-cache gettext
     mkdir -p /pangolin /traefik/GeoLite2 /traefik/agent/positions /traefik/dashboard /traefik/plugins /traefik/conf.d/rules &&
     envsubst < /pangolin_src/config.template.yml        > /pangolin/config.yml &&
     envsubst < /traefik_src/dynamic_config.template.yml > /traefik/conf.d/rules/dynamic_config.yml &&
-    envsubst < /traefik_src/dashboard.template.yml      > /traefik/conf.d/rules/dashboard.yml &&
     envsubst < /traefik_src/static_config.template.yml  > /traefik/conf.d/static_config.yml
 )

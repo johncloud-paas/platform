@@ -99,6 +99,15 @@ services:
       - 21820:21820/udp
       - 443:443
       - 80:80
+    labels:
+      - pangolin.public-resources.traefik-dashboard.name=traefik-dashboard
+      - pangolin.public-resources.traefik-dashboard.full-domain=traefik.${HOST:?Missing HOST}
+      - pangolin.public-resources.traefik-dashboard.protocol=http
+      - pangolin.public-resources.traefik-dashboard.ssl=true
+      - pangolin.public-resources.traefik-dashboard.targets[0].method=http
+      - pangolin.public-resources.traefik-dashboard.targets[0].port=8080
+      - pangolin.public-resources.traefik-dashboard.auth.sso-enabled=true
+      - pangolin.public-resources.traefik-dashboard.auth.sso-roles[0]=Member
 
   newt:
     image: fosrl/newt:1.19
