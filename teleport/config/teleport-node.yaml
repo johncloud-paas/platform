@@ -1,10 +1,10 @@
 # /etc/teleport/teleport-node.yaml
 version: v3
 teleport:
-  nodename: mail.johncloud.fr
+  nodename: ${HOST}
   data_dir: /var/lib/teleport
   join_params:
-    token_name: b01541a073032f043ede8c39a7deda1a
+    token_name: yyyyyy
     method: token
   proxy_server: localhost:3080
   log:
@@ -12,7 +12,7 @@ teleport:
     severity: INFO
     format:
       output: text
-  ca_pin: "sha256:c0d34fa12bbb3e93fdd66ae857871b89740bda24944a9a210b91b8a953f49ca8"
+  ca_pin: "xxxxx"
   diag_addr: ""
 auth_service:
   enabled: "no"
