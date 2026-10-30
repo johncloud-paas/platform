@@ -1,13 +1,20 @@
 name: authentik
 
 services:
-  rac_outpost:
+  authentik_rac-outpost:
     image: ghcr.io/goauthentik/rac:${AUTHENTIK_TAG}
+    container_name: authentik_rac-outpost
     environment:
       AUTHENTIK_HOST: https://authentik.$HOST
       AUTHENTIK_INSECURE: "${AUTHENTIK_INSECURE}"
-      AUTHENTIK_TOKEN: ${AK_RAC_TOKEN}           # token from the outpost in the UI
+      AUTHENTIK_TOKEN: ${AK_RAC_TOKEN}
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/rac", "healthcheck"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   authentik_server:
     image: 'ghcr.io/goauthentik/server:${AUTHENTIK_TAG}'
@@ -21,6 +28,10 @@ services:
       interval: 30s
       retries: 3
       timeout: 30s
+    depends_on:
+      - authentik_rac-outpost
+      - redis
+      - authentik_worker
     environment:
       AUTHENTIK_REDIS__HOST: 'redis'
       AUTHENTIK_POSTGRESQL__HOST: 'core-db-1'
