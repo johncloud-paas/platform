@@ -1,9 +1,12 @@
 name: authentik
 
 services:
-  guacd:
-    image: guacamole/guacd:${GUACD_TAG}
-    container_name: guacd
+  rac_outpost:
+    image: ghcr.io/goauthentik/rac
+    environment:
+      AUTHENTIK_HOST: https://authentik.$HOST
+      AUTHENTIK_INSECURE: "${AUTHENTIK_INSECURE}"
+      AUTHENTIK_TOKEN: ${AK_RAC_TOKEN}           # token from the outpost in the UI
     restart: unless-stopped
 
   authentik_server:
