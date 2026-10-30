@@ -1,6 +1,11 @@
 name: authentik
 
 services:
+  guacd:
+    image: guacamole/guacd:${GUACD_TAG}
+    container_name: guacd
+    restart: unless-stopped
+
   authentik_server:
     image: 'ghcr.io/goauthentik/server:${AUTHENTIK_TAG}'
     container_name: authentik_server
