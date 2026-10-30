@@ -2,7 +2,7 @@ name: authentik
 
 services:
   rac_outpost:
-    image: ghcr.io/goauthentik/rac
+    image: ghcr.io/goauthentik/rac:${AUTHENTIK_TAG}
     environment:
       AUTHENTIK_HOST: https://authentik.$HOST
       AUTHENTIK_INSECURE: "${AUTHENTIK_INSECURE}"
