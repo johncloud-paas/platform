@@ -8,6 +8,10 @@ services:
       - postgres
       - -c
       - jit=off
+      # - -c
+      # - deadlock_timeout=1s  # Faster deadlock detection
+      # - -c
+      # - max_connections=200  # Adjust based on load
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
@@ -80,7 +84,7 @@ services:
     restart: unless-stopped
     depends_on:
       pangolin:
-        condition: service_healthy
+       condition: service_healthy
     # environment:
     #   - EMAIL_SMTP_PASS=$EMAIL_PASSWORD
     #   - SERVER_SECRET=$PANGOLIN_SERVER_SECRET
