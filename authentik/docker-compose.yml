@@ -1,11 +1,10 @@
 name: authentik
 
 services:
-
   initial-config:
     image: postgres:17-alpine3.23
     restart: "no"
-    entrypoint: ["/bin/bash", "/scripts/create_db.sh"]
+    entrypoint: ["/bin/bash", "/scripts/configure.sh"]
     environment:
       PGHOST: core-db-1
       PGPORT: "5432"
@@ -14,7 +13,6 @@ services:
       AUTHENTIK_DB_PASSWORD: ${AUTHENTIK_DB_PASSWORD:?Missing AUTHENTIK_DB_PASSWORD}
     volumes:
       - ./scripts:/scripts:ro
-      - ../core/scripts:/core-scripts:ro
       
   authentik_rac-outpost:
     image: ghcr.io/goauthentik/rac:${AUTHENTIK_TAG}
