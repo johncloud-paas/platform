@@ -1,9 +1,26 @@
 name: authentik
 
 services:
+
+  initial-config:
+    image: postgres:17-alpine3.23
+    restart: "no"
+    entrypoint: ["/bin/bash", "/scripts/create_db.sh"]
+    environment:
+      PGHOST: core-db-1
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGPASSWORD: ${CORE_DB_PASSWORD:?Missing CORE_DB_PASSWORD}
+      AUTHENTIK_DB_PASSWORD: ${AUTHENTIK_DB_PASSWORD:?Missing AUTHENTIK_DB_PASSWORD}
+    volumes:
+      - ./scripts:/scripts:ro
+      - ../core/scripts:/core-scripts:ro
+      
   authentik_rac-outpost:
     image: ghcr.io/goauthentik/rac:${AUTHENTIK_TAG}
     container_name: authentik_rac-outpost
+    depends_on:
+      - initial-config
     environment:
       AUTHENTIK_HOST: https://authentik.$HOST
       AUTHENTIK_INSECURE: "${AUTHENTIK_INSECURE}"
@@ -32,6 +49,7 @@ services:
       - authentik_rac-outpost
       - redis
       - authentik_worker
+      - initial-config
     environment:
       AUTHENTIK_REDIS__HOST: 'redis'
       AUTHENTIK_POSTGRESQL__HOST: 'core-db-1'
@@ -89,6 +107,8 @@ services:
     command: worker
     shm_size: 512mb
     container_name: authentik_worker
+    depends_on:
+      - initial-config
     environment:
       AUTHENTIK_REDIS__HOST: 'redis'
       AUTHENTIK_POSTGRESQL__HOST: 'core-db-1'
