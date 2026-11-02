@@ -11,7 +11,7 @@ set -Eeuo pipefail
 #   PGHOST / PGPORT / PGUSER / PGPASSWORD  superuser connection (see create-db.sh)
 #   AUTHENTIK_DB_PASSWORD                   password for the authentik role
 
-SCRIPT_DIR="/core-scripts"
+SCRIPT_DIR="/scripts"
 
 # Pull in provision_database() / wait_for_postgres() without running the CLI.
 # shellcheck source=create-db.sh
