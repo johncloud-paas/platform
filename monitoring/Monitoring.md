@@ -27,6 +27,73 @@ customizable policies, and manual/automatic blocking on this node.
 | Alert UI (optional) | **EveBox** (GPLv2) | 2026-10-08 |
 | Ban-management UI | **fail2ban-ui** (rootless, SSH connector, native Authentik OIDC) | 2026-10-13 |
 | Rejected | **CrowdSec** — see below | 2026-10-08 |
+| Telemetry store | **Vector → PostgreSQL** (logs + metrics, no TimescaleDB) | 2026-11-04 |
+
+## Telemetry storage: Vector → PostgreSQL
+
+> This section is authoritative for how logs and metrics are stored and **supersedes**
+> the older VictoriaLogs / VictoriaMetrics / fluent-bit references elsewhere in this
+> document (e.g. the Traefik-log-analysis chapters), which describe the previous pipeline.
+
+For a single node with fewer than ~50 containers, telemetry is kept in plain PostgreSQL
+instead of the VictoriaMetrics/Logs stack. **Vector** is the single collector:
+
+- **Container logs** — the `docker_logs` source reads every container's stdout/stderr from
+  the Docker daemon, attaching `container_name`, `image`, `stream`, `message`, `timestamp`
+  and labels. A `remap` transform derives a **criticity** (`severity`) from the message
+  (JSON `level`/`severity`, then logfmt `level=`), defaulting to `unknown`.
+- **Metrics** — the `prometheus_scrape` source scrapes `node-exporter:9100`,
+  `cadvisor:8080` and `speedtest:9798` every 30s.
+
+Both are written by Vector's native **`postgres` sink** into the `monitoring` database on
+the shared `core` Postgres server (reachable cross-stack as `core-db-1`). The sink maps
+event fields to table columns by name using `jsonb_populate_record`; unmatched fields are
+ignored and **table `DEFAULT`s are not applied** (missing fields become `NULL`), so every
+`NOT NULL` column must be a field Vector always emits and there is no identity/serial PK.
+
+Config lives in `monitoring/vector/vector.yaml` (mounted read-only). Note that **Vector
+0.57+ makes `${VAR}` interpolation opt-in**; the `vector` service sets
+`VECTOR_DANGEROUSLY_ALLOW_ENV_VAR_INTERPOLATION=true` so the sink endpoints can read
+`MONITORING_DB_PASSWORD` from the environment.
+
+### Schema (`monitoring/scripts/schema.sql`)
+
+Applied by the `initial-config` service (which also provisions the `monitoring` DB/role),
+connected as the `monitoring` role so Vector — logging in as the same role — can INSERT.
+
+- **`logs`** — `timestamp timestamptz`, `container text`, `severity text`, `message text`
+  (all `NOT NULL`), plus nullable `stream`, `image`, `labels jsonb`. Indexed on
+  `timestamp`, `(container, timestamp)`, and `severity`.
+- **`metrics`** — columns mirror Vector's metric-event JSON (`timestamp`, `name`,
+  `namespace`, `tags jsonb`, `kind`, `interval_ms`, and one of
+  `counter`/`gauge`/`set`/`distribution`/`aggregated_histogram`/`aggregated_summary`/`sketch`
+  as `jsonb`). Indexed on `(name, timestamp)`, `timestamp`, and a GIN index on `tags`. The
+  `metric_samples` view flattens the common counter/gauge numeric value.
+
+### Retention (no TimescaleDB)
+
+Plain tables grow unbounded, so prune on a schedule (host cron or systemd timer):
+
+```sql
+DELETE FROM logs    WHERE timestamp < now() - interval '14 days';
+DELETE FROM metrics WHERE timestamp < now() - interval '14 days';
+```
+
+cadvisor emits many series; raise `scrape_interval_secs`, trim with cadvisor's
+`--disable_metrics`, or add a Vector `filter` before `pg_metrics` if volume is too high. If
+a single table eventually grows too large, native monthly range partitioning + `DROP` of old
+partitions is the scale-up path.
+
+### Querying
+
+```sql
+SELECT container, severity, left(message, 80)
+FROM logs WHERE severity IN ('error','critical','fatal')
+ORDER BY timestamp DESC LIMIT 20;
+
+SELECT name, value FROM metric_samples
+WHERE name LIKE 'node_%' ORDER BY timestamp DESC LIMIT 20;
+```
 
 ## Ban-management UI: fail2ban-ui
 

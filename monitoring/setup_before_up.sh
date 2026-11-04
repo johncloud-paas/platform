@@ -10,9 +10,7 @@ SURICATA_DATA="$JOHNCLOUD_ROOT/suricata"
 (
     envsubst '$PUBLIC_IP_ADDRESS $JOHNCLOUD_ROOT' < fail2ban/jail.d/suricata.template.conf > fail2ban/jail.d/suricata.conf &&    
     envsubst '$PUBLIC_IP_ADDRESS' < suricata/suricata.template.yaml > suricata/suricata.yaml &&        
-    mkdir -p $JOHNCLOUD_ROOT/victoriametrics/data $JOHNCLOUD_ROOT/victorialogs/data $JOHNCLOUD_ROOT/victoriatraces/data $JOHNCLOUD_ROOT/fluent-bit $JOHNCLOUD_ROOT/fail2ban-ui &&
-    cp ./victoriametrics/* $JOHNCLOUD_ROOT/victoriametrics &&
-    cp ./fluent-bit/* $JOHNCLOUD_ROOT/fluent-bit &&
+    mkdir -p $JOHNCLOUD_ROOT/vector $JOHNCLOUD_ROOT/fail2ban-ui &&
     mkdir -p "$SURICATA_DATA/rules" "$SURICATA_DATA/logs" &&
     cp ./suricata/entrypoint.sh "$SURICATA_DATA/" &&
     cp ./suricata/suricata.yaml ./suricata/local.rules ./suricata/disable.conf "$SURICATA_DATA/" &&

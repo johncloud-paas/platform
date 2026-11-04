@@ -43,7 +43,7 @@ The platform assumes rootless Docker (`DOCKER_HOST` → `$XDG_RUNTIME_DIR/docker
 
 ## Monitoring & the detection pipeline
 
-`monitoring` runs the VictoriaMetrics/Logs/Traces trio, fluent-bit, node-exporter, cadvisor, speedtest, and the Grafana PDC agent. The security chain is: packet on wire → Suricata alert (`eve.json`, severity 1) → host Fail2ban filter matches `src_ip` → `suricata-raw` action DROPs it in iptables raw/PREROUTING. Design rationale and decisions live in `monitoring/Monitoring.md`.
+`monitoring` runs **Vector**, node-exporter, cadvisor, speedtest, VictoriaTraces, and the Grafana PDC agent. **Vector** replaces the former fluent-bit + VictoriaMetrics/VictoriaLogs path: its `docker_logs` source collects container logs and its `prometheus_scrape` source scrapes node-exporter/cadvisor/speedtest, and both are written via Vector's native `postgres` sink into the `monitoring` PostgreSQL database (the single `core` Postgres, reached cross-stack as `core-db-1`; no TimescaleDB). The `initial-config` service provisions that DB/role and applies `scripts/schema.sql` (tables `logs` and `metrics`). Note Vector 0.57+ makes `${VAR}` config interpolation opt-in, re-enabled with `VECTOR_DANGEROUSLY_ALLOW_ENV_VAR_INTERPOLATION=true`. The security chain is: packet on wire → Suricata alert (`eve.json`, severity 1) → host Fail2ban filter matches `src_ip` → `suricata-raw` action DROPs it in iptables raw/PREROUTING. Design rationale and decisions live in `monitoring/Monitoring.md`.
 
 ## Tests
 

@@ -81,12 +81,17 @@ fi
   docker compose down &&
 
   if [ -f "$SERVICE_DIR/setup_before_up.sh" ]; then
-    log "Running setup_before_up.sh" &&
-    bash "$SERVICE_DIR/setup_before_up.sh"
+    log "Running setup_before_up.sh $STACK_DIR_ARG" &&
+    bash "$SERVICE_DIR/setup_before_up.sh $STACK_DIR_ARG"
   fi &&
 
   log "Starting containers (remove-orphans)" &&
   docker compose up -d --remove-orphans &&
+
+  if [ -f "$SERVICE_DIR/setup_after_up.sh" ]; then
+    log "Running setup_after_up.sh $STACK_DIR_ARG" &&
+    bash "$SERVICE_DIR/setup_after_up.sh $STACK_DIR_ARG"
+  fi &&
 
   log "Tailing logs${SERVICE:+ for $SERVICE} (Ctrl-C to detach)" &&
   docker compose logs -f $SERVICE
