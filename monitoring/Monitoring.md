@@ -31,9 +31,10 @@ customizable policies, and manual/automatic blocking on this node.
 
 ## Telemetry storage: Vector → PostgreSQL
 
-> This section is authoritative for how logs and metrics are stored and **supersedes**
-> the older VictoriaLogs / VictoriaMetrics / fluent-bit references elsewhere in this
-> document (e.g. the Traefik-log-analysis chapters), which describe the previous pipeline.
+> This section is authoritative for how logs and metrics are stored. The whole
+> document now assumes this pipeline; the former VictoriaLogs / VictoriaMetrics /
+> fluent-bit stack has been removed and the Traefik-log-analysis chapters below have
+> been rewritten to target Vector → PostgreSQL.
 
 For a single node with fewer than ~50 containers, telemetry is kept in plain PostgreSQL
 instead of the VictoriaMetrics/Logs stack. **Vector** is the single collector:
@@ -273,8 +274,8 @@ write a small `eve.json` → `nft` watcher, and give up timed expiry/persistence
   (config in [`monitoring/suricata/`](./suricata/); `./startstack.sh ./monitoring`).
 - **[Traefik Log Analysis](#analysing-tls--wireguard-delivered-traffic-via-traefik-logs)**
   — recover the TLS / WireGuard-tunnelled application layer that Suricata can't
-  read, via Traefik's JSON access log shipped into the existing VictoriaLogs/Grafana
-  stack.
+  read, via Traefik's JSON access log shipped by Vector into the `monitoring`
+  PostgreSQL database.
 
 ## Implementation Checklist
 
@@ -287,8 +288,8 @@ write a small `eve.json` → `nft` watcher, and give up timed expiry/persistence
       unique af-packet `cluster-id` per captured interface.
 - [x] Wire ET Open ruleset (`suricata-update`, fetched by `setup_before_up.sh`)
       + `local.rules`. (Daily cron = Suricata §10 below.)
-- [x] Ship Traefik access log → VictoriaLogs for TLS / tunnel analysis
-      (fluent-bit input + `$TRAEFIK_LOG_DIR` mount).
+- [ ] Ship Traefik access log → PostgreSQL via Vector for TLS / tunnel analysis
+      (Vector `file` source + `$TRAEFIK_LOG_DIR` mount, Traefik Log Analysis §T3).
 - [ ] Set real `$TRAEFIK_LOG_DIR` in `.env`; redeploy monitoring + suricata.
 - [ ] Install the NIC-offload systemd unit (Suricata §7 below); run first
       `curl testmynids.org` smoke test (§9).
@@ -298,8 +299,8 @@ write a small `eve.json` → `nft` watcher, and give up timed expiry/persistence
 - [ ] (Optional) Add EveBox for alert review UI.
 - [x] Add **fail2ban-ui** (rootless, SSH connector) for ban management + native Authentik OIDC.
 - [ ] After tuning, enable automatic banning on trusted jails.
-- [ ] (Optional) WireGuard transport metrics: `wg-exporter` in Gerbil's netns →
-      VictoriaMetrics (Traefik Log Analysis §5 below).
+- [ ] (Optional) WireGuard transport metrics: `wg-exporter` in Gerbil's netns,
+      scraped by Vector → PostgreSQL (Traefik Log Analysis §T5 below).
 - [ ] (Optional) Cron free threat-intel blocklists (abuse.ch / FireHOL / Spamhaus
       DROP) into an nftables set to partly replace CrowdSec reputation.
 
@@ -861,8 +862,8 @@ Notes:
   archives.
 - **Fail2ban keeps working across rotation.** Its jail uses `backend = polling`,
   which detects the inode change and re-follows `eve.json` automatically — no
-  config change. The fluent-bit tail (if enabled) handles rotation via its tail
-  DB the same way.
+  config change. Vector's `file` source (if enabled for Traefik logs, §T3)
+  handles rotation via its checkpoint in `data_dir` the same way.
 - **Repo-integrated alternative** (matches the Fail2ban glue pattern): drop a
   `monitoring/logrotate/suricata` template in the repo and have
   `setup_before_up.sh` render `$JOHNCLOUD_ROOT` with `envsubst` and copy it to
@@ -960,7 +961,7 @@ Suricata goes blind in exactly two places on this stack:
 **Traefik is the point where both become plaintext.** Its JSON access log is
 therefore the sensor for the application layer that Suricata can't read. This doc
 shows what you can recover, and how to analyse it with the stack you *already*
-run (VictoriaLogs + Fluent-bit + Grafana).
+run (**Vector → PostgreSQL**).
 
 ---
 
@@ -1042,99 +1043,133 @@ clean join key against Suricata `eve.json` `src_ip` from `eth0`.
 
 ---
 
-## T3. Ship it into VictoriaLogs (your existing pipeline)
+## T3. Ship it into PostgreSQL via Vector (your existing pipeline)
 
-Your `monitoring/` stack already runs **VictoriaLogs** with **Fluent-bit** tailing
-container logs. Traefik writes its access log to a **file** (not stdout), so
-Fluent-bit isn't picking it up yet. Add one input + one output and a mount.
+Your `monitoring/` stack already runs **Vector**, which collects container logs
+and exporter metrics into the `monitoring` Postgres DB (see "Telemetry storage"
+above). Traefik writes its access log to a **file** (not stdout), so Vector's
+`docker_logs` source doesn't see it. Add one `file` source, one `remap`, one
+`postgres` sink, and a mount — mirroring the existing `pg_logs` path.
 
-### T3a. Mount the Traefik log dir into Fluent-bit
+### T3a. Mount the Traefik log dir into Vector
 
-In `monitoring/docker-compose.yml`, add to the `fluent-bit` service `volumes:`
-(adjust the host path to wherever the repo lives on the server):
+In `monitoring/docker-compose.yml`, add to the `vector` service `volumes:`
+(promote the host path to `$TRAEFIK_LOG_DIR` in `.env`, matching how the rest of
+the stack uses `$JOHNCLOUD_ROOT`):
 
 ```yaml
-      - /home/yann/repos/johncloud/platform/core/pangolin/traefik/logs:/var/log/traefik:ro
+      - ${TRAEFIK_LOG_DIR}:/var/log/traefik:ro
 ```
 
-> Tip: promote it to a variable (e.g. `TRAEFIK_LOG_DIR`) in `sample.env` so it's
-> not a hard-coded path, matching how the rest of the stack uses `$JOHNCLOUD_ROOT`.
+### T3b. Add a file source + remap + postgres sink (`monitoring/vector/vector.yaml`)
 
-### T3b. Add a tail input + Loki output (`monitoring/fluent-bit/fluent-bit.conf`)
+The access log lands in the same `logs` table: `container` is fixed to `traefik`,
+`severity` is derived from the HTTP status, and the whole parsed JSON record is
+stored in `labels jsonb` so every field (`TLSVersion`, `ClientHost`,
+`ServiceName`, …) stays queryable (§T4). No schema change needed.
 
-```ini
-[INPUT]
-    Name              tail
-    Tag               traefik.access
-    Path              /var/log/traefik/access.log
-    Parser            json
-    Refresh_Interval  10
-    DB                /tmp/fluent-bit-traefik.db
+```yaml
+sources:
+  traefik_access:
+    type: file
+    include: [/var/log/traefik/access.log]
+    read_from: beginning
 
-[OUTPUT]
-    Name          loki
-    Match         traefik.access
-    Host          victorialogs
-    Port          9428
-    URI           /insert/loki/api/v1/push
-    Labels        job=traefik
-    Label_Keys    $RequestHost
-    Line_Format   json
+transforms:
+  traefik_logs:
+    type: remap
+    inputs: [traefik_access]
+    source: |
+      parsed = parse_json!(.message)
+      status = to_int(parsed.DownstreamStatus) ?? 0
+      sev = "info"
+      if status >= 500 { sev = "error" } else if status >= 400 { sev = "warning" }
+      . = {
+        "timestamp": parse_timestamp(parsed.StartUTC, "%+") ?? now(),
+        "container": "traefik",
+        "severity": sev,
+        "message": (to_string(parsed.RequestHost) ?? "") + (to_string(parsed.RequestPath) ?? ""),
+        "stream": "access",
+        "image": null,
+        "labels": parsed
+      }
+
+sinks:
+  pg_traefik:
+    type: postgres
+    inputs: [traefik_logs]
+    endpoint: "postgresql://monitoring:${MONITORING_DB_PASSWORD}@core-db-1:5432/monitoring"
+    table: logs
+    batch:
+      max_events: 1000
+      timeout_secs: 5
 ```
 
 Notes:
-- `Parser json` + the image's default `parsers.conf` parses each JSON line.
-- Keep only **low-cardinality** fields as Loki stream labels (`RequestHost` is a
-  bounded set of your domains). Do **not** label by `ClientHost`/`RequestPath` —
-  high cardinality. They remain queryable as fields (§T4 uses `unpack_json`).
-- Don't route Traefik's TLS/client data to any cloud; it stays in local
-  VictoriaLogs. (PDC only connects Grafana Cloud to your metrics — mind what you
-  expose.)
+- `parse_json!` parses each JSON line; the full record is preserved under
+  `labels` so no field is lost even though only a few columns exist.
+- Don't route Traefik's TLS/client data to any cloud; it stays in the local
+  `monitoring` Postgres DB. (PDC only connects Grafana Cloud to data you point it
+  at — mind what you expose.)
 
-Reload: `docker compose -f monitoring/docker-compose.yml restart fluent-bit`.
+Reload: `docker compose -f monitoring/docker-compose.yml restart vector`.
 
 ---
 
-## T4. Query it — LogsQL (VictoriaLogs UI or Grafana)
+## T4. Query it — SQL against the `monitoring` DB
 
-VictoriaLogs web UI: `http://victorialogs:9428/select/vmui/` (put it behind
-Pangolin, don't expose it raw). Or add the **VictoriaLogs datasource** in your
-Grafana and build panels.
+The records live in the `logs` table with `container = 'traefik'` and every
+access-log field under `labels jsonb`. Query them with plain SQL (psql, or a
+**PostgreSQL datasource** in Grafana). Extract fields with `labels->>'Field'`
+and cast where you compare numerically.
 
-Because the record is ingested as a JSON line, use `unpack_json` to expose fields:
+```sql
+-- TLS version distribution, last 24h
+SELECT labels->>'TLSVersion' AS tls, count(*)
+FROM logs
+WHERE container = 'traefik' AND timestamp > now() - interval '1 day'
+GROUP BY 1 ORDER BY 2 DESC;
 
-```logsql
-# TLS version distribution, last 24h
-_time:1d job:traefik | unpack_json | stats by (TLSVersion) count()
+-- Weak TLS (anything below 1.2) — audit + alert candidate
+SELECT labels->>'ClientHost' AS client, labels->>'RequestHost' AS host,
+       labels->>'TLSVersion' AS tls, count(*)
+FROM logs
+WHERE container = 'traefik' AND labels->>'TLSVersion' IN ('1.0','1.1')
+GROUP BY 1,2,3 ORDER BY 4 DESC;
 
-# Weak TLS (anything below 1.2) — audit + alert candidate
-_time:7d job:traefik | unpack_json | filter TLSVersion:("1.0" OR "1.1")
-  | stats by (ClientHost, RequestHost, TLSVersion) count()
+-- Cipher suite inventory per host
+SELECT labels->>'RequestHost' AS host, labels->>'TLSCipher' AS cipher, count(*)
+FROM logs WHERE container = 'traefik'
+GROUP BY 1,2 ORDER BY 3 DESC;
 
-# Cipher suite inventory per host
-_time:1d job:traefik | unpack_json | stats by (RequestHost, TLSCipher) count()
+-- Tunnel-delivered resource usage (the "WireGuard app view")
+SELECT labels->>'ServiceName' AS service, count(*)
+FROM logs WHERE container = 'traefik'
+GROUP BY 1 ORDER BY 2 DESC;
 
-# Tunnel-delivered resource usage (the "WireGuard app view")
-_time:1d job:traefik | unpack_json | stats by (ServiceName) count()
-  | sort by (count) desc
+-- Backend latency outliers (p99 ms by resource; Duration is ns)
+SELECT labels->>'ServiceName' AS service,
+       percentile_cont(0.99) WITHIN GROUP (ORDER BY (labels->>'Duration')::bigint) / 1e6 AS p99_ms
+FROM logs WHERE container = 'traefik'
+GROUP BY 1 ORDER BY 2 DESC;
 
-# Backend latency outliers (p99 by resource)
-_time:1d job:traefik | unpack_json | stats by (ServiceName) quantile(0.99, Duration)
-
-# Scanners / brute force: 4xx-5xx by client IP
-_time:1d job:traefik | unpack_json | filter DownstreamStatus:>=400
-  | stats by (ClientHost) count() | sort by (count) desc | limit 20
+-- Scanners / brute force: 4xx-5xx by client IP
+SELECT labels->>'ClientHost' AS client, count(*)
+FROM logs
+WHERE container = 'traefik' AND (labels->>'DownstreamStatus')::int >= 400
+GROUP BY 1 ORDER BY 2 DESC LIMIT 20;
 ```
 
-Grafana panel ideas (one dashboard, "Edge / TLS"):
+Grafana panel ideas (one dashboard, "Edge / TLS", on the PostgreSQL datasource):
 - **Stat**: count of sub-TLS-1.2 handshakes (red if > 0).
 - **Table**: top weak-TLS clients.
 - **Pie**: TLS version & cipher mix.
 - **Time series**: requests/s per `ServiceName` (tunnel traffic over time).
 - **Table**: top 4xx/5xx client IPs → your manual-ban shortlist for Fail2ban.
 
-You can turn the weak-TLS and 4xx/5xx queries into **vmalert** rules in your
-existing VictoriaMetrics alerting (`monitoring/victoriametrics/alert.rules`).
+Turn the weak-TLS and 4xx/5xx queries into **Grafana alert rules** on the same
+datasource (or a scheduled SQL check), since there is no VictoriaMetrics/vmalert
+on this node anymore.
 
 ---
 
@@ -1149,7 +1184,7 @@ docker compose -f core/docker-compose.yml exec gerbil wg show
 ```
 
 To get this into your dashboards, run a WireGuard exporter **in Gerbil's network
-namespace** so it can see the `wg` interface, scraped by VictoriaMetrics:
+namespace** so it can see the `wg` interface, scraped by Vector:
 
 ```yaml
   # add to core/docker-compose.yml
@@ -1161,10 +1196,27 @@ namespace** so it can see the `wg` interface, scraped by VictoriaMetrics:
     command: ["-n", "/etc/wireguard/wg0.conf", "-r"]   # -r resolves peer names
 ```
 
-Then add a scrape job in `monitoring/victoriametrics/victoriametrics.yml`
-(`wireguard_sent_bytes_total`, `wireguard_received_bytes_total`,
-`wireguard_latest_handshake_seconds`). Alert on **stale handshakes**
-(`time() - wireguard_latest_handshake_seconds > 300`) to catch dead tunnels.
+Because it shares Gerbil's netns, the exporter is reachable on the shared
+`traefik-proxy` network at Gerbil's name/port (default `:9586`). Add that endpoint
+to Vector's existing `exporters` (`prometheus_scrape`) source in
+`monitoring/vector/vector.yaml`:
+
+```yaml
+  exporters:
+    type: prometheus_scrape
+    endpoints:
+      - http://node-exporter:9100/metrics
+      - http://cadvisor:8080/metrics
+      - http://speedtest:9798/metrics
+      - http://gerbil:9586/metrics     # wg-exporter in Gerbil's netns
+    scrape_interval_secs: 30
+```
+
+The series (`wireguard_sent_bytes_total`, `wireguard_received_bytes_total`,
+`wireguard_latest_handshake_seconds`) land in the `metrics` table via the existing
+`pg_metrics` sink; read them through the `metric_samples` view. Alert on **stale
+handshakes** with a scheduled query / Grafana rule (`now() - handshake > 300s`) to
+catch dead tunnels.
 
 > This is the complement to Traefik logs: **Gerbil/`wg` = transport health**,
 > **Traefik logs = what rode through the transport**. Together they cover
@@ -1180,8 +1232,9 @@ Then add a scrape job in `monitoring/victoriametrics/victoriametrics.yml`
 | L7 after TLS termination & tunnel delivery | **Traefik JSON access log** (this section) | TLS version/cipher, host/path/UA/status, per-resource tunnel traffic |
 | WireGuard transport | **Gerbil `wg show` / exporter** | handshakes, per-peer bytes, endpoints |
 
-All three feed the same places: **VictoriaLogs/Grafana** for analysis, and
-**Fail2ban** for banning (Suricata `eve.json` + Traefik `access.log`, exactly as
+All three feed the same places: the **`monitoring` PostgreSQL DB** (via Vector,
+queried with SQL or Grafana) for analysis, and **Fail2ban** for banning (Suricata
+`eve.json` + Traefik `access.log`, exactly as
 the design above plans). `ClientHost` (Traefik) ↔ `src_ip` (Suricata) is the join
 key that lets a Grafana panel or a Fail2ban jail act on the same offender seen at
 two layers.
