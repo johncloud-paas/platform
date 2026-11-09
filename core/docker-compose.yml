@@ -104,14 +104,20 @@ services:
       - 443:443
       - 80:80
     labels:
-      - pangolin.public-resources.traefik-dashboard.name=traefik-dashboard
-      - pangolin.public-resources.traefik-dashboard.full-domain=traefik.${HOST:?Missing HOST}
-      - pangolin.public-resources.traefik-dashboard.protocol=http
-      - pangolin.public-resources.traefik-dashboard.ssl=true
-      - pangolin.public-resources.traefik-dashboard.targets[0].method=http
-      - pangolin.public-resources.traefik-dashboard.targets[0].port=8080
-      - pangolin.public-resources.traefik-dashboard.auth.sso-enabled=true
-      - pangolin.public-resources.traefik-dashboard.auth.sso-roles[0]=Member
+      # - pangolin.public-resources.traefik-dashboard.name=traefik-dashboard
+      # - pangolin.public-resources.traefik-dashboard.full-domain=traefik.${HOST:?Missing HOST}
+      # - pangolin.public-resources.traefik-dashboard.protocol=http
+      # - pangolin.public-resources.traefik-dashboard.ssl=true
+      # - pangolin.public-resources.traefik-dashboard.targets[0].method=http
+      # - pangolin.public-resources.traefik-dashboard.targets[0].port=8080
+      # - pangolin.public-resources.traefik-dashboard.auth.sso-enabled=true
+      # - pangolin.public-resources.traefik-dashboard.auth.sso-roles[0]=Member
+
+      - pangolin.client-resources.traefik-dashboard.name=traefik-dashboard
+      - pangolin.client-resources.traefik-dashboard.tcp-ports=80
+      - pangolin.client-resources.traefik-dashboard.alias=traefik.private
+      - pangolin.client-resources.traefik-dashboard.auth.sso-enabled=true
+      - pangolin.client-resources.traefik-dashboard.auth.sso-roles[0]=Member
 
   newt:
     image: fosrl/newt:1.19
@@ -185,30 +191,34 @@ services:
       - ${JOHNCLOUD_ROOT:?Missing JOHNCLOUD_ROOT}/dockhand/data:/app/data
       - ${XDG_RUNTIME_DIR:?Missing XDG_RUNTIME_DIR}/docker.sock:/var/run/docker.sock
     labels:
-      - pangolin.public-resources.dockhand.name=dockhand
-      - pangolin.public-resources.dockhand.full-domain=dockhand.${HOST:?Missing HOST}
-      - pangolin.public-resources.dockhand.protocol=http
-      - pangolin.public-resources.dockhand.ssl=true
-      - pangolin.public-resources.dockhand.targets[0].method=http
-      - pangolin.public-resources.dockhand.targets[0].port=3000
+      # - pangolin.public-resources.dockhand.name=dockhand
+      # - pangolin.public-resources.dockhand.full-domain=dockhand.${HOST:?Missing HOST}
+      # - pangolin.public-resources.dockhand.protocol=http
+      # - pangolin.public-resources.dockhand.ssl=true
+      # - pangolin.public-resources.dockhand.targets[0].method=http
+      # - pangolin.public-resources.dockhand.targets[0].port=3000
 
-      - pangolin.public-resources.dockhand.targets[0].healthcheck.enabled=true
-      - pangolin.public-resources.dockhand.targets[0].healthcheck.hostname=core-dockhand-1
-      - pangolin.public-resources.dockhand.targets[0].healthcheck.port=3000
-      - pangolin.public-resources.dockhand.targets[0].healthcheck.path=/api/health
-      - pangolin.public-resources.dockhand.targets[0].healthcheck.method=GET
-      - pangolin.public-resources.dockhand.targets[0].healthcheck.status=200
+      - pangolin.client-resources.dockhand.name=dockhand
+      - pangolin.client-resources.dockhand.tcp-ports=3000
+      - pangolin.client-resources.dockhand.alias=dockhand.private
+
+      - pangolin.client-resources.dockhand.targets[0].healthcheck.enabled=true
+      - pangolin.client-resources.dockhand.targets[0].healthcheck.hostname=core-dockhand-1
+      - pangolin.client-resources.dockhand.targets[0].healthcheck.port=3000
+      - pangolin.client-resources.dockhand.targets[0].healthcheck.path=/api/health
+      - pangolin.client-resources.dockhand.targets[0].healthcheck.method=GET
+      - pangolin.client-resources.dockhand.targets[0].healthcheck.status=200
 
       # Maintenance page in automatic mode
-      - pangolin.public-resources.dockhand.maintenance.enabled=true
-      - pangolin.public-resources.dockhand.maintenance.type=automatic
-      - pangolin.public-resources.dockhand.maintenance.title=Maintenance in progress
-      - pangolin.public-resources.dockhand.maintenance.message=The service is temporarily unavailable.
+      - pangolin.client-resources.dockhand.maintenance.enabled=true
+      - pangolin.client-resources.dockhand.maintenance.type=automatic
+      - pangolin.client-resources.dockhand.maintenance.title=Maintenance in progress
+      - pangolin.client-resources.dockhand.maintenance.message=The service is temporarily unavailable.
 
       - "homepage.group=Platform"
       - "homepage.name=Dockhand"
       - "homepage.icon=https://dockhand.pro/images/dockhand-logo.svg"
-      - "homepage.href=https://dockhand.${HOST:?Missing HOST}"
+      - "homepage.href=https://dockhand.private"
       - "homepage.description=Modern Docker management for everyone"
 
 networks:
