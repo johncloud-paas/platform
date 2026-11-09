@@ -14,6 +14,15 @@ services:
     restart: unless-stopped
     environment:
       - HOMEPAGE_ALLOWED_HOSTS=home.$HOST,homepage-homepage-1:3000
+      - HOMEPAGE_AUTH_ENABLED=true
+      - HOMEPAGE_AUTH_SECRET=${HOMEPAGE_AUTH_SECRET:?Missing HOMEPAGE_AUTH_SECRET environment variable}
+      - HOMEPAGE_EXTERNAL_URL=https://home.$HOST
+      - HOMEPAGE_OIDC_ISSUER=${HOMEPAGE_OIDC_ISSUER:?Missing HOMEPAGE_OIDC_ISSUER environment variable}
+      - HOMEPAGE_OIDC_CLIENT_ID=${HOMEPAGE_OIDC_CLIENT_ID:?Missing HOMEPAGE_OIDC_CLIENT_ID environment variable}
+      - HOMEPAGE_OIDC_CLIENT_SECRET=${HOMEPAGE_OIDC_CLIENT_SECRET:?Missing HOMEPAGE_OIDC_CLIENT_SECRET environment variable}
+      - HOMEPAGE_OIDC_NAME=${HOMEPAGE_OIDC_NAME:?Missing HOMEPAGE_OIDC_NAME environment variable} # (display name)
+      - HOMEPAGE_OIDC_SCOPE=${HOMEPAGE_OIDC_SCOPE:-openid email profile} # (defaults to openid email profile)
+      - HOMEPAGE_OIDC_AUTO_LOGIN=${HOMEPAGE_OIDC_AUTO_LOGIN:-true}
     depends_on:
       provision-config:
         condition: service_completed_successfully
@@ -33,8 +42,6 @@ services:
       - pangolin.public-resources.homepage.ssl=true
       - pangolin.public-resources.homepage.targets[0].method=http
       - pangolin.public-resources.homepage.targets[0].port=3000
-      - pangolin.public-resources.homepage.auth.sso-enabled=true
-      - pangolin.public-resources.homepage.auth.sso-roles[0]=Member
       
       # - pangolin.public-resources.homepage.targets[0].healthcheck.enabled=true
       # - pangolin.public-resources.homepage.targets[0].healthcheck.hostname=homepage-homepage-1

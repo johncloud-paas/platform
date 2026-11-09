@@ -1,0 +1,22 @@
+# CrowdSec local whitelist — IPs/CIDRs that are never banned.
+# Rendered by install-host-security.sh into
+# /etc/crowdsec/parsers/s02-enrich/99-local-whitelist.yaml
+# via envsubst (substitutes $PUBLIC_IP_ADDRESS).
+#
+# Mirrors HOME_NET from suricata.template.yaml: public IP, all RFC1918 ranges,
+# and the WireGuard/Tailscale nets in use on this node.
+name: crowdsecurity/whitelists
+description: "JohnCloud local network whitelist"
+whitelist:
+  reason: "home network"
+  ip:
+    - "127.0.0.1"
+    - "::1"
+    - "${PUBLIC_IP_ADDRESS}"
+  cidr:
+    - "10.0.0.0/8"
+    - "172.16.0.0/12"
+    - "192.168.0.0/16"
+    - "173.16.238.0/24"
+    - "11.16.238.0/24"
+    - "2a02:c207:2337:7562::/64"

@@ -113,6 +113,12 @@ services:
       - pangolin.public-resources.traefik-dashboard.auth.sso-enabled=true
       - pangolin.public-resources.traefik-dashboard.auth.sso-roles[0]=Member
 
+      # - pangolin.client-resources.traefik-dashboard.name=traefik-dashboard
+      # - pangolin.client-resources.traefik-dashboard.tcp-ports=80
+      # - pangolin.client-resources.traefik-dashboard.alias=traefik.private
+      # - pangolin.client-resources.traefik-dashboard.auth.sso-enabled=true
+      # - pangolin.client-resources.traefik-dashboard.auth.sso-roles[0]=Member
+
   newt:
     image: fosrl/newt:1.19
     restart: unless-stopped
@@ -191,6 +197,10 @@ services:
       - pangolin.public-resources.dockhand.ssl=true
       - pangolin.public-resources.dockhand.targets[0].method=http
       - pangolin.public-resources.dockhand.targets[0].port=3000
+
+      # - pangolin.client-resources.dockhand.name=dockhand
+      # - pangolin.client-resources.dockhand.tcp-ports=3000
+      # - pangolin.client-resources.dockhand.alias=dockhand.private
 
       - pangolin.public-resources.dockhand.targets[0].healthcheck.enabled=true
       - pangolin.public-resources.dockhand.targets[0].healthcheck.hostname=core-dockhand-1
