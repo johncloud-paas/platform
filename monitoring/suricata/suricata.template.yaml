@@ -1,9 +1,10 @@
 %YAML 1.1
 ---
 # Suricata IDS config for this node (af-packet, passive). See Monitoring.md "Suricata Setup".
-# Capture interfaces are supplied on the command line by entrypoint.sh (uplink +
-# every active Docker bridge), so the af-packet block below only needs the
-# `default` stanza that tunes every -i interface.
+# Capture interfaces are discovered at service start by /usr/local/sbin/suricata-configure
+# (installed by scripts/install-host-security.sh), which appends per-interface af-packet
+# stanzas with unique cluster-ids to this template. The af-packet block below only needs
+# the `default` stanza that supplies shared tuning for every interface.
 
 # ---- Address groups --------------------------------------------------------
 vars:
@@ -61,8 +62,8 @@ outputs:
       filetype: regular
       filename: eve.json
       types:
-        # Alert-only to cut serialization CPU/IO. Fail2ban only needs src_ip +
-        # severity from the alert event (see fail2ban/filter.d/suricata.conf).
+        # Alert-only to cut serialization CPU/IO. CrowdSec's suricata parser only
+        # needs event_type, src_ip, and alert.severity from the alert event.
         # App-layer parsers stay enabled below so rules still match; we just
         # don't log the http/dns/tls/flow/anomaly records (nor tagged-packets).
         - alert:

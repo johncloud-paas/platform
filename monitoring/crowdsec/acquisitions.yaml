@@ -1,0 +1,21 @@
+# CrowdSec acquisitions — log sources the agent tails.
+# Rendered by install-host-security.sh into /etc/crowdsec/acquis.d/johncloud.yaml
+# via envsubst (substitutes $TRAEFIK_LOG_DIR).
+
+# Suricata alerts (severity-1 → ban via crowdsecurity/suricata scenarios)
+- filename: /var/log/suricata/eve.json
+  labels:
+    type: suricata
+
+# Traefik access log (HTTP abuse signals: 4xx probing, bad user-agents)
+# $TRAEFIK_LOG_DIR is the host path to the core stack's Traefik log directory
+# (e.g. /path/to/core/pangolin/traefik/logs). Set TRAEFIK_LOG_DIR in .env.
+- filename: ${TRAEFIK_LOG_DIR}/access.log
+  labels:
+    type: traefik
+
+# Host sshd (brute force → crowdsecurity/sshd scenarios)
+- filenames:
+  - /var/log/auth.log
+  labels:
+    type: syslog

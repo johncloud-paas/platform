@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# Test harness for the Suricata detection + Fail2ban ban pipeline.
+# Test harness for the Suricata detection + CrowdSec ban pipeline.
 #
 #   ./tests/run.sh          offline suite only (safe, no root, deterministic)
-#   ./tests/run.sh --live   also run the live end-to-end ban test (root + stack up)
+#   ./tests/run.sh --live   also run the live end-to-end ban test (root + services up)
 #
 # Offline tests always run. The live test mutates the host firewall and is gated
-# behind --live plus a pre-flight check (root, suricata container, fail2ban daemon).
+# behind --live plus a pre-flight check (root, suricata.service, crowdsec.service,
+# crowdsec-firewall-bouncer.service).
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-MON_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 LIVE=0
 for arg in "$@"; do
@@ -28,28 +28,27 @@ run_script() {
   bash "$1" || FAILED=$((FAILED + 1))
 }
 
-# --- offline suite (always) ---------------------------------------------------
+# --- offline suite (always) --------------------------------------------------
 run_script "$SCRIPT_DIR/offline/test_config_sanity.sh"
 run_script "$SCRIPT_DIR/offline/test_filter_regex.sh"
 run_script "$SCRIPT_DIR/offline/test_suricata_rules.sh"
 
-# --- live suite (opt-in) ------------------------------------------------------
+# --- live suite (opt-in) -----------------------------------------------------
 echo
 if [ "$LIVE" -eq 1 ]; then
   reason=""
   [ "$(id -u)" -eq 0 ] || reason="must run as root (sudo)"
-  if [ -z "$reason" ] && ! command -v docker >/dev/null 2>&1; then reason="docker not found"; fi
-  if [ -z "$reason" ] && ! docker ps --format '{{.Names}}' 2>/dev/null | grep -qx suricata; then
-    reason="suricata container is not running"
+  if [ -z "$reason" ] && ! systemctl is-active --quiet suricata 2>/dev/null; then
+    reason="suricata.service is not running"
   fi
-  if [ -z "$reason" ] && ! command -v fail2ban-client >/dev/null 2>&1; then
-    reason="fail2ban-client not found"
+  if [ -z "$reason" ] && ! command -v cscli >/dev/null 2>&1; then
+    reason="cscli not found (CrowdSec not installed)"
   fi
-  if [ -z "$reason" ] && ! fail2ban-client ping >/dev/null 2>&1; then
-    reason="fail2ban daemon not responding"
+  if [ -z "$reason" ] && ! systemctl is-active --quiet crowdsec 2>/dev/null; then
+    reason="crowdsec.service is not running"
   fi
-  if [ -z "$reason" ] && ! fail2ban-client status suricata >/dev/null 2>&1; then
-    reason="suricata jail not enabled in fail2ban"
+  if [ -z "$reason" ] && ! systemctl is-active --quiet crowdsec-firewall-bouncer 2>/dev/null; then
+    reason="crowdsec-firewall-bouncer.service is not running"
   fi
 
   if [ -n "$reason" ]; then

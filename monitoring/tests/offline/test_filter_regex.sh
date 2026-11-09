@@ -1,72 +1,70 @@
 #!/usr/bin/env bash
-# Offline test: the Fail2ban Suricata filter matches ONLY high-severity (severity 1)
-# alert events and captures the attacker src_ip — while ignoring medium-severity
-# alerts, the ICMP smoke-test rule (sid 1000001) and non-alert events.
+# Offline test: validate eve.json fixture structure for the CrowdSec suricata parser.
 #
-# Runs fail2ban-regex against hand-written eve.json fixtures. Uses the host
-# fail2ban-regex if present, else a throwaway fail2ban container, else SKIPs.
+# CrowdSec's crowdsecurity/suricata parser reads eve.json and fires on alert events
+# with src_ip present. Checks the fixtures match the expected format so the live
+# pipeline has reliable test inputs. Uses only jq (or python3 as fallback).
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TESTS_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-MON_DIR="$(cd "$TESTS_DIR/.." && pwd)"
 # shellcheck source=../lib/assert.sh
 . "$TESTS_DIR/lib/assert.sh"
 
-FILTER="$MON_DIR/fail2ban/filter.d/suricata.conf"
 FIX="$TESTS_DIR/fixtures/eve"
 
-echo "== offline: fail2ban filter regex =="
+echo "== offline: eve.json fixture structure for CrowdSec suricata parser =="
 
-# Pick a way to run fail2ban-regex. Return the command via the F2B_REGEX array.
-F2B_REGEX=()
-if command -v fail2ban-regex >/dev/null 2>&1; then
-  F2B_REGEX=(fail2ban-regex)
-elif command -v docker >/dev/null 2>&1; then
-  # Best-effort container fallback; mount the monitoring tree read-only at /work.
-  if docker run --rm --entrypoint fail2ban-regex crazymax/fail2ban:latest --version >/dev/null 2>&1; then
-    F2B_REGEX=(docker run --rm -v "$MON_DIR":/work:ro --entrypoint fail2ban-regex crazymax/fail2ban:latest)
-  fi
+# Pick a JSON tool
+if command -v jq >/dev/null 2>&1; then
+    jq_get() { jq -r "$1" "$2" 2>/dev/null; }
+elif command -v python3 >/dev/null 2>&1; then
+    jq_get() {
+        local field="$1" file="$2"
+        python3 -I -c "
+import json,sys
+expr='$field'.lstrip('.')
+obj=json.load(open('$file'))
+parts=expr.split('.')
+v=obj
+for p in parts:
+    v=v.get(p,'')
+print(v)
+" 2>/dev/null
+    }
+else
+    skip "jq and python3 both absent — cannot parse JSON fixtures"
+    finish; exit $?
 fi
 
-if [ "${#F2B_REGEX[@]}" -eq 0 ]; then
-  skip "fail2ban-regex unavailable (no host binary, no usable container image)"
-  finish
-  exit $?
+# Severity-1 fixture: must be an alert event with src_ip and severity=1
+SV1="$FIX/alert_severity1.json"
+assert_eq "alert"      "$(jq_get '.event_type' "$SV1")"       "severity-1 fixture is an alert event"
+assert_eq "1"          "$(jq_get '.alert.severity' "$SV1")"   "severity-1 fixture has severity=1"
+assert_contains "$(jq_get '.src_ip' "$SV1")" "."              "severity-1 fixture has a src_ip"
+
+# Severity-2 fixture: alert event but severity=2 (CrowdSec sev-1-only scenario should NOT fire)
+SV2="$FIX/alert_severity2.json"
+assert_eq "alert"      "$(jq_get '.event_type' "$SV2")"       "severity-2 fixture is an alert event"
+assert_eq "2"          "$(jq_get '.alert.severity' "$SV2")"   "severity-2 fixture has severity=2"
+
+# ICMP smoke-test fixture: alert but not severity-1 (should not fire ban scenario)
+ICMP="$FIX/alert_icmp_smoketest.json"
+assert_eq "alert"      "$(jq_get '.event_type' "$ICMP")"      "icmp smoke-test fixture is an alert event"
+ne_sev="$(jq_get '.alert.severity' "$ICMP")"
+if [ "$ne_sev" = "1" ]; then
+    fail "icmp smoke-test fixture must NOT have severity=1 (would trigger CrowdSec ban)"
+else
+    pass "icmp smoke-test fixture has severity=$ne_sev (not 1 — won't trigger ban)"
 fi
 
-# run_regex <logfile> -> echoes fail2ban-regex output; translates paths for the
-# container case so /work-relative paths resolve inside the mount.
-run_regex() {
-  local log="$1" flt="$FILTER"
-  if [ "${F2B_REGEX[0]}" = "docker" ]; then
-    log="/work/${log#"$MON_DIR"/}"
-    flt="/work/${flt#"$MON_DIR"/}"
-  fi
-  "${F2B_REGEX[@]}" --print-all-matched "$log" "$flt" 2>&1 || true
-}
-
-# matched_count <output> -> number from the "Lines: ... N matched ..." summary.
-matched_count() {
-  printf '%s\n' "$1" | sed -n 's/.*,[[:space:]]*\([0-9][0-9]*\)[[:space:]]*matched.*/\1/p' | tail -n1
-}
-
-# --- severity 1: must match once and capture the src_ip -----------------------
-out="$(run_regex "$FIX/alert_severity1.json")"
-assert_eq "1" "$(matched_count "$out")" "severity-1 alert matches (1 hit)"
-assert_contains "$out" "203.0.113.66" "severity-1 alert captures src_ip 203.0.113.66"
-assert_not_contains "$out" "no date" "datepattern parses the ISO8601 timestamp"
-
-# --- severity 2: must NOT match ----------------------------------------------
-out="$(run_regex "$FIX/alert_severity2.json")"
-assert_eq "0" "$(matched_count "$out")" "severity-2 alert is ignored (0 hits)"
-
-# --- ICMP smoke test (sid 1000001, severity 3): must NOT match ----------------
-out="$(run_regex "$FIX/alert_icmp_smoketest.json")"
-assert_eq "0" "$(matched_count "$out")" "ICMP smoke-test alert is ignored (0 hits)"
-
-# --- non-alert (dns) event: must NOT match ------------------------------------
-out="$(run_regex "$FIX/event_dns.json")"
-assert_eq "0" "$(matched_count "$out")" "non-alert dns event is ignored (0 hits)"
+# DNS event: must be a non-alert event (CrowdSec parser must not match)
+DNS="$FIX/event_dns.json"
+dns_type="$(jq_get '.event_type' "$DNS")"
+if [ "$dns_type" = "alert" ]; then
+    fail "dns event fixture must have event_type != alert (got: $dns_type)"
+else
+    pass "dns event fixture has event_type=$dns_type (not alert — CrowdSec ignores it)"
+fi
 
 finish

@@ -34,6 +34,6 @@ test_rules() {
 }
 
 test_rules "local.rules"       "suricata/local.rules"
-test_rules "fail2ban-e2e.rules" "tests/live/fail2ban-e2e.rules"
+test_rules "suricata-e2e.rules" "tests/live/suricata-e2e.rules"
 
 finish
