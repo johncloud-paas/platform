@@ -60,6 +60,8 @@ if [ -f "$SERVICE_DIR/.env" ]; then
   TRAEFIK_NETWORK="$(grep -E '^TRAEFIK_NETWORK=' "$SERVICE_DIR/.env" | tail -n1 | cut -d= -f2-)"
 fi
 
+log "Entering stack directory $SERVICE_DIR"
+
 (
   cd "$SERVICE_DIR" &&
 

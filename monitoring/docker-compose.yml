@@ -19,11 +19,10 @@ services:
     volumes:
       - ./scripts:/scripts:ro
 
-  # NOTE: Suricata is NOT here. Sniffing the physical uplink needs CAP_NET_RAW in
-  # the init user namespace, which rootless Docker cannot grant (socket() → EPERM).
-  # The sensor runs under the rootful daemon from suricata/docker-compose.yml;
-  # setup_before_up.sh brings it up. It writes eve.json to the shared logs dir that
-  # host Fail2ban tails to drive the ban layer.
+  # NOTE: the host security layer (Fail2ban) is NOT here. It runs as a native
+  # systemd service on the host, provisioned by scripts/install-host-security.sh,
+  # and reads the journal (host + all containers), the Traefik access log, and
+  # /var/log/auth.log to ban offenders in the host firewall. See README.md.
   pdc:
     # https://grafana.com/docs/grafana-cloud/connect-externally-hosted/private-data-source-connect/#private-data-source-connect-pdc-concepts
     image: grafana/pdc-agent:latest
@@ -51,7 +50,7 @@ services:
       - VECTOR_DANGEROUSLY_ALLOW_ENV_VAR_INTERPOLATION=true
     command: ["--config", "/etc/vector/vector.yaml"]
     extra_hosts:
-      - "host.docker.internal:host-gateway"   # reach host CrowdSec metrics endpoint
+      - "host.docker.internal:host-gateway"   # reach host services/exporters from the container
     volumes:
       - ./vector/vector.yaml:/etc/vector/vector.yaml:ro
       - ${XDG_RUNTIME_DIR}/docker.sock:/var/run/docker.sock:ro   # docker_logs source

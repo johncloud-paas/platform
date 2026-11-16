@@ -1,0 +1,61 @@
+# jail.template.local
+#
+# Rendered by scripts/install-host-security.sh into /etc/fail2ban/jail.local
+# (envsubst substitutes the ${...} variables below). Edit THIS template and
+# re-run the installer — never edit the rendered /etc/fail2ban/jail.local.
+
+[DEFAULT]
+bantime  = ${F2B_BANTIME}
+findtime = ${F2B_FINDTIME}
+maxretry = ${F2B_MAXRETRY}
+
+# Never ban ourselves or local networks (mirrors the former Suricata HOME_NET).
+# RFC1918 is included by default; add Tailscale/WireGuard CIDRs via F2B_IGNOREIP.
+ignoreip = 127.0.0.1/8 ::1 ${PUBLIC_IP_ADDRESS} 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 ${F2B_IGNOREIP}
+
+# Read the systemd journal by default (host + all containers via log-driver: journald).
+backend = systemd
+
+# Install bans into nftables. Switch to `ufw` or `firewallcmd-rich-rules` if you
+# run ufw/firewalld instead (see README → Firewall advice).
+banaction          = nftables-multiport
+banaction_allports = nftables-allports
+
+# --- Host SSH --------------------------------------------------------------
+[sshd]
+enabled = true
+backend = systemd
+# To tail the file instead of the journal: backend = auto / logpath = /var/log/auth.log
+
+# --- Traefik access log (HTTP abuse) --------------------------------------
+[traefik-4xx]
+enabled  = true
+backend  = auto
+logpath  = ${TRAEFIK_LOG_DIR}/access.log
+filter   = traefik-access[mode=4xx]
+findtime = 2m
+maxretry = 20
+
+[traefik-botsearch]
+enabled  = true
+backend  = auto
+logpath  = ${TRAEFIK_LOG_DIR}/access.log
+filter   = traefik-access[mode=bot]
+maxretry = 2
+
+# --- All Docker containers (via journald) ---------------------------------
+[docker-apps]
+enabled = true
+backend = systemd
+# Scans the journal (which now includes every container's stdout/stderr) and
+# lets the docker-apps filter pick out auth failures. Narrow to one app with:
+#   journalmatch = CONTAINER_NAME=authentik-server
+filter  = docker-apps
+
+# --- Repeat offenders ------------------------------------------------------
+[recidive]
+enabled  = true
+logpath  = /var/log/fail2ban.log
+bantime  = 1w
+findtime = 1d
+maxretry = 5
