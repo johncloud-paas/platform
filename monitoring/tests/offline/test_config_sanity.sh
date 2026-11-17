@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Offline test: validate CrowdSec and Suricata config templates in the repo.
-# Checks structure and required fields without touching a running system.
+# Offline test: validate the committed Fail2ban config (jail template, filters),
+# the host-security installer, and sample.env. Structure-only — touches no running
+# system. Reads the committed files, never a rendered /etc/fail2ban copy.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -9,56 +10,68 @@ MON_DIR="$(cd "$TESTS_DIR/.." && pwd)"
 # shellcheck source=../lib/assert.sh
 . "$TESTS_DIR/lib/assert.sh"
 
-echo "== offline: config sanity =="
+echo "== offline: Fail2ban config sanity =="
 
-# --- Suricata template -------------------------------------------------------
-TEMPLATE="$MON_DIR/suricata/suricata.template.yaml"
-assert_contains "$(cat "$TEMPLATE")" 'PUBLIC_IP_ADDRESS'   "suricata template has PUBLIC_IP_ADDRESS placeholder"
-assert_contains "$(cat "$TEMPLATE")" 'af-packet'           "suricata template has af-packet capture block"
-assert_contains "$(cat "$TEMPLATE")" 'eve-log'             "suricata template enables eve-log output"
-assert_contains "$(cat "$TEMPLATE")" 'cluster-id'          "suricata template has default cluster-id stanza"
+# --- jail template ----------------------------------------------------------
+JAIL="$MON_DIR/fail2ban/jail.template.local"
+jail="$(cat "$JAIL")"
 
-# suricata.template.yaml must NOT have hard-coded interface names (the configure
-# script injects them at runtime)
-if grep -qE '^  - interface: (eth|ens|enp|br-)' "$TEMPLATE"; then
-    fail "suricata template must not contain hard-coded interface names (configure script injects them)"
-else
-    pass "suricata template has no hard-coded capture interfaces"
-fi
+for j in sshd traefik-4xx traefik-botsearch docker-apps recidive; do
+    assert_contains "$jail" "[$j]" "jail template defines [$j]"
+done
 
-# --- CrowdSec acquisitions template ------------------------------------------
-ACQUIS="$MON_DIR/crowdsec/acquisitions.yaml"
-assert_contains "$(cat "$ACQUIS")" 'type: suricata'  "acquisitions template has suricata source"
-assert_contains "$(cat "$ACQUIS")" 'type: traefik'   "acquisitions template has traefik source"
-assert_contains "$(cat "$ACQUIS")" 'type: syslog'    "acquisitions template has sshd/syslog source"
-assert_contains "$(cat "$ACQUIS")" 'TRAEFIK_LOG_DIR' "acquisitions template has TRAEFIK_LOG_DIR placeholder"
-assert_contains "$(cat "$ACQUIS")" 'eve.json'        "acquisitions template points at Suricata eve.json"
+# The enforcement jails must be explicitly enabled.
+assert_match "$JAIL" '^\[sshd\]'          "sshd jail present"
+assert_contains "$jail" "enabled = true"  "jail template enables jails"
 
-# --- CrowdSec whitelist template ---------------------------------------------
-WHITELIST="$MON_DIR/crowdsec/whitelist.yaml"
-assert_contains "$(cat "$WHITELIST")" 'PUBLIC_IP_ADDRESS'  "whitelist template has PUBLIC_IP_ADDRESS placeholder"
-assert_contains "$(cat "$WHITELIST")" '10.0.0.0/8'         "whitelist template covers RFC1918 10/8"
-assert_contains "$(cat "$WHITELIST")" '172.16.0.0/12'      "whitelist template covers RFC1918 172.16/12"
-assert_contains "$(cat "$WHITELIST")" '192.168.0.0/16'     "whitelist template covers RFC1918 192.168/16"
+# Bans go into nftables (not iptables / CrowdSec bouncer).
+assert_contains "$jail" "banaction" "jail template sets a banaction"
+assert_match "$JAIL" 'banaction[[:space:]]*=[[:space:]]*nftables' \
+    "banaction uses nftables"
 
-# --- Install script ----------------------------------------------------------
+# ignoreip must cover loopback, RFC1918, and the public IP placeholder.
+assert_contains "$jail" "127.0.0.1/8"          "ignoreip covers loopback"
+assert_contains "$jail" "10.0.0.0/8"           "ignoreip covers RFC1918 10/8"
+assert_contains "$jail" "172.16.0.0/12"        "ignoreip covers RFC1918 172.16/12"
+assert_contains "$jail" "192.168.0.0/16"       "ignoreip covers RFC1918 192.168/16"
+assert_contains "$jail" '${PUBLIC_IP_ADDRESS}' "ignoreip has PUBLIC_IP_ADDRESS placeholder"
+
+# envsubst placeholders the installer substitutes.
+for v in '${F2B_BANTIME}' '${F2B_FINDTIME}' '${F2B_MAXRETRY}' '${TRAEFIK_LOG_DIR}'; do
+    assert_contains "$jail" "$v" "jail template has $v placeholder"
+done
+
+# --- filters ----------------------------------------------------------------
+TRAEFIK_FILTER="$MON_DIR/fail2ban/filter.d/traefik-access.conf"
+DOCKER_FILTER="$MON_DIR/fail2ban/filter.d/docker-apps.conf"
+assert_contains "$(cat "$TRAEFIK_FILTER")" "<HOST>"    "traefik filter captures <HOST>"
+assert_contains "$(cat "$TRAEFIK_FILTER")" "mdre-4xx"  "traefik filter has 4xx mode regex"
+assert_contains "$(cat "$TRAEFIK_FILTER")" "mdre-bot"  "traefik filter has bot mode regex"
+assert_contains "$(cat "$DOCKER_FILTER")"  "failregex" "docker-apps filter declares failregex"
+assert_contains "$(cat "$DOCKER_FILTER")"  "<HOST>"    "docker-apps filter captures <HOST>"
+
+# --- installer --------------------------------------------------------------
 INSTALL="$MON_DIR/scripts/install-host-security.sh"
-assert_contains "$(cat "$INSTALL")" 'suricata-configure'              "install script writes suricata-configure"
-assert_contains "$(cat "$INSTALL")" 'cscli collections install'       "install script installs CrowdSec collections"
-assert_contains "$(cat "$INSTALL")" 'crowdsecurity/suricata'          "install script installs suricata collection"
-assert_contains "$(cat "$INSTALL")" 'crowdsec-firewall-bouncer'       "install script configures the firewall bouncer"
-assert_contains "$(cat "$INSTALL")" 'crowdsec-firewall-bouncer.yaml'  "install script writes bouncer config"
-assert_contains "$(cat "$INSTALL")" 'suricata-update'                 "install script fetches ET Open rules"
+install="$(cat "$INSTALL")"
+assert_contains "$install" "fail2ban"                "installer installs fail2ban"
+assert_contains "$install" "envsubst"                "installer renders jail.local with envsubst"
+assert_contains "$install" "jail.local"              "installer writes /etc/fail2ban/jail.local"
+assert_contains "$install" "filter.d"                "installer copies custom filters"
+assert_contains "$install" "systemctl enable --now fail2ban" "installer enables the service"
+assert_contains "$install" "remove_legacy_ids"       "installer purges legacy Suricata/CrowdSec/Snort"
 
-# --- cscli sanity (only if CrowdSec is installed on this machine) -----------
-if command -v cscli >/dev/null 2>&1; then
-    if cscli hub update >/dev/null 2>&1 || cscli collections list >/dev/null 2>&1; then
-        pass "cscli: CrowdSec installed and responding"
-    else
-        skip "cscli: installed but hub unreachable (CI/offline environment)"
-    fi
+# --- sample.env -------------------------------------------------------------
+ENVSAMPLE="$MON_DIR/sample.env"
+envsample="$(cat "$ENVSAMPLE")"
+for v in F2B_BANTIME F2B_FINDTIME F2B_MAXRETRY PUBLIC_IP_ADDRESS TRAEFIK_LOG_DIR; do
+    assert_contains "$envsample" "$v" "sample.env documents $v"
+done
+
+# --- runtime sanity (only if fail2ban is installed here) --------------------
+if command -v fail2ban-client >/dev/null 2>&1; then
+    pass "fail2ban-client present ($(fail2ban-client version 2>/dev/null | head -n1))"
 else
-    skip "cscli absent — skipping CrowdSec runtime checks"
+    skip "fail2ban-client absent — skipping runtime checks"
 fi
 
 finish

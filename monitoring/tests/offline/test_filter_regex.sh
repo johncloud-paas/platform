@@ -1,70 +1,79 @@
 #!/usr/bin/env bash
-# Offline test: validate eve.json fixture structure for the CrowdSec suricata parser.
-#
-# CrowdSec's crowdsecurity/suricata parser reads eve.json and fires on alert events
-# with src_ip present. Checks the fixtures match the expected format so the live
-# pipeline has reliable test inputs. Uses only jq (or python3 as fallback).
+# Offline test: exercise the committed Fail2ban filters with `fail2ban-regex`
+# against sample log fixtures — the deterministic "does detection fire?" check
+# (the equivalent of a rules dry-run). Malicious fixtures must match; benign
+# fixtures must not. SKIPs green if fail2ban-regex is not installed.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TESTS_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+MON_DIR="$(cd "$TESTS_DIR/.." && pwd)"
 # shellcheck source=../lib/assert.sh
 . "$TESTS_DIR/lib/assert.sh"
 
-FIX="$TESTS_DIR/fixtures/eve"
+FIX="$TESTS_DIR/fixtures"
+FILTERS="$MON_DIR/fail2ban/filter.d"
 
-echo "== offline: eve.json fixture structure for CrowdSec suricata parser =="
+echo "== offline: Fail2ban filter detection (fail2ban-regex) =="
 
-# Pick a JSON tool
-if command -v jq >/dev/null 2>&1; then
-    jq_get() { jq -r "$1" "$2" 2>/dev/null; }
-elif command -v python3 >/dev/null 2>&1; then
-    jq_get() {
-        local field="$1" file="$2"
-        python3 -I -c "
-import json,sys
-expr='$field'.lstrip('.')
-obj=json.load(open('$file'))
-parts=expr.split('.')
-v=obj
-for p in parts:
-    v=v.get(p,'')
-print(v)
-" 2>/dev/null
-    }
-else
-    skip "jq and python3 both absent — cannot parse JSON fixtures"
-    finish; exit $?
+if ! command -v fail2ban-regex >/dev/null 2>&1; then
+    skip "fail2ban-regex absent — cannot test filter matching"
+    finish
+    exit $?
 fi
 
-# Severity-1 fixture: must be an alert event with src_ip and severity=1
-SV1="$FIX/alert_severity1.json"
-assert_eq "alert"      "$(jq_get '.event_type' "$SV1")"       "severity-1 fixture is an alert event"
-assert_eq "1"          "$(jq_get '.alert.severity' "$SV1")"   "severity-1 fixture has severity=1"
-assert_contains "$(jq_get '.src_ip' "$SV1")" "."              "severity-1 fixture has a src_ip"
+# matched_count <logfile> <filter[options]> : echo the number of matched lines.
+matched_count() {
+    fail2ban-regex "$1" "$2" 2>/dev/null \
+        | grep -oE '[0-9]+ matched' | grep -oE '^[0-9]+' | head -n1
+}
 
-# Severity-2 fixture: alert event but severity=2 (CrowdSec sev-1-only scenario should NOT fire)
-SV2="$FIX/alert_severity2.json"
-assert_eq "alert"      "$(jq_get '.event_type' "$SV2")"       "severity-2 fixture is an alert event"
-assert_eq "2"          "$(jq_get '.alert.severity' "$SV2")"   "severity-2 fixture has severity=2"
+# assert_matches_at_least <n> <logfile> <filter> <message>
+assert_matches_at_least() {
+    local want="$1" log="$2" filt="$3" msg="$4" got
+    got="$(matched_count "$log" "$filt")"; got="${got:-0}"
+    if [ "$got" -ge "$want" ]; then
+        pass "$msg ($got matched)"
+    else
+        fail "$msg (expected >= $want, got $got)"
+    fi
+}
 
-# ICMP smoke-test fixture: alert but not severity-1 (should not fire ban scenario)
-ICMP="$FIX/alert_icmp_smoketest.json"
-assert_eq "alert"      "$(jq_get '.event_type' "$ICMP")"      "icmp smoke-test fixture is an alert event"
-ne_sev="$(jq_get '.alert.severity' "$ICMP")"
-if [ "$ne_sev" = "1" ]; then
-    fail "icmp smoke-test fixture must NOT have severity=1 (would trigger CrowdSec ban)"
-else
-    pass "icmp smoke-test fixture has severity=$ne_sev (not 1 — won't trigger ban)"
-fi
+# assert_no_match <logfile> <filter> <message>
+assert_no_match() {
+    local log="$1" filt="$2" msg="$3" got
+    got="$(matched_count "$log" "$filt")"; got="${got:-0}"
+    if [ "$got" -eq 0 ]; then
+        pass "$msg (0 matched)"
+    else
+        fail "$msg (expected 0, got $got)"
+    fi
+}
 
-# DNS event: must be a non-alert event (CrowdSec parser must not match)
-DNS="$FIX/event_dns.json"
-dns_type="$(jq_get '.event_type' "$DNS")"
-if [ "$dns_type" = "alert" ]; then
-    fail "dns event fixture must have event_type != alert (got: $dns_type)"
-else
-    pass "dns event fixture has event_type=$dns_type (not alert — CrowdSec ignores it)"
-fi
+# --- Traefik access filter --------------------------------------------------
+assert_matches_at_least 4 "$FIX/traefik-access.log" \
+    "$FILTERS/traefik-access.conf[mode=4xx]" \
+    "traefik 4xx mode detects repeated client errors"
+
+assert_matches_at_least 1 "$FIX/traefik-access.log" \
+    "$FILTERS/traefik-access.conf[mode=bot]" \
+    "traefik bot mode detects scanner User-Agents (sqlmap/nikto)"
+
+assert_no_match "$FIX/traefik-benign.log" \
+    "$FILTERS/traefik-access.conf[mode=4xx]" \
+    "traefik 4xx mode ignores benign 2xx/3xx traffic"
+
+assert_no_match "$FIX/traefik-benign.log" \
+    "$FILTERS/traefik-access.conf[mode=bot]" \
+    "traefik bot mode ignores normal User-Agents"
+
+# --- Docker apps filter -----------------------------------------------------
+assert_matches_at_least 4 "$FIX/docker-apps.log" \
+    "$FILTERS/docker-apps.conf" \
+    "docker-apps filter detects auth failures"
+
+assert_no_match "$FIX/docker-benign.log" \
+    "$FILTERS/docker-apps.conf" \
+    "docker-apps filter ignores normal app logs"
 
 finish
