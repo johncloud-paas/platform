@@ -25,7 +25,7 @@ Four root scripts operate on a stack **directory** (not a name):
 
 ## Config is generated, not committed
 
-`setup_before_up.sh` sources the stack's `.env` and renders `*.template.*` files with `envsubst` into their real counterparts, then copies them under `$JOHNCLOUD_ROOT`. **The rendered outputs are gitignored** (e.g. `core/traefik/*_config.yml`, `monitoring/suricata/suricata.yaml`, `monitoring/fail2ban/jail.d/suricata.conf`) — edit the `*.template.*` source, never the rendered file. `$JOHNCLOUD_ROOT` (from `.env`) is the persistent data root **outside the repo**; stacks write all state there.
+`setup_before_up.sh` sources the stack's `.env` and renders `*.template.*` files with `envsubst` into their real counterparts, then copies them under `$JOHNCLOUD_ROOT`. **The rendered outputs are gitignored** (e.g. `core/traefik/*_config.yml` from `*_config.template.yml`, `core/pangolin/config.yml` from `config.template.yml`) — edit the `*.template.*` source, never the rendered file. The host Fail2ban config is the same idea but lands outside the repo: `monitoring/scripts/install-host-security.sh` renders `monitoring/fail2ban/jail.template.local` into `/etc/fail2ban/jail.local`. `$JOHNCLOUD_ROOT` (from `.env`) is the persistent data root **outside the repo**; stacks write all state there.
 
 ## Service exposure is label-driven
 
