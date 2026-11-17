@@ -56,6 +56,7 @@ services:
       - ${XDG_RUNTIME_DIR}/docker.sock:/var/run/docker.sock:ro   # docker_logs source
       - ${JOHNCLOUD_ROOT}/vector:/var/lib/vector                 # sink buffers / state
       - ${JOHNCLOUD_ROOT}/security:/var/log/security:ro          # fail2ban jsonlog events
+      - ${JOHNCLOUD_ROOT}/traefik/logs:/var/log/traefik:ro       # traefik_access source
 
   # Resolves the distinct IPs in security_events to geo/ASN using the GeoLite2 mmdb
   # that core/geoipupdate maintains, upserting into the geoip_lookup table (joined to

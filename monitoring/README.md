@@ -66,9 +66,10 @@ entirely around **Fail2ban** running on the host (no Docker involved for the sec
 │   jsonlog action → $JOHNCLOUD_ROOT/security/fail2ban-events.jsonl       │
 │                                   │                                      │
 │  Vector (rootless monitoring stack) — observability, NOT blocking       │
-│   docker_logs (socket) → PostgreSQL logs                                │
+│   docker_logs + traefik access.log → PostgreSQL logs                    │
 │   prometheus_scrape    → PostgreSQL metrics                             │
 │   file (events.jsonl)  → PostgreSQL security_events  ◄──────────────────┤
+│        trigger: security_events.id → logs.linked_event (ban ↔ lines)    │
 └──────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -473,15 +474,30 @@ For a single node with fewer than ~50 containers, telemetry is kept in plain Pos
 - **Container logs** — the `docker_logs` source reads every container's stdout/stderr over the
   Docker socket (independent of the journald change above, which is for Fail2ban), attaching
   `container_name`, `image`, `stream`, `message`, `timestamp`. A `remap` transform derives
-  `severity`, defaulting to `unknown`.
+  `severity` (defaulting to `unknown`) and best-effort extracts `client_ip` from the message.
+- **Traefik access log** — a `file` source tails `/var/log/traefik/access.log` (the host
+  `$JOHNCLOUD_ROOT/traefik/logs`, mounted read-only); a `remap` maps each JSON line to the `logs`
+  columns with `container = traefik`, `client_ip = ClientHost`, and `severity` from the HTTP
+  status. Ingested so bans from the `traefik-4xx`/`traefik-botsearch` jails have log rows to link
+  to (see **Linking bans to the logs that triggered them**).
 - **Host + container metrics** — `prometheus_scrape` scrapes `node-exporter:9100`,
   `cadvisor:8080`, and `speedtest:9798`.
 - **Security events** — a `file` source tails `$JOHNCLOUD_ROOT/security/fail2ban-events.jsonl`
   (mounted read-only as `/var/log/security/`), where the host Fail2ban `jsonlog` action appends
-  one JSON line per ban/unban. A `remap` parses the line back into columns.
+  one JSON line per ban/unban. A `remap` parses the line back into columns and stamps a
+  `uuid_v4()` `id` (so `logs.linked_event` can point at it).
 
-All three are written by Vector's native **`postgres` sink** (one sink per table) into the
-`monitoring` database on the shared `core` Postgres server (`core-db-1:5432`).
+Both log sources are written by Vector's native **`postgres` sink** (`docker_logs` and
+`traefik_access` share the `logs` sink) into the `monitoring` database on the shared `core`
+Postgres server (`core-db-1:5432`).
+
+> **Why there is no SSH-log source.** Linking `sshd` bans to their raw log lines would mean
+> Vector reading the host journal (or `/var/log/auth.log`). Both are mode `0640` owned by
+> `root`/`syslog`, and Vector runs **rootless** — those owners/groups aren't mapped into its user
+> namespace, so the files are unreadable regardless of group membership (the same reason Fail2ban
+> reads the journal **as root on the host**, not via Vector). This costs only the raw sshd *line
+> text*: an SSH ban's **client IP, geo/ASN, and failure counts are still in `security_events` /
+> `security_events_geo`**, because those come from the Fail2ban `jsonlog` action, not Vector.
 
 **Where the security events come from.** Fail2ban runs on the host as root; Vector runs rootless
 and cannot cleanly read the host journal, so the event is emitted by Fail2ban rather than scraped
@@ -501,19 +517,56 @@ Applied by the `initial-config` service (provisions the `monitoring` DB/role, th
 schema so Vector can INSERT):
 
 - **`logs`** — `timestamp timestamptz`, `container text`, `severity text`, `message text`
-  (all `NOT NULL`), plus nullable `stream`, `image`, `labels jsonb`. Indexed on `timestamp`,
-  `(container, timestamp)`, and `severity`.
+  (all `NOT NULL`), plus nullable `stream`, `image`, `labels jsonb`, `client_ip text` (remote
+  client, best-effort from the message / `ClientHost`), and `linked_event uuid` (the
+  `security_events.id` whose ban this line triggered — see below). Indexed on `timestamp`,
+  `(container, timestamp)`, `severity`, `(client_ip, timestamp)`, and `linked_event`. The
+  `client_ip`/`linked_event` columns are added via `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`
+  so existing databases gain them on re-apply (plain `CREATE TABLE IF NOT EXISTS` skips an
+  existing table).
 - **`metrics`** — mirrors Vector's metric-event JSON: `timestamp`, `name`, `namespace`,
   `tags jsonb`, `kind`, `interval_ms`, and one of
   `counter`/`gauge`/`set`/`distribution`/`aggregated_histogram`/`aggregated_summary`/`sketch`.
   The `metric_samples` view flattens counter/gauge to a numeric value.
 - **`security_events`** — Fail2ban ban/unban activity: `timestamp`, `action` (`ban`/`unban`),
   `jail`, `ip` (all `NOT NULL`), plus nullable `failures`, `family`, `port`, `protocol`,
-  `bantime` (populated on ban). Indexed on `timestamp`, `ip`, and `(jail, timestamp)`.
+  `bantime` (populated on ban), and `id uuid` (Vector-emitted `uuid_v4()`, the surrogate key
+  `logs.linked_event` references). Indexed on `timestamp`, `ip`, `(jail, timestamp)`, and a
+  unique index on `id`.
 - **`geoip_lookup`** — geo/ASN per banned IP (`ip` PK, `country_code`, `country_name`, `city`,
   `latitude`, `longitude`, `asn`, `asn_org`, `resolved_at`). **Not** written by Vector — the
   `geoip-sync` service fills it from the GeoLite2 mmdb (see below). The `security_events_geo`
   view left-joins `security_events` to it by `ip` for dashboards.
+
+### Linking bans to the logs that triggered them
+
+Fail2ban records only the offender IP/jail/time, never which log lines matched. The link is
+therefore **reconstructed in the database**: an `AFTER INSERT` trigger on `security_events`
+(`link_security_event()`) back-fills `logs.linked_event` for the log rows that share the ban's
+IP and fall within the jail's `findtime` window before the ban (`traefik-4xx` 120 s, others
+600 s — mirroring `jail.template.local`). The failing lines are inserted seconds before the ban,
+so they are already present when the trigger fires.
+
+This is a pure join between two tables already in the same Postgres, so it runs as a trigger —
+**no Python loader** (unlike `geoip-sync`, which stays Python only because it reads an external
+mmdb file). VRL can't do it either (no runtime/DB lookup). Query the result through the
+**`security_event_log_lines`** view (each ban joined to its log lines), or directly:
+`SELECT * FROM logs WHERE linked_event = '<event-id>'`.
+
+Properties and limits:
+
+- **Heuristic, not exact** — 1-second ban-timestamp granularity and per-jail `findtime` windows;
+  container apps expose the real client IP only if they log `X-Forwarded-For` (otherwise the
+  `message LIKE '%ip%'` fallback is used). Expect occasional over-matching.
+- **One ban per line** — a single `linked_event` column (first-ban-wins via `linked_event IS
+  NULL`); it does not model a line feeding two overlapping-window bans. A join table would, if
+  that ever matters.
+- **`recidive` and unbans are skipped** (recidive bans off Fail2ban's own log, not app lines),
+  and only rows written after the migration carry `id`/`linked_event`.
+- **`sshd` bans have no linked lines** — the raw sshd logs aren't ingested (see *Why there is no
+  SSH-log source* above). The ban, its client IP and geo are still in `security_events` /
+  `security_events_geo`; only the per-line text is absent. In practice linking is useful for
+  `traefik-*` and `docker-apps` (application) bans.
 
 ### Retention
 

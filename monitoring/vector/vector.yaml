@@ -38,6 +38,15 @@ sources:
       - /var/log/security/fail2ban-events.jsonl
     read_from: beginning
 
+  # Traefik JSON access log (bind-mounted read-only from $JOHNCLOUD_ROOT/traefik/logs).
+  # Ingested into `logs` so bans from the traefik-4xx / traefik-botsearch jails have
+  # rows to be linked to — host-fail2ban reads this same file to decide those bans.
+  traefik_access:
+    type: file
+    include:
+      - /var/log/traefik/access.log
+    read_from: beginning
+
 # ---------------------------------------------------------------------------
 # Transforms
 # ---------------------------------------------------------------------------
@@ -50,6 +59,12 @@ transforms:
     source: |
       .container = .container_name
       .labels = .label
+
+      # Best-effort remote client IP from the message (first IPv4/IPv6 token); NULL
+      # when the line carries none. Container apps only expose the real client IP if
+      # configured to log X-Forwarded-For — otherwise this is their internal peer.
+      ipmatch = parse_regex(to_string(.message) ?? "", r'(?P<ip>(?:\d{1,3}\.){3}\d{1,3}|(?:[0-9A-Fa-f]{0,4}:){2,}[0-9A-Fa-f]{0,4})') ?? {}
+      .client_ip = ipmatch.ip
 
       # Best-effort severity from the message text; default "unknown".
       msg = downcase(to_string(.message) ?? "")
@@ -76,6 +91,34 @@ transforms:
     source: |
       . = object!(parse_json!(.message))
       .timestamp = parse_timestamp!(.timestamp, "%Y-%m-%dT%H:%M:%SZ")
+      # Surrogate key for this ban; logs.linked_event points at it. The sink can't use a
+      # DB DEFAULT (jsonb_populate_record bypasses it), so Vector supplies the uuid here.
+      .id = uuid_v4()
+
+  # Shape Traefik JSON access lines to the `logs` columns. The raw line stays in
+  # .message; client_ip comes from ClientHost; severity from the HTTP status.
+  traefik_shape:
+    type: remap
+    inputs:
+      - traefik_access
+    source: |
+      parsed = object(parse_json(.message) ?? {}) ?? {}
+      .container = "traefik"
+      .image = "traefik"
+      .stream = "access"
+      .client_ip = parsed.ClientHost
+
+      status = to_int(parsed.DownstreamStatus) ?? 0
+      sev = "info"
+      if status >= 500 {
+        sev = "error"
+      } else if status >= 400 {
+        sev = "warn"
+      }
+      .severity = sev
+
+      # Prefer the request's own UTC start time; fall back to ingest time.
+      .timestamp = parse_timestamp(to_string(parsed.StartUTC) ?? "", "%Y-%m-%dT%H:%M:%S%.fZ") ?? now()
 
 # ---------------------------------------------------------------------------
 # Sinks — one postgres sink per target table.
@@ -85,6 +128,7 @@ sinks:
     type: postgres
     inputs:
       - logs_shape
+      - traefik_shape
     endpoint: postgresql://monitoring:${MONITORING_DB_PASSWORD}@core-db-1:5432/monitoring
     table: logs
 
