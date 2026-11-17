@@ -25,7 +25,7 @@ banaction_allports = nftables-allports
 # banaction above) AND the log-only `jsonlog` action, which appends a JSON line
 # per ban/unban for Vector to ship into the security_events Postgres table.
 action = %(action_)s
-         jsonlog
+         jsonlog[port="%(port)s", protocol="%(protocol)s"]
 
 # --- Host SSH --------------------------------------------------------------
 [sshd]

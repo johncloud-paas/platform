@@ -5,6 +5,7 @@
 *.ref.yml
 *.mmdb
 *.gz
+__pycache__
 core/pangolin/GeoLite2/
 core/pangolin/config.yml
 core/pangolin/db/
