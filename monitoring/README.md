@@ -510,6 +510,10 @@ schema so Vector can INSERT):
 - **`security_events`** — Fail2ban ban/unban activity: `timestamp`, `action` (`ban`/`unban`),
   `jail`, `ip` (all `NOT NULL`), plus nullable `failures`, `family`, `port`, `protocol`,
   `bantime` (populated on ban). Indexed on `timestamp`, `ip`, and `(jail, timestamp)`.
+- **`geoip_lookup`** — geo/ASN per banned IP (`ip` PK, `country_code`, `country_name`, `city`,
+  `latitude`, `longitude`, `asn`, `asn_org`, `resolved_at`). **Not** written by Vector — the
+  `geoip-sync` service fills it from the GeoLite2 mmdb (see below). The `security_events_geo`
+  view left-joins `security_events` to it by `ip` for dashboards.
 
 ### Retention
 
@@ -546,6 +550,46 @@ To cross-reference a Fail2ban ban with application logs, search `logs` for the b
 SELECT timestamp, container, message FROM logs
 WHERE message LIKE '%1.2.3.4%' ORDER BY timestamp DESC LIMIT 50;
 ```
+
+### Geolocating banned IPs
+
+The `core` stack's `geoipupdate` service already downloads and refreshes (every 72 h) the MaxMind
+**GeoLite2 City + ASN** databases into `$JOHNCLOUD_ROOT/traefik/GeoLite2/`. The monitoring stack's
+**`geoip-sync`** service (`scripts/geoip-sync.py`, a `python:3.13-alpine` container) mounts that
+directory read-only and, every `GEOIP_SYNC_INTERVAL` seconds (default 3600), resolves the distinct
+IPs in `security_events` against those mmdb files and upserts a row per IP into `geoip_lookup`.
+
+Why a keyed lookup table rather than inline enrichment or MaxMind's full block table: the set of
+*banned* IPs is tiny, so this stays a small table with a trivial equality join, needs no `ip4r`
+extension or CIDR-range index, and leaves the raw `security_events` log untouched. Because it
+re-resolves every pass, geo tracks the 72 h mmdb refresh automatically — and historical IPs are
+re-resolved too. (Vector itself cannot do this: VRL has no runtime HTTP/dynamic lookup, and its
+enrichment tables are static, so geo lives in a separate loader.)
+
+Query the enriched view directly:
+
+```sql
+SELECT timestamp, ip, jail, country_code, city, asn_org
+FROM security_events_geo
+WHERE action = 'ban' AND latitude IS NOT NULL
+ORDER BY timestamp DESC LIMIT 20;
+
+SELECT country_name, count(*) FILTER (WHERE action = 'ban') AS bans
+FROM security_events_geo GROUP BY country_name ORDER BY bans DESC;
+```
+
+**Grafana Geomap panel** (on the PostgreSQL datasource reached through the PDC agent as
+`monitoring_ro`): add a *Geomap* panel with a *Markers* layer, Location → *Coords* mapped to the
+`latitude`/`longitude` fields, over:
+
+```sql
+SELECT latitude, longitude, ip, jail, country_code, city
+FROM security_events_geo
+WHERE action = 'ban' AND latitude IS NOT NULL AND $__timeFilter(timestamp);
+```
+
+`geoip_lookup` needs no retention sweep (it is keyed by `ip` and upserted in place); it shrinks
+naturally if you prune old `security_events`, since the loader only resolves IPs still present there.
 
 ---
 

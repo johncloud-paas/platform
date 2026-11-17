@@ -67,6 +67,35 @@ CREATE INDEX IF NOT EXISTS security_events_time_idx ON security_events (timestam
 CREATE INDEX IF NOT EXISTS security_events_ip_idx   ON security_events (ip);
 CREATE INDEX IF NOT EXISTS security_events_jail_idx ON security_events (jail, timestamp DESC);
 
+-- Geo/ASN resolution for banned IPs. Unlike the tables above (fed by Vector's
+-- postgres sink), this one is written by the geoip-sync loader, which periodically
+-- resolves the distinct IPs seen in security_events against the GeoLite2 City + ASN
+-- mmdb that core/geoipupdate already maintains, and upserts a flat row per IP. It is
+-- therefore free to carry a real primary key and DEFAULTs. Only banned IPs are
+-- stored (a tiny set), so the view below joins by equality on ip instead of a CIDR
+-- range containment (which Postgres cannot index without the ip4r extension).
+CREATE TABLE IF NOT EXISTS geoip_lookup (
+    ip           TEXT PRIMARY KEY,
+    country_code TEXT,
+    country_name TEXT,
+    city         TEXT,
+    latitude     DOUBLE PRECISION,
+    longitude    DOUBLE PRECISION,
+    asn          INTEGER,
+    asn_org      TEXT,
+    resolved_at  TIMESTAMPTZ NOT NULL DEFAULT now()   -- last mmdb resolution
+);
+
+-- Ban/unban events enriched with geo for dashboards (e.g. a Grafana Geomap over the
+-- latitude/longitude columns). LEFT JOIN so events whose ip is not yet resolved
+-- still appear, with NULL geo.
+CREATE OR REPLACE VIEW security_events_geo AS
+SELECT e.*,
+       g.country_code, g.country_name, g.city,
+       g.latitude, g.longitude, g.asn, g.asn_org
+FROM security_events e
+LEFT JOIN geoip_lookup g USING (ip);
+
 -- Convenience view: flat numeric value for the common counter/gauge cases.
 CREATE OR REPLACE VIEW metric_samples AS
 SELECT timestamp,

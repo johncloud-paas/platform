@@ -57,6 +57,27 @@ services:
       - ${JOHNCLOUD_ROOT}/vector:/var/lib/vector                 # sink buffers / state
       - ${JOHNCLOUD_ROOT}/security:/var/log/security:ro          # fail2ban jsonlog events
 
+  # Resolves the distinct IPs in security_events to geo/ASN using the GeoLite2 mmdb
+  # that core/geoipupdate maintains, upserting into the geoip_lookup table (joined to
+  # events by the security_events_geo view, e.g. for a Grafana Geomap). Re-resolves
+  # every GEOIP_SYNC_INTERVAL so it tracks the 72h mmdb refresh. See scripts/geoip-sync.py.
+  geoip-sync:
+    image: python:3.13-alpine
+    container_name: geoip-sync
+    restart: unless-stopped
+    depends_on:
+      initial-config:
+        condition: service_completed_successfully
+    environment:
+      - MONITORING_DB_PASSWORD=${MONITORING_DB_PASSWORD:?Missing MONITORING_DB_PASSWORD}
+      - GEOIP_SYNC_INTERVAL=${GEOIP_SYNC_INTERVAL:-3600}
+    command: >
+      sh -c "pip install --no-cache-dir maxminddb 'psycopg[binary]' &&
+             python3 -I /scripts/geoip-sync.py"
+    volumes:
+      - ./scripts:/scripts:ro
+      - ${JOHNCLOUD_ROOT}/traefik/GeoLite2:/geoip:ro   # mmdb maintained by core/geoipupdate
+
   node-exporter:
     image: prom/node-exporter:latest
     container_name: node-exporter

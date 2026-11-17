@@ -62,6 +62,12 @@ schema="$(cat "$SCHEMA")"
 assert_contains "$schema" "CREATE TABLE IF NOT EXISTS security_events" \
     "schema defines security_events table"
 
+# geoip-sync resolves banned IPs into geoip_lookup; the view joins it to events.
+assert_contains "$schema" "CREATE TABLE IF NOT EXISTS geoip_lookup" \
+    "schema defines geoip_lookup table"
+assert_contains "$schema" "security_events_geo" \
+    "schema defines the security_events_geo view"
+
 # --- filters ----------------------------------------------------------------
 TRAEFIK_FILTER="$MON_DIR/fail2ban/filter.d/traefik-access.conf"
 DOCKER_FILTER="$MON_DIR/fail2ban/filter.d/docker-apps.conf"
@@ -86,7 +92,7 @@ assert_contains "$install" "remove_legacy_ids"       "installer purges legacy Su
 # --- sample.env -------------------------------------------------------------
 ENVSAMPLE="$MON_DIR/sample.env"
 envsample="$(cat "$ENVSAMPLE")"
-for v in F2B_BANTIME F2B_FINDTIME F2B_MAXRETRY PUBLIC_IP_ADDRESS TRAEFIK_LOG_DIR; do
+for v in F2B_BANTIME F2B_FINDTIME F2B_MAXRETRY PUBLIC_IP_ADDRESS TRAEFIK_LOG_DIR GEOIP_SYNC_INTERVAL; do
     assert_contains "$envsample" "$v" "sample.env documents $v"
 done
 
