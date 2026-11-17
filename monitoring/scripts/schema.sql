@@ -46,6 +46,27 @@ CREATE INDEX IF NOT EXISTS metrics_name_time_idx ON metrics (name, timestamp DES
 CREATE INDEX IF NOT EXISTS metrics_timestamp_idx ON metrics (timestamp DESC);
 CREATE INDEX IF NOT EXISTS metrics_tags_idx      ON metrics USING GIN (tags);
 
+-- Security events. Ban/unban activity from the host Fail2ban layer (which drives
+-- nftables). A custom Fail2ban action appends one JSON line per event to a file
+-- under $JOHNCLOUD_ROOT; Vector's `file` source tails it and inserts here via the
+-- same jsonb_populate_record convention (columns mirror the JSON keys the action
+-- emits; omitted keys land NULL; no serial PK). The NOT NULL columns below are the
+-- keys the action ALWAYS writes (both on ban and unban).
+CREATE TABLE IF NOT EXISTS security_events (
+    timestamp TIMESTAMPTZ NOT NULL,   -- event time (UTC), stamped by the action
+    action    TEXT        NOT NULL,   -- 'ban' | 'unban'
+    jail      TEXT        NOT NULL,   -- Fail2ban jail name (<name>)
+    ip        TEXT        NOT NULL,   -- offender (<ip>)
+    failures  INTEGER,                -- <failures> (ban only; NULL on unban)
+    family    TEXT,                   -- inet4 / inet6
+    port      TEXT,                   -- <port>  (ban only)
+    protocol  TEXT,                   -- <protocol> (ban only)
+    bantime   INTEGER                 -- <bantime> seconds (ban only)
+);
+CREATE INDEX IF NOT EXISTS security_events_time_idx ON security_events (timestamp DESC);
+CREATE INDEX IF NOT EXISTS security_events_ip_idx   ON security_events (ip);
+CREATE INDEX IF NOT EXISTS security_events_jail_idx ON security_events (jail, timestamp DESC);
+
 -- Convenience view: flat numeric value for the common counter/gauge cases.
 CREATE OR REPLACE VIEW metric_samples AS
 SELECT timestamp,

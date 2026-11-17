@@ -38,7 +38,7 @@ export F2B_BANTIME="${F2B_BANTIME:-1h}"
 export F2B_FINDTIME="${F2B_FINDTIME:-10m}"
 export F2B_MAXRETRY="${F2B_MAXRETRY:-5}"
 export F2B_IGNOREIP="${F2B_IGNOREIP:-}"
-export PUBLIC_IP_ADDRESS TRAEFIK_LOG_DIR
+export PUBLIC_IP_ADDRESS TRAEFIK_LOG_DIR JOHNCLOUD_ROOT
 
 # ---------------------------------------------------------------------------
 # Fail2ban (native apt)
@@ -68,6 +68,21 @@ install_fail2ban() {
     echo "[fail2ban] Installing custom filters ..."
     install -d /etc/fail2ban/filter.d
     cp "$MON_DIR"/fail2ban/filter.d/*.conf /etc/fail2ban/filter.d/
+
+    # Render the log-only `jsonlog` action (feeds security_events via Vector).
+    echo "[fail2ban] Rendering /etc/fail2ban/action.d/jsonlog.conf ..."
+    install -d /etc/fail2ban/action.d
+    envsubst '$JOHNCLOUD_ROOT' \
+        < "$MON_DIR/fail2ban/action.d/jsonlog.template.conf" \
+        > /etc/fail2ban/action.d/jsonlog.conf
+
+    # Event file lives under $JOHNCLOUD_ROOT: written by this root service, read
+    # (read-only) by the rootless Vector container. World-readable (0644) so the
+    # container can read it regardless of the userns ownership remap.
+    echo "[fail2ban] Ensuring security event log exists ..."
+    install -d -m 0755 "$JOHNCLOUD_ROOT/security"
+    touch "$JOHNCLOUD_ROOT/security/fail2ban-events.jsonl"
+    chmod 0644 "$JOHNCLOUD_ROOT/security/fail2ban-events.jsonl"
 
     systemctl enable --now fail2ban
     # Reload picks up config changes on re-runs without dropping existing bans

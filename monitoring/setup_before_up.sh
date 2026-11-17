@@ -21,3 +21,7 @@ fi
 # Rootless stack provisioning
 # ---------------------------------------------------------------------------
 mkdir -p $JOHNCLOUD_ROOT/vector
+# Shared dir for Fail2ban's jsonlog events (written by the root Fail2ban service,
+# tailed read-only by the rootless Vector container). Created here too so the
+# Vector bind-mount source always exists even before the host installer runs.
+mkdir -p $JOHNCLOUD_ROOT/security

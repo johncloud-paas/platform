@@ -84,7 +84,7 @@ log "Entering stack directory $SERVICE_DIR"
 
   if [ -f "$SERVICE_DIR/setup_before_up.sh" ]; then
     log "Running setup_before_up.sh $STACK_DIR_ARG" &&
-    bash "$SERVICE_DIR/setup_before_up.sh $STACK_DIR_ARG"
+    bash "$SERVICE_DIR/setup_before_up.sh" "$STACK_DIR_ARG"
   fi &&
 
   log "Starting containers (remove-orphans)" &&

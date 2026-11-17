@@ -21,6 +21,12 @@ backend = systemd
 banaction          = nftables-multiport
 banaction_allports = nftables-allports
 
+# Every jail runs the normal firewall ban (%(action_)s expands to the nftables
+# banaction above) AND the log-only `jsonlog` action, which appends a JSON line
+# per ban/unban for Vector to ship into the security_events Postgres table.
+action = %(action_)s
+         jsonlog
+
 # --- Host SSH --------------------------------------------------------------
 [sshd]
 enabled = true

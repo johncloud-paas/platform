@@ -1,0 +1,103 @@
+# vector.yaml — the single telemetry collector for the monitoring stack.
+#
+# Mounted read-only into the `vector` container (see docker-compose.yml). Writes
+# everything into the `monitoring` database on the shared core Postgres
+# (core-db-1:5432) via Vector's native `postgres` sink, which inserts each event
+# with jsonb_populate_record: event fields map to table columns BY NAME, unmatched
+# fields are ignored, and omitted fields land NULL. So each remap below must emit
+# field names that match the target table columns in scripts/schema.sql.
+#
+# ${MONITORING_DB_PASSWORD} interpolation requires
+# VECTOR_DANGEROUSLY_ALLOW_ENV_VAR_INTERPOLATION=true (set on the service).
+
+data_dir: /var/lib/vector
+
+# ---------------------------------------------------------------------------
+# Sources
+# ---------------------------------------------------------------------------
+sources:
+  # Every container's stdout/stderr over the rootless Docker socket.
+  container_logs:
+    type: docker_logs
+
+  # Host + container metrics. node-exporter / cadvisor / speedtest are siblings
+  # on the shared traefik-proxy network.
+  infra_metrics:
+    type: prometheus_scrape
+    endpoints:
+      - http://node-exporter:9100/metrics
+      - http://cadvisor:8080/metrics
+      - http://speedtest:9798/metrics
+    scrape_interval_secs: 30
+
+  # Fail2ban ban/unban events: the host Fail2ban `jsonlog` action appends one JSON
+  # object per line here (bind-mounted read-only from $JOHNCLOUD_ROOT/security).
+  fail2ban_events:
+    type: file
+    include:
+      - /var/log/security/fail2ban-events.jsonl
+    read_from: beginning
+
+# ---------------------------------------------------------------------------
+# Transforms
+# ---------------------------------------------------------------------------
+transforms:
+  # Shape docker_logs events to the `logs` table columns and derive a severity.
+  logs_shape:
+    type: remap
+    inputs:
+      - container_logs
+    source: |
+      .container = .container_name
+      .labels = .label
+
+      # Best-effort severity from the message text; default "unknown".
+      msg = downcase(to_string(.message) ?? "")
+      sev = "unknown"
+      if match(msg, r'\b(fatal|panic)\b') {
+        sev = "fatal"
+      } else if match(msg, r'\b(error|err)\b') {
+        sev = "error"
+      } else if match(msg, r'\b(warn|warning)\b') {
+        sev = "warn"
+      } else if match(msg, r'\b(info|notice)\b') {
+        sev = "info"
+      } else if match(msg, r'\b(debug|trace)\b') {
+        sev = "debug"
+      }
+      .severity = sev
+
+  # The file source wraps each line in `.message`; parse it back into top-level
+  # fields matching the security_events columns.
+  fail2ban_parse:
+    type: remap
+    inputs:
+      - fail2ban_events
+    source: |
+      . = object!(parse_json!(.message))
+      .timestamp = parse_timestamp!(.timestamp, "%Y-%m-%dT%H:%M:%SZ")
+
+# ---------------------------------------------------------------------------
+# Sinks — one postgres sink per target table.
+# ---------------------------------------------------------------------------
+sinks:
+  logs_pg:
+    type: postgres
+    inputs:
+      - logs_shape
+    endpoint: postgresql://monitoring:${MONITORING_DB_PASSWORD}@core-db-1:5432/monitoring
+    table: logs
+
+  metrics_pg:
+    type: postgres
+    inputs:
+      - infra_metrics
+    endpoint: postgresql://monitoring:${MONITORING_DB_PASSWORD}@core-db-1:5432/monitoring
+    table: metrics
+
+  security_pg:
+    type: postgres
+    inputs:
+      - fail2ban_parse
+    endpoint: postgresql://monitoring:${MONITORING_DB_PASSWORD}@core-db-1:5432/monitoring
+    table: security_events

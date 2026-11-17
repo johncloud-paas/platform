@@ -55,6 +55,7 @@ services:
       - ./vector/vector.yaml:/etc/vector/vector.yaml:ro
       - ${XDG_RUNTIME_DIR}/docker.sock:/var/run/docker.sock:ro   # docker_logs source
       - ${JOHNCLOUD_ROOT}/vector:/var/lib/vector                 # sink buffers / state
+      - ${JOHNCLOUD_ROOT}/security:/var/log/security:ro          # fail2ban jsonlog events
 
   node-exporter:
     image: prom/node-exporter:latest

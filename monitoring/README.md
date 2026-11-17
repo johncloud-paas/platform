@@ -60,13 +60,15 @@ entirely around **Fail2ban** running on the host (no Docker involved for the sec
 │     [docker-apps]     app auth failures      → ban                      │
 │     [recidive]        repeat offenders       → long ban                 │
 │                                   │                                      │
-│                                   ▼  banaction                          │
+│                                   ▼  banaction (+ jsonlog action)        │
 │  FIREWALL  (nftables | ufw | firewalld)                                 │
 │   adds/removes a DROP rule for the offending source IP                  │
-│                                                                          │
+│   jsonlog action → $JOHNCLOUD_ROOT/security/fail2ban-events.jsonl       │
+│                                   │                                      │
 │  Vector (rootless monitoring stack) — observability, NOT blocking       │
 │   docker_logs (socket) → PostgreSQL logs                                │
 │   prometheus_scrape    → PostgreSQL metrics                             │
+│   file (events.jsonl)  → PostgreSQL security_events  ◄──────────────────┤
 └──────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -474,9 +476,20 @@ For a single node with fewer than ~50 containers, telemetry is kept in plain Pos
   `severity`, defaulting to `unknown`.
 - **Host + container metrics** — `prometheus_scrape` scrapes `node-exporter:9100`,
   `cadvisor:8080`, and `speedtest:9798`.
+- **Security events** — a `file` source tails `$JOHNCLOUD_ROOT/security/fail2ban-events.jsonl`
+  (mounted read-only as `/var/log/security/`), where the host Fail2ban `jsonlog` action appends
+  one JSON line per ban/unban. A `remap` parses the line back into columns.
 
-Both are written by Vector's native **`postgres` sink** into the `monitoring` database on the
-shared `core` Postgres server (`core-db-1:5432`).
+All three are written by Vector's native **`postgres` sink** (one sink per table) into the
+`monitoring` database on the shared `core` Postgres server (`core-db-1:5432`).
+
+**Where the security events come from.** Fail2ban runs on the host as root; Vector runs rootless
+and cannot cleanly read the host journal, so the event is emitted by Fail2ban rather than scraped
+by Vector. The log-only `jsonlog` action (`fail2ban/action.d/jsonlog.template.conf`, rendered by
+`install-host-security.sh`) is attached in `[DEFAULT] action` **alongside** the nftables banaction,
+so every jail's ban/unban also appends a structured line. Because the nftables drop-set add/remove
+*is* the ban/unban, this captures the firewall state changes too — nftables itself is not logged
+separately.
 
 **Vector 0.57+ note:** `${VAR}` interpolation is opt-in; the `vector` service sets
 `VECTOR_DANGEROUSLY_ALLOW_ENV_VAR_INTERPOLATION=true` so the sink reads `MONITORING_DB_PASSWORD`
@@ -494,12 +507,16 @@ schema so Vector can INSERT):
   `tags jsonb`, `kind`, `interval_ms`, and one of
   `counter`/`gauge`/`set`/`distribution`/`aggregated_histogram`/`aggregated_summary`/`sketch`.
   The `metric_samples` view flattens counter/gauge to a numeric value.
+- **`security_events`** — Fail2ban ban/unban activity: `timestamp`, `action` (`ban`/`unban`),
+  `jail`, `ip` (all `NOT NULL`), plus nullable `failures`, `family`, `port`, `protocol`,
+  `bantime` (populated on ban). Indexed on `timestamp`, `ip`, and `(jail, timestamp)`.
 
 ### Retention
 
 ```sql
-DELETE FROM logs    WHERE timestamp < now() - interval '14 days';
-DELETE FROM metrics WHERE timestamp < now() - interval '14 days';
+DELETE FROM logs            WHERE timestamp < now() - interval '14 days';
+DELETE FROM metrics         WHERE timestamp < now() - interval '14 days';
+DELETE FROM security_events WHERE timestamp < now() - interval '90 days';
 ```
 
 ### Querying
@@ -511,6 +528,16 @@ ORDER BY timestamp DESC LIMIT 20;
 
 SELECT name, value FROM metric_samples
 WHERE name LIKE 'node_%' ORDER BY timestamp DESC LIMIT 20;
+```
+
+Recent bans, and the top offenders:
+
+```sql
+SELECT timestamp, action, jail, ip FROM security_events
+ORDER BY timestamp DESC LIMIT 20;
+
+SELECT ip, count(*) FILTER (WHERE action = 'ban') AS bans
+FROM security_events GROUP BY ip ORDER BY bans DESC LIMIT 10;
 ```
 
 To cross-reference a Fail2ban ban with application logs, search `logs` for the banned IP:

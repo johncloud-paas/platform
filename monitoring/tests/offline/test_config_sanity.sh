@@ -41,6 +41,27 @@ for v in '${F2B_BANTIME}' '${F2B_FINDTIME}' '${F2B_MAXRETRY}' '${TRAEFIK_LOG_DIR
     assert_contains "$jail" "$v" "jail template has $v placeholder"
 done
 
+# The jsonlog action must be attached alongside the firewall banaction so bans
+# are also shipped to Postgres (security_events).
+assert_contains "$jail" "jsonlog" "jail template attaches the jsonlog action"
+assert_match "$JAIL" '^action[[:space:]]*=[[:space:]]*%\(action_\)s' \
+    "jail keeps the firewall banaction via %(action_)s"
+
+# --- jsonlog action ---------------------------------------------------------
+JSONLOG="$MON_DIR/fail2ban/action.d/jsonlog.template.conf"
+jsonlog="$(cat "$JSONLOG")"
+assert_contains "$jsonlog" "actionban"             "jsonlog action defines actionban"
+assert_contains "$jsonlog" "actionunban"           "jsonlog action defines actionunban"
+assert_contains "$jsonlog" '"action":"ban"'        "jsonlog emits a ban event"
+assert_contains "$jsonlog" '"action":"unban"'      "jsonlog emits an unban event"
+assert_contains "$jsonlog" '${JOHNCLOUD_ROOT}'     "jsonlog path has JOHNCLOUD_ROOT placeholder"
+
+# --- security_events schema -------------------------------------------------
+SCHEMA="$MON_DIR/scripts/schema.sql"
+schema="$(cat "$SCHEMA")"
+assert_contains "$schema" "CREATE TABLE IF NOT EXISTS security_events" \
+    "schema defines security_events table"
+
 # --- filters ----------------------------------------------------------------
 TRAEFIK_FILTER="$MON_DIR/fail2ban/filter.d/traefik-access.conf"
 DOCKER_FILTER="$MON_DIR/fail2ban/filter.d/docker-apps.conf"
@@ -57,6 +78,8 @@ assert_contains "$install" "fail2ban"                "installer installs fail2ba
 assert_contains "$install" "envsubst"                "installer renders jail.local with envsubst"
 assert_contains "$install" "jail.local"              "installer writes /etc/fail2ban/jail.local"
 assert_contains "$install" "filter.d"                "installer copies custom filters"
+assert_contains "$install" "jsonlog.conf"            "installer renders the jsonlog action"
+assert_contains "$install" "security/fail2ban-events.jsonl" "installer provisions the event log"
 assert_contains "$install" "systemctl enable --now fail2ban" "installer enables the service"
 assert_contains "$install" "remove_legacy_ids"       "installer purges legacy Suricata/CrowdSec/Snort"
 
