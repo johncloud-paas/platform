@@ -60,11 +60,30 @@ transforms:
       .container = .container_name
       .labels = .label
 
-      # Best-effort remote client IP from the message (first IPv4/IPv6 token); NULL
-      # when the line carries none. Container apps only expose the real client IP if
-      # configured to log X-Forwarded-For — otherwise this is their internal peer.
-      ipmatch = parse_regex(to_string(.message) ?? "", r'(?P<ip>(?:\d{1,3}\.){3}\d{1,3}|(?:[0-9A-Fa-f]{0,4}:){2,}[0-9A-Fa-f]{0,4})') ?? {}
-      .client_ip = ipmatch.ip
+      # Best-effort remote client IP from the message: accurate or null, never noise.
+      # The previous pattern took the first IPv4/IPv6-ish token and so captured
+      # timestamps ("19:35:12"), code offsets (":11:2753"), loopback ("::1") and the
+      # internal proxy peer ("::ffff:172.22.0.11") — none of them a real client. We now
+      # keep ONLY a syntactically valid, non-private IPv4 (strict 0-255 octets); private
+      # and loopback ranges are dropped because container apps log their internal peer,
+      # not the external client, unless they emit X-Forwarded-For. IPv6 is intentionally
+      # not scraped here (no reliable signal in container logs, and the loose pattern was
+      # the source of the noise). Real external client IPs — incl. IPv6 — are still
+      # captured on Traefik lines by traefik_shape below (from the ClientHost field).
+      .client_ip = null
+      ipm = parse_regex(to_string(.message) ?? "", r'\b(?P<ip>(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d))\b') ?? {}
+      if ipm.ip != null {
+        ip = string!(ipm.ip)
+        private =
+          (ip_cidr_contains("10.0.0.0/8", ip) ?? false) ||
+          (ip_cidr_contains("172.16.0.0/12", ip) ?? false) ||
+          (ip_cidr_contains("192.168.0.0/16", ip) ?? false) ||
+          (ip_cidr_contains("127.0.0.0/8", ip) ?? false) ||
+          (ip_cidr_contains("169.254.0.0/16", ip) ?? false)
+        if !private {
+          .client_ip = ip
+        }
+      }
 
       # Best-effort severity from the message text; default "unknown".
       msg = downcase(to_string(.message) ?? "")
