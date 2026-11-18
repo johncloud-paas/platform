@@ -324,7 +324,8 @@ maxretry = 2
 [docker-apps]
 enabled      = true
 backend      = systemd
-journalmatch = _SYSTEMD_UNIT=docker.service + CONTAINER_NAME
+journalflags = 1                                  # LOCAL_ONLY: read user journals (rootless logs there)
+journalmatch = _SYSTEMD_USER_UNIT=docker.service  # all containers; excludes host sshd
 filter       = docker-apps
 
 # --- Repeat offenders ----------------------------------------------------
@@ -372,12 +373,19 @@ failregex = (authentication failure|invalid (login|credentials)|failed login|403
 ### Reading Docker logs
 
 **Primary — journald (recommended).** With the rootless daemon set to `log-driver: journald`
-(Step 1), every container's stdout/stderr is one tagged stream. The `[docker-apps]` jail reads
-it with `backend = systemd` and a `journalmatch` on `CONTAINER_NAME`, so **one jail covers all
-containers**. Tighten to specific apps with e.g. `journalmatch = CONTAINER_NAME=authentik-server`.
+(Step 1), every container's stdout/stderr is one tagged stream. **Gotcha:** the rootless daemon
+runs as a *user* service, so container logs land in the **user** journal
+(`_SYSTEMD_USER_UNIT=docker.service`), and Fail2ban's systemd backend defaults to `SYSTEM_ONLY`,
+which skips user journals — so out of the box `[docker-apps]` sees no container logs and silently
+falls back to matching host sshd lines. Fix it with `journalflags = 1` (LOCAL_ONLY, include user
+journals) plus `journalmatch = _SYSTEMD_USER_UNIT=docker.service`, which matches **all containers
+(present and future)** while excluding host sshd. Tighten to specific apps by appending a
+`CONTAINER_NAME`, e.g. `journalmatch = _SYSTEMD_USER_UNIT=docker.service CONTAINER_NAME=authentik_server`
+(space = AND).
 
-**Fallback — tail the json-file logs.** If journald entries from the rootless daemon are not
-visible to root, keep the default `json-file` driver and point a jail at the per-container files.
+**Fallback — tail the json-file logs.** If journald entries from the rootless daemon are still not
+visible to root even with `journalflags = 1`, keep the default `json-file` driver and point a jail
+at the per-container files.
 Under rootless Docker they live at:
 
 ```

@@ -13,7 +13,10 @@ maxretry = ${F2B_MAXRETRY}
 # RFC1918 is included by default; add Tailscale/WireGuard CIDRs via F2B_IGNOREIP.
 ignoreip = 127.0.0.1/8 ::1 ${PUBLIC_IP_ADDRESS} 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 ${F2B_IGNOREIP}
 
-# Read the systemd journal by default (host + all containers via log-driver: journald).
+# Read the systemd journal by default. NB: under rootless Docker, container logs
+# land in the USER journal, which the backend's default SYSTEM_ONLY flag skips —
+# so host units (e.g. sshd) are visible here, but container logs are NOT until a
+# jail opts in via journalflags/journalmatch (see [docker-apps] below).
 backend = systemd
 
 # Install bans into nftables. Switch to `ufw` or `firewallcmd-rich-rules` if you
@@ -53,9 +56,15 @@ maxretry = 2
 [docker-apps]
 enabled = true
 backend = systemd
-# Scans the journal (which now includes every container's stdout/stderr) and
-# lets the docker-apps filter pick out auth failures. Narrow to one app with:
-#   journalmatch = CONTAINER_NAME=authentik-server
+# Rootless Docker (journald log driver) writes container stdout/stderr to the
+# USER journal (_SYSTEMD_USER_UNIT=docker.service), NOT the system journal.
+# fail2ban's systemd backend defaults to SYSTEM_ONLY (filtersystemd.py), which
+# skips user journals — so without journalflags below it sees NO container logs
+# and this jail silently falls back to matching host sshd lines. Widen it, then
+# scope to the docker user unit so it matches every container (present & future)
+# but never host sshd (ssh.service, which carries no _SYSTEMD_USER_UNIT).
+journalflags = 1                                  # LOCAL_ONLY: include user-session journals
+journalmatch = _SYSTEMD_USER_UNIT=docker.service  # all containers; excludes host sshd
 filter  = docker-apps
 
 # --- Repeat offenders ------------------------------------------------------

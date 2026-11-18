@@ -47,6 +47,15 @@ assert_contains "$jail" "jsonlog" "jail template attaches the jsonlog action"
 assert_match "$JAIL" '^action[[:space:]]*=[[:space:]]*%\(action_\)s' \
     "jail keeps the firewall banaction via %(action_)s"
 
+# docker-apps must scope to container logs via journalmatch, else (backend=systemd)
+# it scans the whole journal and its loose failregex shadows host sshd lines. The
+# journalflags opt-in is required too: under rootless Docker container logs live in
+# the user journal, which the backend's default SYSTEM_ONLY flag would skip.
+assert_contains "$jail" "_SYSTEMD_USER_UNIT=docker.service" \
+    "docker-apps journalmatch scopes to container logs (not host sshd)"
+assert_match "$JAIL" '^journalflags[[:space:]]*=' \
+    "docker-apps opts into user journals via journalflags"
+
 # --- jsonlog action ---------------------------------------------------------
 JSONLOG="$MON_DIR/fail2ban/action.d/jsonlog.template.conf"
 jsonlog="$(cat "$JSONLOG")"
