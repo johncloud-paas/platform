@@ -31,6 +31,6 @@ services:
       - "homepage.group=Platform"
       - "homepage.name=Netdata"
       - "homepage.icon=netdata.svg"
-      - "homepage.href=https://${NETDATA_CLAIM_URL:?Missing NETDATA_CLAIM_URL}"
+      - "homepage.href=${NETDATA_DASHBOARD_URL:?Missing NETDATA_DASHBOARD_URL}"
       - "homepage.description=Netdata monitoring"
       
