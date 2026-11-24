@@ -1,130 +1,36 @@
-name: monitoring
-
 services:
-  # Provisions the `monitoring` database + role on the shared core Postgres
-  # (reachable cross-stack as core-db-1) and applies the logs/metrics schema that
-  # Vector writes into. Runs in the Postgres image so psql/bash are available.
-  initial-config:
-    image: postgres:17-alpine3.23
-    restart: "no"
-    entrypoint: ["/bin/bash", "/scripts/configure-monitoring.sh"]
-    environment:
-      PGHOST: core-db-1
-      PGPORT: "5432"
-      PGUSER: postgres
-      PGPASSWORD: ${CORE_DB_PASSWORD:?Missing CORE_DB_PASSWORD}
-      MONITORING_DB_PASSWORD: ${MONITORING_DB_PASSWORD:?Missing MONITORING_DB_PASSWORD}
-      MONITORING_RO_DB_USER: ${MONITORING_RO_DB_USER:?Missing MONITORING_RO_DB_USER}
-      MONITORING_RO_DB_PASSWORD: ${MONITORING_RO_DB_PASSWORD:?Missing MONITORING_RO_DB_PASSWORD}
-    volumes:
-      - ./scripts:/scripts:ro
-
-  # NOTE: the host security layer (Fail2ban) is NOT here. It runs as a native
-  # systemd service on the host, provisioned by scripts/install-host-security.sh,
-  # and reads the journal (host + all containers), the Traefik access log, and
-  # /var/log/auth.log to ban offenders in the host firewall. See README.md.
-  pdc:
-    # https://grafana.com/docs/grafana-cloud/connect-externally-hosted/private-data-source-connect/#private-data-source-connect-pdc-concepts
-    image: grafana/pdc-agent:latest
-    container_name: pdc
-    depends_on:
-      - initial-config
-    restart: unless-stopped
-    command: ["-token","$GRAFANA_PDC_TOKEN","-cluster","$GRAFANA_PDC_CLUSTER","-gcloud-hosted-grafana-id","$GRAFANA_PDC_GCP_ID"]
-    
-  # Collects container logs (docker_logs source) and scrapes node-exporter,
-  # cadvisor and speedtest (prometheus_scrape), writing both into the `monitoring`
-  # Postgres database. Replaces the former fluent-bit + VictoriaMetrics/Logs path.
-  vector:
-    image: timberio/vector:latest-alpine
-    container_name: vector
-    restart: unless-stopped
-    depends_on:
-      initial-config:
-        condition: service_completed_successfully
-    environment:
-      - DOCKER_HOST=unix:///var/run/docker.sock
-      - MONITORING_DB_PASSWORD=${MONITORING_DB_PASSWORD:?Missing MONITORING_DB_PASSWORD}
-      # Vector 0.57+ makes ${VAR} config interpolation opt-in; re-enable it so the
-      # sink endpoints can read MONITORING_DB_PASSWORD from the environment.
-      - VECTOR_DANGEROUSLY_ALLOW_ENV_VAR_INTERPOLATION=true
-    command: ["--config", "/etc/vector/vector.yaml"]
-    extra_hosts:
-      - "host.docker.internal:host-gateway"   # reach host services/exporters from the container
-    volumes:
-      - ./vector/vector.yaml:/etc/vector/vector.yaml:ro
-      - ${XDG_RUNTIME_DIR}/docker.sock:/var/run/docker.sock:ro   # docker_logs source
-      - ${JOHNCLOUD_ROOT}/vector:/var/lib/vector                 # sink buffers / state
-      - ${JOHNCLOUD_ROOT}/security:/var/log/security:ro          # fail2ban jsonlog events
-      - ${JOHNCLOUD_ROOT}/traefik/logs:/var/log/traefik:ro       # traefik_access source
-
-  # Resolves the distinct IPs in security_events to geo/ASN using the GeoLite2 mmdb
-  # that core/geoipupdate maintains, upserting into the geoip_lookup table (joined to
-  # events by the security_events_geo view, e.g. for a Grafana Geomap). Re-resolves
-  # every GEOIP_SYNC_INTERVAL so it tracks the 72h mmdb refresh. See scripts/geoip-sync.py.
-  geoip-sync:
-    image: python:3.13-alpine
-    container_name: geoip-sync
-    restart: unless-stopped
-    depends_on:
-      initial-config:
-        condition: service_completed_successfully
-    environment:
-      - MONITORING_DB_PASSWORD=${MONITORING_DB_PASSWORD:?Missing MONITORING_DB_PASSWORD}
-      - GEOIP_SYNC_INTERVAL=${GEOIP_SYNC_INTERVAL:-3600}
-    command: >
-      sh -c "pip install --no-cache-dir maxminddb 'psycopg[binary]' &&
-             python3 -I /scripts/geoip-sync.py"
-    volumes:
-      - ./scripts:/scripts:ro
-      - ${JOHNCLOUD_ROOT}/traefik/GeoLite2:/geoip:ro   # mmdb maintained by core/geoipupdate
-
-  node-exporter:
-    image: prom/node-exporter:latest
-    container_name: node-exporter
-    restart: unless-stopped
-    depends_on:
-      - initial-config
+  netdata:
+    image: netdata/netdata:edge
     pid: host
+    network_mode: host
+    restart: unless-stopped
+    cap_add:
+      - SYS_PTRACE
+      - SYS_ADMIN
+    security_opt:
+      - apparmor:unconfined
     volumes:
+      - ${JOHNCLOUD_ROOT:?Missing JOHNCLOUD_ROOT}/${COMPOSE_PROJECT_NAME:?Missing COMPOSE_PROJECT_NAME}/config:/etc/netdata
+      - ${JOHNCLOUD_ROOT:?Missing JOHNCLOUD_ROOT}/${COMPOSE_PROJECT_NAME:?Missing COMPOSE_PROJECT_NAME}/lib:/var/lib/netdata
+      - ${JOHNCLOUD_ROOT:?Missing JOHNCLOUD_ROOT}/${COMPOSE_PROJECT_NAME:?Missing COMPOSE_PROJECT_NAME}/cache:/var/cache/netdata
+      - /:/host/root:ro,rslave
+      - /etc/passwd:/host/etc/passwd:ro
+      - /etc/group:/host/etc/group:ro
+      - /etc/localtime:/etc/localtime:ro
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
-      - /:/rootfs:ro
-    command:
-      - "--path.procfs=/host/proc"
-      - "--path.sysfs=/host/sys"
-      - "--path.rootfs=/rootfs"
-
-  cadvisor:
-    image: gcr.io/cadvisor/cadvisor:latest
-    container_name: cadvisor
-    restart: unless-stopped
-    privileged: true
-    depends_on:
-      - initial-config
-    volumes:
-      - /:/rootfs:ro
-      - /var/run:/var/run:ro
-      - /sys:/sys:ro
-      - ${XDG_DATA_HOME:-$HOME/.local/share}/docker:/var/lib/docker:ro
-      - /dev/disk:/dev/disk:ro
-    command:
-      - "--docker_only=true"
-      - "--disable_metrics=advtcp,hugetlb,memory_numa,perf_event,referenced_memory,resctrl,sched,tcp,udp"
-
-  speedtest:
-    image: kutovoys/speedtest-exporter
-    container_name: speedtest
-    restart: unless-stopped
-    depends_on:
-      - initial-config
+      - /etc/os-release:/host/etc/os-release:ro
+      - /var/log:/host/var/log:ro
+      - ${XDG_RUNTIME_DIR:?Missing XDG_RUNTIME_DIR}/docker.sock:/var/run/docker.sock:ro
+      - /run/dbus:/run/dbus:ro
     environment:
-        - UPDATE_INTERVAL=60
-    volumes:
-        - $JOHNCLOUD_ROOT/speedtest/data:/config
-
-networks:
-  default:
-    external: true
-    name: $TRAEFIK_NETWORK
-    
+      - NETDATA_CLAIM_TOKEN=${NETDATA_CLAIM_TOKEN:?Missing NETDATA_CLAIM_TOKEN}
+      - NETDATA_CLAIM_URL=${NETDATA_CLAIM_URL:?Missing NETDATA_CLAIM_URL}
+      - NETDATA_CLAIM_ROOMS=${NETDATA_CLAIM_ROOMS:?Missing NETDATA_CLAIM_ROOMS}
+    labels:
+      - "homepage.group=Platform"
+      - "homepage.name=Netdata"
+      - "homepage.icon=netdata.svg"
+      - "homepage.href=https://${NETDATA_CLAIM_URL:?Missing NETDATA_CLAIM_URL}"
+      - "homepage.description=Netdata monitoring"
+      

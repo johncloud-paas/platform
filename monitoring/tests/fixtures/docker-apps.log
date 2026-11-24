@@ -1,5 +1,0 @@
-Nov 16 12:00:01 node authentik[1]: authentication failure for admin from 198.51.100.42
-Nov 16 12:00:05 node authentik[1]: invalid credentials from 198.51.100.42
-Nov 16 12:00:09 node app[1]: failed login from 198.51.100.43
-Nov 16 12:00:12 node app[1]: Unauthorized request ip=198.51.100.44
-Nov 16 12:00:15 node app[1]: 198.51.100.45 authentication failure

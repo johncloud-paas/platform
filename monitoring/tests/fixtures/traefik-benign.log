@@ -1,4 +1,0 @@
-{"ClientHost":"198.51.100.10","DownstreamStatus":200,"request_User-Agent":"Mozilla/5.0 (X11; Linux x86_64) Firefox/133.0","StartUTC":"2026-11-16T12:10:01Z"}
-{"ClientHost":"198.51.100.10","DownstreamStatus":304,"request_User-Agent":"Mozilla/5.0 (X11; Linux x86_64) Firefox/133.0","StartUTC":"2026-11-16T12:10:02Z"}
-{"ClientHost":"198.51.100.11","DownstreamStatus":301,"request_User-Agent":"curl/8.5.0","StartUTC":"2026-11-16T12:10:03Z"}
-{"ClientHost":"198.51.100.12","DownstreamStatus":200,"request_User-Agent":"Chrome/131.0.0.0 Safari/537.36","StartUTC":"2026-11-16T12:10:04Z"}

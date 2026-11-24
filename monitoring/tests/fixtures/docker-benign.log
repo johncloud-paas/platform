@@ -1,4 +1,0 @@
-Nov 16 12:20:01 node app[1]: GET /healthz 200 from 198.51.100.50
-Nov 16 12:20:02 node app[1]: user admin logged in successfully from 198.51.100.50
-Nov 16 12:20:03 node app[1]: serving request id=abc123 status=200
-Nov 16 12:20:04 node postgres[1]: checkpoint complete: wrote 42 buffers
