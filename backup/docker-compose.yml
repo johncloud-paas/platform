@@ -4,6 +4,16 @@ services:
   databasus:
     image: databasus/databasus:latest
     restart: unless-stopped
+    environment:
+      - DATABASUS_URL=https://databasus.${HOST:?Missing HOST}/
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_SECURITY=${SMTP_SECURITY}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - SMTP_FROM=${SMTP_FROM}
+      - SMTP_HELO_NAME=${SMTP_HELO_NAME}
+      - SMTP_INSECURE_SKIP_VERIFY=${SMTP_INSECURE_SKIP_VERIFY}
     volumes:
       - ${JOHNCLOUD_ROOT:?Missing JOHNCLOUD_ROOT}/databasus/data:/databasus-data
     labels:
